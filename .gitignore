@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+coverage/
+.DS_Store
+*.log
+
+# Database dumps and local backups — never commit real data
+backend/backups/
+*.dump
+*.sql.gz
+*.sql.gz.enc
+*.tar.gz
+
+# Browser tests (Playwright) reports
+test-results/
+playwright-report/
