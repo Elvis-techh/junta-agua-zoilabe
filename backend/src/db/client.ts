@@ -15,13 +15,10 @@ export type DbOrTx = Db | Tx;
  * a water board's traffic is a handful of people at a time.
  */
 export function createDb(connectionString: string, max = 5) {
-  const pool = new pg.Pool({ connectionString, max });
-
   // Every session works in UTC, whatever the server's own zone. Honduras time
-  // is applied when a timestamp is shown, never when it is stored.
-  pool.on("connect", (client) => {
-    void client.query("SET TIME ZONE 'UTC'");
-  });
+  // is applied when a timestamp is shown, never when it is stored. Sent as a
+  // startup option so it is in force before the first query, with no race.
+  const pool = new pg.Pool({ connectionString, max, options: "-c TimeZone=UTC" });
 
   const db = drizzle(pool, { schema });
 
