@@ -8,8 +8,11 @@ import authPlugin from "./auth/plugin.js";
 import type { AppConfig } from "./config/env.js";
 import type { Db } from "./db/client.js";
 import { HttpError } from "./lib/http.js";
+import { auditRoutes } from "./routes/audit.js";
+import { authRoutes } from "./routes/auth.js";
 import { healthRoutes } from "./routes/health.js";
 import { permissionRoutes } from "./routes/permissions.js";
+import { userRoutes } from "./routes/users.js";
 
 export async function buildApp(config: AppConfig, db: Db) {
   const app = Fastify({
@@ -59,7 +62,14 @@ export async function buildApp(config: AppConfig, db: Db) {
   await app.register(
     async (api) => {
       await api.register(healthRoutes);
+      await api.register(authRoutes, {
+        appUrl: config.appUrl,
+        secureCookies: config.nodeEnv === "production",
+        pinAttemptsPerMinute: config.pinAttemptsPerMinute,
+      });
+      await api.register(userRoutes, { appUrl: config.appUrl });
       await api.register(permissionRoutes);
+      await api.register(auditRoutes);
     },
     { prefix: "/api" },
   );
