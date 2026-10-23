@@ -45,9 +45,13 @@ PostgreSQL, with two logins:
 
 Every schema change is a new migration under `backend/drizzle/`, generated
 with `npm run db:generate --workspace @zoilabe/backend` from
-`backend/src/db/schema.ts`. Grants live in `backend/src/db/grants.sql` and are
-re-applied by `npm run db:migrate`. Never edit a migration that is already on
-`main`.
+`backend/src/db/schema.ts`. Grants live in `applyGrants`
+(`backend/src/db/roles.ts`) and are re-applied by `npm run db:migrate`. Never
+edit a migration that is already on `main`.
+
+Locally, `npm run db:local -- start` runs a private PostgreSQL server in
+`backend/.pgdata` on port 54329, so no `sudo` is needed. Tests create and drop
+their own throwaway databases on it.
 
 ## Fixing things, one at a time
 

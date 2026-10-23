@@ -26,17 +26,22 @@ plan.
 
 ## Local development
 
-Requirements: Node.js 22+, npm, and PostgreSQL 16+ running locally.
+Requirements: Node.js 22+, npm, and PostgreSQL 16+ installed
+(`sudo apt install postgresql` on Ubuntu). The app does not use the system
+server; it runs its own private one, owned by you, so no `sudo` is needed
+after the install.
 
 ```bash
-sudo apt install postgresql        # once, on Ubuntu
 npm install
 cp backend/.env.example backend/.env
-npm run db:setup                   # creates the database and its two logins (asks for sudo)
+npm run db:local --workspace @zoilabe/backend -- start   # private server on localhost:54329
+npm run db:setup                   # creates the database and its two logins
 npm run db:migrate
 npm run db:seed
 npm run dev
 ```
+
+After a restart of the computer, run the `db:local -- start` line again.
 
 - Frontend: `http://localhost:5173`
 - Backend health check: `http://localhost:3002/api/health`

@@ -17,3 +17,6 @@ backend/backups/
 # Browser tests (Playwright) reports
 test-results/
 playwright-report/
+
+# The private development database server (npm run db:local)
+backend/.pgdata/
