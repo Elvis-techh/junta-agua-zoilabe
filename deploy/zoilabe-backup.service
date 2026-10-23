@@ -1,0 +1,27 @@
+# One nightly backup, then exit. Paired with zoilabe-backup.timer.
+#
+#   cp deploy/zoilabe-backup.{service,timer} /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now zoilabe-backup.timer
+#
+# Run one now (do this once after install and read the log):
+#   systemctl start zoilabe-backup && journalctl -u zoilabe-backup -n 20
+
+[Unit]
+Description=Junta de Agua Zoilabe nightly backup
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=zoilabe
+Group=zoilabe
+WorkingDirectory=/opt/zoilabe/backend
+# The admin login's URL, the encryption key and the Spaces key live in this
+# file, readable only by root; the API's own .env does not carry them.
+EnvironmentFile=/opt/zoilabe/backend/.env.backup
+ExecStart=/opt/node22/bin/node dist/scripts/backup.js
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/zoilabe/backend/backups

@@ -15,8 +15,8 @@
     "db:migrate": "tsx --env-file-if-exists=.env src/db/migrate.ts",
     "db:seed": "tsx --env-file-if-exists=.env src/db/seed.ts",
     "db:reset": "tsx --env-file-if-exists=.env src/db/reset.ts",
-    "db:backup": "node --env-file-if-exists=.env scripts/backup.mjs",
-    "db:restore": "node --env-file-if-exists=.env scripts/restore.mjs",
+    "db:backup": "tsx --env-file-if-exists=.env src/scripts/backup.ts",
+    "db:restore": "tsx --env-file-if-exists=.env src/scripts/restore.ts",
     "db:verify-log": "tsx --env-file-if-exists=.env src/scripts/verify-log.ts",
     "user:first-admin": "tsx --env-file-if-exists=.env src/scripts/first-admin.ts"
   },

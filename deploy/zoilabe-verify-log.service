@@ -1,0 +1,20 @@
+# The nightly history log check: recomputes the whole chain and files the
+# result for Configuración. Fails (and shows in `systemctl --failed`) if any
+# entry was changed or removed. Paired with zoilabe-verify-log.timer.
+
+[Unit]
+Description=Junta de Agua Zoilabe history log check
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=zoilabe
+Group=zoilabe
+WorkingDirectory=/opt/zoilabe/backend
+EnvironmentFile=/opt/zoilabe/backend/.env
+ExecStart=/opt/node22/bin/node dist/scripts/verify-log.js
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true

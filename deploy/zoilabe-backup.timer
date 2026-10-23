@@ -1,0 +1,12 @@
+# Nightly at 02:45 (Lindero's runs at 02:15), plus a catch-up run if the machine was off.
+
+[Unit]
+Description=Nightly Junta de Agua Zoilabe backup
+
+[Timer]
+OnCalendar=*-*-* 02:45:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
