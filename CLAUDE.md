@@ -62,7 +62,12 @@ their own throwaway databases on it.
 3. **One pull request per change.** The description says what was wrong or
    missing, what changed, how it was checked, and what the owner should look
    at. It is the permanent record of why the change exists.
-4. **If something broke, revert the pull request** with GitHub's Revert
+4. **Keep the docs current, in the same pull request.** The owner asked for
+   this standing rule: every fix or feature updates `README.md` (how to run,
+   test and use what changed, and its Status section), and this file when it
+   changes how work is done here. A pull request whose docs are out of date
+   is not finished.
+5. **If something broke, revert the pull request** with GitHub's Revert
    button. Never rewrite `main`'s history.
 
 ## Checks before pushing

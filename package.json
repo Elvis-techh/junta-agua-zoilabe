@@ -13,12 +13,14 @@
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "db:local": "npm run db:local --workspace @zoilabe/backend --",
     "db:setup": "npm run db:setup --workspace @zoilabe/backend",
     "db:migrate": "npm run db:migrate --workspace @zoilabe/backend",
     "db:seed": "npm run db:seed --workspace @zoilabe/backend",
     "db:reset": "npm run db:reset --workspace @zoilabe/backend",
     "db:backup": "npm run db:backup --workspace @zoilabe/backend",
-    "db:verify-log": "npm run db:verify-log --workspace @zoilabe/backend"
+    "db:verify-log": "npm run db:verify-log --workspace @zoilabe/backend",
+    "user:first-admin": "npm run user:first-admin --workspace @zoilabe/backend --"
   },
   "engines": {
     "node": ">=22"
