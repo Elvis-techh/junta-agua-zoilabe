@@ -79,6 +79,13 @@ export const INACTIVE_REASONS = {
   entered_by_mistake: "Ingresado por error",
 } as const;
 
+/** Why a person has no phone on record. Matches backend/src/lib/census.ts. */
+export const PHONE_MISSING = {
+  no_phone: "No tiene teléfono",
+  declined: "Prefiere no darlo",
+} as const;
+
+export type PhoneMissing = keyof typeof PHONE_MISSING;
 export type Relation = keyof typeof RELATIONS;
 export type WaterConnection = keyof typeof WATER_CONNECTIONS;
 export type InactiveReason = keyof typeof INACTIVE_REASONS;
@@ -108,7 +115,7 @@ export interface CensusOptions {
 export interface Registration {
   submissionId: string;
   paper?: { date: string; formNumber?: string };
-  person: { fullName?: string; idNumber: string; phone?: string; gender?: string };
+  person: { fullName?: string; idNumber: string; phone?: string; phoneMissing?: PhoneMissing; gender?: string };
   addToExistingPerson: boolean;
   household: {
     sectorId: number;
@@ -157,6 +164,7 @@ export interface HouseholdFile {
     fullName: string;
     idNumber: string;
     phone: string | null;
+    phoneMissing: PhoneMissing | null;
     gender: string | null;
     relation: Relation;
     startsOn: string;

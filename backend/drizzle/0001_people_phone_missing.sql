@@ -1,0 +1,2 @@
+ALTER TABLE "people" ADD COLUMN "phone_missing" text;--> statement-breakpoint
+ALTER TABLE "people" ADD CONSTRAINT "people_phone_or_reason" CHECK (("people"."phone" IS NULL) <> ("people"."phone_missing" IS NULL));

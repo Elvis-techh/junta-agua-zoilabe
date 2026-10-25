@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
 
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { auditLog, feeRates, householdFees, households, people, rolePermissions } from "../src/db/schema.js";
 import { verifyChain } from "../src/lib/audit.js";
@@ -148,6 +148,56 @@ describe("census", () => {
     });
     assert.equal(unnamed.statusCode, 400);
     assert.match(unnamed.json().message, /nombre completo/);
+  });
+
+  it("registers a family with no phone, or that prefers not to give it, with that reason", async () => {
+    const none = registration();
+    const noPhone = await call(secretary.cookie, "POST", "/api/census/households", {
+      ...none,
+      person: { fullName: "Rosa Sin Teléfono", idNumber: none.person.idNumber, phoneMissing: "no_phone" },
+    });
+    assert.equal(noPhone.statusCode, 201, noPhone.body);
+    assert.equal(noPhone.json().person.phone, null);
+
+    const file = await call(secretary.cookie, "GET", `/api/census/households/${noPhone.json().household.id}`);
+    assert.equal(file.json().household.owner.phone, null);
+    assert.equal(file.json().household.owner.phoneMissing, "no_phone");
+
+    // Neither a phone nor a reason is refused, in plain words.
+    const neither = registration();
+    const refused = await call(secretary.cookie, "POST", "/api/census/households", {
+      ...neither,
+      person: { fullName: "Sin Nada", idNumber: neither.person.idNumber },
+    });
+    assert.equal(refused.statusCode, 400);
+    assert.match(refused.json().message, /No tiene teléfono/);
+
+    // Later corrections: a number clears the reason, and taking it away needs one.
+    const personId = file.json().household.owner.personId;
+    const patch = (payload: object) => call(secretary.cookie, "PATCH", `/api/census/people/${personId}`, payload);
+    assert.equal((await patch({ phone: "91112222" })).statusCode, 200);
+    const [withPhone] = await t.db.select().from(people).where(eq(people.id, personId));
+    assert.deepEqual([withPhone?.phone, withPhone?.phoneMissing], ["91112222", null]);
+
+    assert.equal((await patch({ phone: null })).statusCode, 400);
+    assert.equal((await patch({ phoneMissing: "declined" })).statusCode, 200);
+    const [declined] = await t.db.select().from(people).where(eq(people.id, personId));
+    assert.deepEqual([declined?.phone, declined?.phoneMissing], [null, "declined"]);
+
+    const [entry] = await t.db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.action, "person.edited"), eq(auditLog.entityId, personId)))
+      .orderBy(desc(auditLog.id))
+      .limit(1);
+    assert.deepEqual(entry?.before, { phone: "91112222", phoneMissing: null });
+    assert.match(entry!.summary, /: teléfono$/);
+
+    // And the database itself refuses a person with neither.
+    await rejectsWithDbError(
+      t.adminDb.update(people).set({ phoneMissing: null }).where(eq(people.id, personId)),
+      /people_phone_or_reason/,
+    );
   });
 
   it("stores the paper form's date and number beside the date typed in", async () => {

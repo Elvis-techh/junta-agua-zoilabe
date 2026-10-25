@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 
 import type { Me } from "../api.ts";
 import { api } from "../api.ts";
-import type { CensusOptions, HouseholdRef, Registration, Relation, WaterConnection } from "../census.ts";
+import type { CensusOptions, HouseholdRef, PhoneMissing, Registration, Relation, WaterConnection } from "../census.ts";
 import {
+  PHONE_MISSING,
   RELATIONS,
   WATER_CONNECTIONS,
   capitalizeName,
@@ -68,6 +69,8 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
   const [fullName, setFullName] = useState(preset?.existingPerson?.fullName ?? "");
   const [idNumber, setIdNumber] = useState(preset?.existingPerson?.idNumber ?? "");
   const [phone, setPhone] = useState("");
+  /** Instead of a number: the family has no phone, or prefers not to give it. */
+  const [phoneMissing, setPhoneMissing] = useState<PhoneMissing | null>(null);
   const [gender, setGender] = useState("");
   const [sectorId, setSectorId] = useState<number | null>(null);
   const [references, setReferences] = useState("");
@@ -188,7 +191,12 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
     ...(mode === "paper" ? { paper: { date: paperDate, ...(paperFormNumber.trim() ? { formNumber: paperFormNumber.trim() } : {}) } } : {}),
     person: addToExisting
       ? { idNumber }
-      : { fullName: fullName.trim(), idNumber, phone, ...(gender ? { gender } : {}) },
+      : {
+          fullName: fullName.trim(),
+          idNumber,
+          ...(phoneMissing ? { phoneMissing } : { phone }),
+          ...(gender ? { gender } : {}),
+        },
     addToExistingPerson: addToExisting,
     household: {
       sectorId: sectorId!,
@@ -368,9 +376,33 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
             autoComplete="off"
           />
           {errorLine}
-          <button className="btn go block" onClick={() => (!/^\d{8}$/.test(phone) ? setError(PHONE_MESSAGE) : next())}>
+          <button
+            className="btn go block"
+            onClick={() => {
+              if (!/^\d{8}$/.test(phone)) {
+                setError(PHONE_MESSAGE);
+                return;
+              }
+              setPhoneMissing(null);
+              next();
+            }}
+          >
             Siguiente
           </button>
+          <p className="muted">Si la familia no tiene teléfono, o no quiere darlo:</p>
+          {(Object.keys(PHONE_MISSING) as PhoneMissing[]).map((code) => (
+            <button
+              key={code}
+              className={`btn block choice ${phoneMissing === code ? "primary" : ""}`}
+              onClick={() => {
+                setPhone("");
+                setPhoneMissing(code);
+                next();
+              }}
+            >
+              {PHONE_MISSING[code]}
+            </button>
+          ))}
         </main>
       );
 
@@ -563,7 +595,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
               <div className="muted">Otra vivienda de una persona ya registrada</div>
             ) : (
               <>
-                <div>Teléfono: {phone}</div>
+                <div>Teléfono: {phoneMissing ? PHONE_MISSING[phoneMissing] : phone}</div>
                 {gender && <div>Género: {gender}</div>}
               </>
             )}
@@ -645,9 +677,13 @@ function SavedResult({
           <div className="big-code">{sent.code}</div>
           <div>{sent.fullName}</div>
         </div>
-        <a className="btn go block" href={whatsappLink(sent.phone, sent.fullName, sent.code)} target="_blank" rel="noreferrer">
-          <Icon name="whatsapp" /> Compartir por WhatsApp
-        </a>
+        {sent.phone ? (
+          <a className="btn go block" href={whatsappLink(sent.phone, sent.fullName, sent.code)} target="_blank" rel="noreferrer">
+            <Icon name="whatsapp" /> Compartir por WhatsApp
+          </a>
+        ) : (
+          <p className="message ok">Esta familia no tiene WhatsApp registrado. Anote el código y entrégueselo.</p>
+        )}
         <button className="btn block" onClick={() => onOpen(`/censo/vivienda/${sent.householdId}`)}>
           <Icon name="house" /> Ver la ficha
         </button>
