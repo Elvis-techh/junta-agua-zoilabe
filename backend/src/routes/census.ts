@@ -83,7 +83,8 @@ const registerBody = z.object({
   submissionId: z.uuid(),
   /** Paper entry mode: the date and number written on the paper form. */
   paper: z.object({ date: isoDate, formNumber: formNumber.optional() }).optional(),
-  person: z.object({ fullName, idNumber, phone, gender: gender.optional() }),
+  /** Name and phone may be left out only when adding a house to a person already registered. */
+  person: z.object({ fullName: fullName.optional(), idNumber, phone: phone.optional(), gender: gender.optional() }),
   /** "Agregar otra vivienda": the ID is already registered and this is another house of theirs. */
   addToExistingPerson: z.boolean().default(false),
   household: z.object({
@@ -252,11 +253,19 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
       // One person, one row: an ID already registered opens that person's file instead.
       const [existing] = await tx.select().from(people).where(eq(people.idNumber, body.person.idNumber));
       if (existing && !body.addToExistingPerson) {
-        throw new HttpError(409, "person_exists", "Esta identidad ya está registrada.");
+        throw new HttpError(409, "person_exists", `Esta identidad ya está registrada a nombre de ${existing.fullName}.`, {
+          person: { id: existing.id, fullName: existing.fullName, households: await householdsOf(tx, existing.id) },
+        });
       }
 
       let person = existing;
       if (!person) {
+        if (!body.person.fullName) {
+          throw new HttpError(400, "invalid_request", "Escriba el nombre completo.");
+        }
+        if (!body.person.phone) {
+          throw new HttpError(400, "invalid_request", "El teléfono debe tener 8 números. Revise e intente de nuevo.");
+        }
         person = {
           id: newId(),
           fullName: capitalizeName(body.person.fullName),
@@ -349,7 +358,18 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
       return { household: { id: household.id, code }, created: true };
     });
 
-    return reply.code(result.created ? 201 : 200).send({ household: result.household, alreadySaved: !result.created });
+    // Who it was saved for, so the saved screen can offer "Compartir por WhatsApp".
+    const [owner] = await app.db
+      .select({ fullName: people.fullName, phone: people.phone })
+      .from(householdOwners)
+      .innerJoin(people, eq(people.id, householdOwners.personId))
+      .where(and(eq(householdOwners.householdId, result.household.id), isNull(householdOwners.endsOn)));
+
+    return reply.code(result.created ? 201 : 200).send({
+      household: result.household,
+      person: { fullName: owner?.fullName ?? null, phone: canSeeSensitive(request) ? owner?.phone ?? null : null },
+      alreadySaved: !result.created,
+    });
   });
 
   app.get("/census/households", view, async (request) => {

@@ -118,6 +118,9 @@ describe("census", () => {
     const refused = await call(secretary.cookie, "POST", "/api/census/households", repeat);
     assert.equal(refused.statusCode, 409);
     assert.equal(refused.json().error, "person_exists");
+    // Enough for a phone that saved it without signal to offer "Agregar otra vivienda".
+    assert.equal(refused.json().person.fullName, "Juan Pérez");
+    assert.equal(refused.json().person.households.length, 1);
 
     // "Agregar otra vivienda": one person, two households.
     const added = await call(secretary.cookie, "POST", "/api/census/households", { ...repeat, addToExistingPerson: true });
@@ -126,6 +129,23 @@ describe("census", () => {
     assert.equal(after.json().person.households.length, 2);
     // The person's own record is not overwritten by what was typed the second time.
     assert.equal(after.json().person.fullName, "Juan Pérez");
+
+    // Adding a house to them needs only their ID number, not their name and phone again.
+    const third = await call(secretary.cookie, "POST", "/api/census/households", {
+      ...registration(),
+      person: { idNumber },
+      addToExistingPerson: true,
+    });
+    assert.equal(third.statusCode, 201);
+    assert.deepEqual(third.json().person, { fullName: "Juan Pérez", phone: "99887766" });
+
+    // A new person still needs both.
+    const unnamed = await call(secretary.cookie, "POST", "/api/census/households", {
+      ...registration(),
+      person: { idNumber: nextIdNumber(), phone: "99887766" },
+    });
+    assert.equal(unnamed.statusCode, 400);
+    assert.match(unnamed.json().message, /nombre completo/);
   });
 
   it("stores the paper form's date and number beside the date typed in", async () => {

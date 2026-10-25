@@ -6,6 +6,8 @@ export class HttpError extends Error {
     readonly statusCode: number,
     readonly code: string,
     message: string,
+    /** More for the screen to act on, sent beside `error` and `message`. */
+    readonly details: Record<string, unknown> = {},
   ) {
     super(message);
   }

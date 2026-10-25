@@ -46,7 +46,7 @@ export async function buildApp(config: AppConfig, db: Db) {
    */
   app.setErrorHandler((error: FastifyError | HttpError, request: FastifyRequest, reply: FastifyReply) => {
     if (error instanceof HttpError) {
-      return reply.code(error.statusCode).send({ error: error.code, message: error.message });
+      return reply.code(error.statusCode).send({ ...error.details, error: error.code, message: error.message });
     }
 
     const status = error.statusCode ?? 500;
