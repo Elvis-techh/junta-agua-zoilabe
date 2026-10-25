@@ -9,6 +9,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 
 import { auditLog } from "../db/schema.js";
+import { maskDigits } from "../lib/census.js";
 import { HttpError, parse } from "../lib/http.js";
 
 const AREAS = ["census", "finances", "users", "settings", "security", "exports"] as const;
@@ -38,6 +39,24 @@ function nextDay(date: string): string {
   const next = new Date(`${date}T00:00:00Z`);
   next.setUTCDate(next.getUTCDate() + 1);
   return next.toISOString().slice(0, 10);
+}
+
+const SENSITIVE_KEYS = new Set(["idNumber", "phone"]);
+
+/** The same value with every `idNumber` and `phone` inside it masked to its last digits. */
+function maskSensitive(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(maskSensitive);
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+        key,
+        SENSITIVE_KEYS.has(key) && typeof item === "string" ? maskDigits(item, key === "phone" ? 2 : 4) : maskSensitive(item),
+      ]),
+    );
+  }
+  return value;
 }
 
 export const auditRoutes: FastifyPluginAsync = async (app) => {
@@ -95,6 +114,12 @@ export const auditRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const { prevHash: _prev, hash: _hash, ...visible } = entry;
+    // A census entry carries ID numbers and phones; they stay masked for
+    // someone who may read the log but not see them (App Plan, Security).
+    if (visible.area === "census" && !request.user!.permissions.has("census:view_sensitive")) {
+      visible.before = maskSensitive(visible.before);
+      visible.after = maskSensitive(visible.after);
+    }
     return { entry: visible };
   });
 };

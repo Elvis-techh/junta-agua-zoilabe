@@ -21,9 +21,13 @@ const DEFAULT_CATEGORIES = {
   ],
 } as const;
 
+/** A starting list for the census; the board can change it in Configuración. */
+const DEFAULT_GENDERS = ["Mujer", "Hombre"];
+
 /**
  * Fill a new database with what the board starts from: the eight roles, the
- * permission matrix, the categories and the village profile.
+ * permission matrix, the categories, the village profile and the census's
+ * gender choices.
  *
  * Safe to run again: anything already there is left alone, so a permission
  * the Permisos tab changed is never put back to its default. Fees are not
@@ -68,6 +72,16 @@ export async function seedDatabase(db: Db, timeZone: string): Promise<void> {
           boardName: "Junta Administradora de Agua de Zoilabe",
           registrationNumber: null,
         },
+        effectiveFrom: businessToday(timeZone),
+      });
+    }
+
+    // The census's gender choices (App Plan: "List kept in Configuration").
+    const genders = await tx.execute(sql`SELECT 1 FROM settings WHERE key = 'genders'`);
+    if (genders.rowCount === 0) {
+      await tx.insert(settings).values({
+        key: "genders",
+        value: DEFAULT_GENDERS,
         effectiveFrom: businessToday(timeZone),
       });
     }

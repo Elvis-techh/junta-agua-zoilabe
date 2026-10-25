@@ -10,8 +10,10 @@ import type { Db } from "./db/client.js";
 import { HttpError } from "./lib/http.js";
 import { auditRoutes } from "./routes/audit.js";
 import { authRoutes } from "./routes/auth.js";
+import { censusRoutes } from "./routes/census.js";
 import { healthRoutes } from "./routes/health.js";
 import { permissionRoutes } from "./routes/permissions.js";
+import { sectorRoutes } from "./routes/sectors.js";
 import { userRoutes } from "./routes/users.js";
 
 export async function buildApp(config: AppConfig, db: Db) {
@@ -70,6 +72,8 @@ export async function buildApp(config: AppConfig, db: Db) {
       await api.register(userRoutes, { appUrl: config.appUrl });
       await api.register(permissionRoutes);
       await api.register(auditRoutes);
+      await api.register(censusRoutes, { timeZone: config.timeZone });
+      await api.register(sectorRoutes);
     },
     { prefix: "/api" },
   );
