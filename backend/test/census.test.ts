@@ -7,6 +7,8 @@ import { and, eq } from "drizzle-orm";
 import { auditLog, feeRates, householdFees, households, people, rolePermissions } from "../src/db/schema.js";
 import { verifyChain } from "../src/lib/audit.js";
 import { capitalizeName, householdCode, maskDigits } from "../src/lib/census.js";
+import { firstOfMonth } from "../src/lib/fees.js";
+import { HONDURAS_TIME_ZONE, businessToday } from "../src/lib/time.js";
 import type { TestApp } from "./helpers.js";
 import { buildTestApp, rejectsWithDbError, signedInUser } from "./helpers.js";
 
@@ -198,6 +200,23 @@ describe("census", () => {
       .where(and(eq(auditLog.action, "household_fee.set"), eq(auditLog.entityId, id)));
     assert.equal(entry?.area, "settings");
     assert.equal(entry?.reason, "Adulta mayor que vive sola");
+
+    // A new house has no payment yet, so the amount starts this month, even when
+    // typed from a paper form dated months ago (board decision, 2026-10-25).
+    const paper = await call(
+      secretary.cookie,
+      "POST",
+      "/api/census/households",
+      registration({
+        paper: { date: "2026-03-03" },
+        fee: { kind: "different", monthlyAmountCentavos: 3500, reason: "Adulta mayor que vive sola" },
+      }),
+    );
+    const [paperFee] = await t.db
+      .select()
+      .from(householdFees)
+      .where(eq(householdFees.householdId, paper.json().household.id));
+    assert.equal(paperFee?.startsOn, firstOfMonth(businessToday(HONDURAS_TIME_ZONE)));
     assert.match(entry!.summary, /L 35\.00 al mes/);
   });
 
