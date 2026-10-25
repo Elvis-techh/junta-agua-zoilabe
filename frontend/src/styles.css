@@ -358,3 +358,113 @@ pre.detail {
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* ---- Census ---------------------------------------------------------- */
+
+textarea {
+  min-height: calc(var(--tap) * 1.5);
+  padding: 12px 14px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.1rem;
+  width: 100%;
+  resize: vertical;
+}
+
+textarea:focus-visible {
+  outline: 3px solid #f2a900;
+  outline-offset: 2px;
+}
+
+/* One answer per big button: "Estoy en la vivienda", a sector, a relation. */
+.btn.choice {
+  min-height: 64px;
+  font-size: 1.1rem;
+}
+
+.btn.big {
+  min-height: 72px;
+  font-size: 1.3rem;
+}
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.big-code {
+  font-size: 2.6rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.household-card {
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+}
+
+.clip {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card.pending {
+  border: 2px solid var(--warn);
+  background: var(--warn-bg);
+}
+
+.pending-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.offline-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.offline-banner span {
+  flex: 1;
+}
+
+@media (min-width: 700px) {
+  .household-list {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .filters {
+    max-width: 640px;
+  }
+}
