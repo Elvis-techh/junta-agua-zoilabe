@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { HOME_BUTTONS, homeButtons, tabs } from "../src/home.ts";
+import { HOME_BUTTONS, homeButtons, navigation, routeOf, tabOf } from "../src/home.ts";
 import { ROLES } from "../src/roles.ts";
 
 describe("home buttons", () => {
@@ -22,8 +22,24 @@ describe("home buttons", () => {
     assert.ok(!withoutLog.includes("Historial"));
   });
 
-  it("never shows more than four tabs", () => {
-    assert.ok(tabs(["users:manage", "log:view"]).length <= 4);
-    assert.deepEqual(tabs([]).map((t) => t.label), ["Inicio"]);
+  it("never shows more than four items in the bar, the rest under Más", () => {
+    const president = navigation(["census:view", "users:manage", "log:view", "settings:edit"]);
+    assert.deepEqual(president.bar.map((t) => t.label), ["Inicio", "Censo", "Usuarios"]);
+    assert.deepEqual(president.more.map((t) => t.label), ["Historial", "Configuración"]);
+
+    const secretary = navigation(["census:view"]);
+    assert.deepEqual(secretary.bar.map((t) => t.label), ["Inicio", "Censo"]);
+    assert.deepEqual(secretary.more, []);
+    assert.deepEqual(navigation([]).bar.map((t) => t.label), ["Inicio"]);
+  });
+
+  it("opens the census from the secretary's buttons, and only known addresses", () => {
+    assert.deepEqual(
+      homeButtons("secretario", ["census:view", "census:edit"]).map((b) => b.route),
+      ["/censo/registrar", "/censo/buscar", "/censo"],
+    );
+    assert.equal(routeOf("/censo/vivienda/0b7e1a52-4c1e-4f7a-9a43-2f9d7e4c1b20"), "/censo/vivienda/0b7e1a52-4c1e-4f7a-9a43-2f9d7e4c1b20");
+    assert.equal(routeOf("/censo/vivienda/../../usuarios"), "/");
+    assert.equal(tabOf("/censo/registrar"), "/censo");
   });
 });

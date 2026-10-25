@@ -37,3 +37,17 @@ export function formatHondurasDateTime(instant: Date, timeZone = HONDURAS_TIME_Z
     minute: "2-digit",
   }).format(instant);
 }
+
+/**
+ * "3 de marzo de 2026" for a calendar date ("2026-03-03"), such as the date
+ * written on a paper form. A calendar date has no time of day, so it is read
+ * at noon UTC and printed in UTC: no zone can move it to the day before.
+ */
+export function formatCalendarDate(date: string): string {
+  return new Intl.DateTimeFormat("es-HN", {
+    timeZone: "UTC",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${date}T12:00:00Z`));
+}

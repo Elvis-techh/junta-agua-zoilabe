@@ -3,13 +3,14 @@ import { useCallback, useEffect, useState } from "react";
 import type { Me } from "./api.ts";
 import { ApiError, api } from "./api.ts";
 import { Shell } from "./components/Shell.tsx";
+import { recall, remember } from "./queue.ts";
 import { InvitationScreen } from "./screens/Invitation.tsx";
 import { PinScreen } from "./screens/Pin.tsx";
 import { UnregisteredScreen } from "./screens/Unregistered.tsx";
 
 type State =
   | { kind: "loading" }
-  | { kind: "signedIn"; me: Me }
+  | { kind: "signedIn"; me: Me; offline: boolean }
   | { kind: "pinNeeded"; name: string; locked: boolean }
   | { kind: "unregistered" }
   | { kind: "offline"; message: string };
@@ -25,18 +26,28 @@ export function App() {
   const refresh = useCallback(async () => {
     try {
       const { user } = await api<{ user: Me }>("GET", "/auth/me");
-      setState({ kind: "signedIn", me: user });
+      remember("me", user);
+      setState({ kind: "signedIn", me: user, offline: false });
     } catch (error) {
-      if (error instanceof ApiError && error.code === "pin_needed") {
+      const remembered = recall<Me>("me");
+      if (error instanceof ApiError && error.status === 0 && remembered) {
+        // No signal: open on the profile from the last sign-in, so census
+        // entries can still be typed. The server checks everything when they are sent.
+        setState({ kind: "signedIn", me: remembered, offline: true });
+      } else if (error instanceof ApiError && error.code === "pin_needed") {
         const device = error.body.device as { name: string; locked: boolean };
         setState({ kind: "pinNeeded", name: device.name, locked: device.locked });
       } else if (error instanceof ApiError && error.status === 401) {
+        // The phone was removed or never registered: it must not open offline either.
+        remember("me", null);
         setState({ kind: "unregistered" });
       } else {
         setState({ kind: "offline", message: (error as Error).message });
       }
     }
   }, []);
+
+  const retry = useCallback(() => void refresh(), [refresh]);
 
   useEffect(() => {
     if (!onInvitation) {
@@ -64,6 +75,6 @@ export function App() {
     case "pinNeeded":
       return <PinScreen name={state.name} locked={state.locked} onSignedIn={() => void refresh()} />;
     case "signedIn":
-      return <Shell me={state.me} onSignedOut={() => void refresh()} />;
+      return <Shell me={state.me} offline={state.offline} onSignedOut={() => void refresh()} onRetry={retry} />;
   }
 }
