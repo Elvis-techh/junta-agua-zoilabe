@@ -27,6 +27,7 @@ import {
   householdCode,
   maskDigits,
 } from "../lib/census.js";
+import { differentFeeStart, lastPaidMonth } from "../lib/fees.js";
 import { HttpError, parse } from "../lib/http.js";
 import { baseMonthlyFee, currentSetting } from "../lib/settings.js";
 import { businessToday, formatCalendarDate } from "../lib/time.js";
@@ -335,12 +336,14 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
       });
 
       if (body.fee.kind === "different") {
+        // From the month after the house's last payment; a new house has none, so this month.
+        const feeStartsOn = differentFeeStart(await lastPaidMonth(tx, household.id), day);
         await tx.insert(householdFees).values({
           id: newId(),
           householdId: household.id,
           monthlyAmountCentavos: body.fee.monthlyAmountCentavos,
           reason: body.fee.reason,
-          startsOn,
+          startsOn: feeStartsOn,
           createdBy: actor.userId,
         });
         // App Plan: "every such choice shows in the history log", under Settings.
@@ -350,7 +353,7 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
           summary: `${actor.name} (${actor.role}) fijó un monto diferente de ${formatLempiras(body.fee.monthlyAmountCentavos)} al mes para la vivienda ${code}`,
           entityType: "household",
           entityId: household.id,
-          after: { monthlyAmountCentavos: body.fee.monthlyAmountCentavos, startsOn },
+          after: { monthlyAmountCentavos: body.fee.monthlyAmountCentavos, startsOn: feeStartsOn },
           reason: body.fee.reason,
         });
       }

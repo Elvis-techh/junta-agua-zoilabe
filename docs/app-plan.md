@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 74, taken 2026-10-24.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 76, taken 2026-10-25.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -392,8 +392,8 @@ Phases 1 to 3 are built and tested on the builder's computer before anything cha
 | Phase | Status | Built and tested locally | Waits for the droplet |
 |---|---|---|---|
 | 0. Foundation | Merged | Invitation and PIN login, roles and permissions, history log, backup and restore scripts (merged in PR #1 on 2026-10-24) | Subdomain, the data-separation check, backups to the storage bucket, a restore on a test server |
-| 1. Census | Next | Everything, including paper entry mode and the offline queue | Nothing |
-| 2. Finances | Not started | Everything; receipt photos stay on the computer until the bucket is connected | Receipt photos in the storage bucket |
+| 1. Census | Merged | Everything, including paper entry mode and the offline queue | Nothing |
+| 2. Finances | Next | Everything; receipt photos stay on the computer until the bucket is connected | Receipt photos in the storage bucket |
 | 3. Close, reports and guests | Not started | Everything, including print layouts and guest invitations | A guest signing in from a municipal phone at the real address |
 | 4. Handover | Not started | A first draft of the runbook | The restore test, board-owned accounts, training and installing on every director's phone |
 
@@ -408,6 +408,10 @@ Phases 1 to 3 are built and tested on the builder's computer before anything cha
 - Paper receipts continue. The app records each paper receipt number and creates digital receipts on request.
 - The current census exists on paper and will be typed in through a paper entry mode.
 - There is one administrator for now, and a second one is not planned yet. Domain, hosting and repository stay in the builder's name during testing.
+
+**Decisions made on 25 October 2026**
+
+- A different monthly amount starts with the month after the house's last payment. Months already paid keep the price they were paid at. A house with no payment recorded yet, such as one being registered, starts with the month the amount is set.
 
 **Still open**
 
