@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { Me } from "../api.ts";
 import { api } from "../api.ts";
-import type { CensusOptions, HouseholdFile, InactiveReason, Relation, WaterConnection } from "../census.ts";
-import { INACTIVE_REASONS, RELATIONS, WATER_CONNECTIONS, formatIdNumber, formatLempiras, whatsappLink } from "../census.ts";
+import type { CensusOptions, HouseholdFile, InactiveReason, PhoneMissing, Relation, WaterConnection } from "../census.ts";
+import { INACTIVE_REASONS, PHONE_MISSING, RELATIONS, WATER_CONNECTIONS, formatIdNumber, formatLempiras, whatsappLink } from "../census.ts";
 import { Dialog } from "../components/Dialog.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
@@ -75,7 +75,7 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
       <section className="card stack" style={{ gap: 6 }}>
         <strong style={{ fontSize: "1.2rem" }}>{owner.fullName}</strong>
         <div>Identidad: {formatIdNumber(owner.idNumber)}</div>
-        <div>Teléfono: {owner.phone ?? "—"}</div>
+        <div>Teléfono: {owner.phone ?? (owner.phoneMissing ? PHONE_MISSING[owner.phoneMissing] : "—")}</div>
         {owner.gender && <div>Género: {owner.gender}</div>}
         <div>
           {RELATIONS[owner.relation]} desde el {calendarDate(owner.startsOn)}
@@ -330,6 +330,7 @@ function EditPerson({
   const [fullName, setFullName] = useState(owner.fullName);
   const [idNumber, setIdNumber] = useState(owner.idNumber);
   const [phone, setPhone] = useState(owner.phone ?? "");
+  const [phoneMode, setPhoneMode] = useState<"number" | PhoneMissing>(owner.phoneMissing ?? "number");
   const [gender, setGender] = useState(owner.gender ?? "");
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -343,7 +344,7 @@ function EditPerson({
         fullName,
         gender: gender || null,
         // ID number and phone are sent only by someone allowed to see them.
-        ...(canEditSensitive ? { idNumber, phone } : {}),
+        ...(canEditSensitive ? { idNumber, ...(phoneMode === "number" ? { phone } : { phoneMissing: phoneMode }) } : {}),
         ...(reason.trim() ? { reason: reason.trim() } : {}),
       });
       await onSaved("Datos de la persona guardados.");
@@ -369,8 +370,21 @@ function EditPerson({
           </label>
           <label>
             Teléfono o WhatsApp
-            <input value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 8))} inputMode="numeric" />
+            <select value={phoneMode} onChange={(e) => setPhoneMode(e.target.value as typeof phoneMode)}>
+              <option value="number">Tiene teléfono</option>
+              {(Object.keys(PHONE_MISSING) as PhoneMissing[]).map((code) => (
+                <option key={code} value={code}>
+                  {PHONE_MISSING[code]}
+                </option>
+              ))}
+            </select>
           </label>
+          {phoneMode === "number" && (
+            <label>
+              Número
+              <input value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 8))} inputMode="numeric" placeholder="8 números" />
+            </label>
+          )}
         </>
       )}
       <label>

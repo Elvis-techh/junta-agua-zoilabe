@@ -61,6 +61,7 @@ Every time:
 
 ```bash
 npm run db:local -- start          # after a restart of the computer
+npm run db:migrate                 # after updating the code: applies any new database changes
 npm run dev                        # leave this terminal open; Ctrl+C stops it
 ```
 
@@ -90,11 +91,14 @@ once an administrator exists.
    first for the date and number written on the paper form.
 4. Type the same identity number twice: the second time the app opens that
    person instead, and offers "Agregar otra vivienda".
-5. To try the offline queue, turn off the Wi-Fi (or, in Chrome, DevTools →
+5. On the phone step, "No tiene teléfono" and "Prefiere no darlo" register a
+   family without a number. The saved screen then shows no WhatsApp button,
+   and a number can be added later from the household file.
+6. To try the offline queue, turn off the Wi-Fi (or, in Chrome, DevTools →
    Network → Offline) while the app is open, register a family, and turn it
    back on. The "por enviar" counter in the top bar goes back to zero by
    itself.
-6. Open a household from **Censo** to correct it, deactivate it with a
+7. Open a household from **Censo** to correct it, deactivate it with a
    reason, or reactivate it. Every step shows up in **Historial**.
 
 Opening the app from scratch with no signal needs the installed app (its

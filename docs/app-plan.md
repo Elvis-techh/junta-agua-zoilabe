@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 76, taken 2026-10-25.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 77, taken 2026-10-25.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -86,7 +86,7 @@ It keeps every column of the Registros sheet template and adds the fields needed
 | Paper date and form number | Date, text | Paper entry only: the date written on the paper form and its number, if it has one |
 | Full name | Text | Required; capitalized automatically |
 | Identity (ID number) | 13 digits | Required; checked against existing people before saving |
-| Phone / WhatsApp | 8 digits | Required for the owner |
+| Phone / WhatsApp | 8 digits | Required for the owner, unless the family has none or prefers not to give it; that reason is kept instead |
 | Gender | Choice | List kept in Configuration |
 | Sector | Choice | Required; list kept in Configuration |
 | References | Text | Required; how to find the house |
@@ -121,6 +121,7 @@ It keeps every column of the Registros sheet template and adds the fields needed
 - **Yearly verification.** Each household has a last-verified date. In December the app lists houses not verified that year, then freezes a census snapshot for the municipality.
 - **Paper entry mode.** The current census exists only on paper. In this mode the first screen asks for the date and number on the paper form, and both are stored beside the date typed in, so every record can be checked against its paper original. The paper forms are kept after entry.
 - **Fee choice.** The default is the base price. A different amount cannot be saved without a reason, and every such choice shows in the history log.
+- **No phone.** A family with no phone, or that prefers not to give it, is registered with "No tiene teléfono" or "Prefiere no darlo" instead of a number, and that reason is kept. The app then offers no WhatsApp message for that house: the household code is written down for the family, and receipts and statements are given on paper. A number can be added later from the household file.
 - **Not collected in version 1.** Photos of ID cards, birth dates and anything the board cannot justify. A short consent line appears on the review screen.
 
 ## Module 2: Finances
@@ -412,6 +413,9 @@ Phases 1 to 3 are built and tested on the builder's computer before anything cha
 **Decisions made on 25 October 2026**
 
 - A different monthly amount starts with the month after the house's last payment. Months already paid keep the price they were paid at. A house with no payment recorded yet, such as one being registered, starts with the month the amount is set.
+- The gender choices are Mujer and Hombre, and the question can be skipped.
+- The consent line on the review screen reads: "Al guardar, la familia acepta que la Junta de Agua guarde estos datos solo para el servicio de agua."
+- A family can be registered without a phone, with "No tiene teléfono" or "Prefiere no darlo" (see Module 1).
 
 **Still open**
 

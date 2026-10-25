@@ -20,6 +20,7 @@ import { recordAudit } from "../lib/audit.js";
 import {
   INACTIVE_REASONS,
   INACTIVE_REASON_CODES,
+  PHONE_MISSING_CODES,
   RELATION_CODES,
   WATER_CONNECTION_CODES,
   capitalizeName,
@@ -54,6 +55,8 @@ const phone = z
   .trim()
   .regex(/^[0-9]{8}$/, "El teléfono debe tener 8 números. Revise e intente de nuevo.");
 const gender = z.string().trim().min(1).max(40);
+const phoneMissing = z.enum(PHONE_MISSING_CODES, { message: "Elija por qué no hay teléfono." });
+const NO_PHONE_MESSAGE = "Escriba el teléfono, o elija «No tiene teléfono» o «Prefiere no darlo».";
 const references = z
   .string()
   .trim()
@@ -85,7 +88,14 @@ const registerBody = z.object({
   /** Paper entry mode: the date and number written on the paper form. */
   paper: z.object({ date: isoDate, formNumber: formNumber.optional() }).optional(),
   /** Name and phone may be left out only when adding a house to a person already registered. */
-  person: z.object({ fullName: fullName.optional(), idNumber, phone: phone.optional(), gender: gender.optional() }),
+  person: z.object({
+    fullName: fullName.optional(),
+    idNumber,
+    phone: phone.optional(),
+    /** Instead of a phone: the family has none, or prefers not to give it. */
+    phoneMissing: phoneMissing.optional(),
+    gender: gender.optional(),
+  }),
   /** "Agregar otra vivienda": the ID is already registered and this is another house of theirs. */
   addToExistingPerson: z.boolean().default(false),
   household: z.object({
@@ -118,7 +128,7 @@ const householdPatch = z
   .partial();
 
 const personPatch = z
-  .object({ fullName, idNumber, phone, gender: gender.nullable(), reason: note })
+  .object({ fullName, idNumber, phone: phone.nullable(), phoneMissing: phoneMissing.nullable(), gender: gender.nullable(), reason: note })
   .partial();
 
 const deactivateBody = z.object({
@@ -264,14 +274,15 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
         if (!body.person.fullName) {
           throw new HttpError(400, "invalid_request", "Escriba el nombre completo.");
         }
-        if (!body.person.phone) {
-          throw new HttpError(400, "invalid_request", "El teléfono debe tener 8 números. Revise e intente de nuevo.");
+        if (!body.person.phone && !body.person.phoneMissing) {
+          throw new HttpError(400, "invalid_request", NO_PHONE_MESSAGE);
         }
         person = {
           id: newId(),
           fullName: capitalizeName(body.person.fullName),
           idNumber: body.person.idNumber,
-          phone: body.person.phone,
+          phone: body.person.phone ?? null,
+          phoneMissing: body.person.phone ? null : body.person.phoneMissing!,
           gender: body.person.gender ?? null,
           createdAt: new Date(),
           createdBy: actor.userId,
@@ -322,7 +333,13 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
         entityId: household.id,
         after: {
           code,
-          person: { fullName: person.fullName, idNumber: person.idNumber, phone: person.phone, gender: person.gender },
+          person: {
+            fullName: person.fullName,
+            idNumber: person.idNumber,
+            phone: person.phone,
+            phoneMissing: person.phoneMissing,
+            gender: person.gender,
+          },
           addedToExistingPerson: Boolean(existing),
           sector: sector.name,
           references: household.references,
@@ -438,6 +455,7 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
           fullName: people.fullName,
           idNumber: people.idNumber,
           phone: people.phone,
+          phoneMissing: people.phoneMissing,
           gender: people.gender,
           relation: householdOwners.relation,
           startsOn: householdOwners.startsOn,
@@ -584,7 +602,8 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
   app.patch<Params>("/census/people/:id", edit, async (request) => {
     const body = parse(personPatch, request.body);
     const actor = actorOf(request);
-    if ((body.idNumber !== undefined || body.phone !== undefined) && !canSeeSensitive(request)) {
+    const touchesPhone = body.phone !== undefined || body.phoneMissing !== undefined;
+    if ((body.idNumber !== undefined || touchesPhone) && !canSeeSensitive(request)) {
       throw new HttpError(403, "forbidden", "Su cargo no puede ver ni cambiar la identidad o el teléfono.");
     }
 
@@ -612,9 +631,21 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
         before.idNumber = person.idNumber;
         changes.idNumber = after.idNumber = body.idNumber;
       }
-      if (body.phone !== undefined && body.phone !== person.phone) {
-        before.phone = person.phone;
-        changes.phone = after.phone = body.phone;
+      if (touchesPhone) {
+        // A number clears the reason; no number needs one.
+        const nextPhone = body.phone !== undefined ? body.phone : body.phoneMissing ? null : person.phone;
+        const nextMissing = nextPhone ? null : (body.phoneMissing ?? null);
+        if (!nextPhone && !nextMissing) {
+          throw new HttpError(400, "invalid_request", NO_PHONE_MESSAGE);
+        }
+        if (nextPhone !== person.phone) {
+          before.phone = person.phone;
+          changes.phone = after.phone = nextPhone;
+        }
+        if (nextMissing !== person.phoneMissing) {
+          before.phoneMissing = person.phoneMissing;
+          changes.phoneMissing = after.phoneMissing = nextMissing;
+        }
       }
       if (body.gender !== undefined && body.gender !== person.gender) {
         const genders = (await currentSetting<string[]>(tx, "genders", today())) ?? [];
@@ -713,12 +744,13 @@ const FIELD_NAMES: Record<string, string> = {
   fullName: "nombre",
   idNumber: "identidad",
   phone: "teléfono",
+  phoneMissing: "teléfono",
   gender: "género",
 };
 
 /** "sector y referencias" — which fields an edit touched, for the Historial sentence. */
 function describeFields(fields: string[]): string {
-  const names = fields.map((field) => FIELD_NAMES[field] ?? field);
+  const names = [...new Set(fields.map((field) => FIELD_NAMES[field] ?? field))];
   return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`;
 }
 

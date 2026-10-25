@@ -181,6 +181,8 @@ export const people = pgTable(
     /** Honduran identity number, 13 digits. */
     idNumber: text("id_number").notNull(),
     phone: text("phone"),
+    /** Why there is no phone: the family has none, or prefers not to give it. */
+    phoneMissing: text("phone_missing", { enum: ["no_phone", "declined"] }),
     gender: text("gender"),
     createdAt: createdAt(),
     createdBy: uuid("created_by").references(() => users.id),
@@ -189,6 +191,8 @@ export const people = pgTable(
     uniqueIndex("people_id_number_unique").on(table.idNumber),
     check("people_id_number_digits", sql`${table.idNumber} ~ '^[0-9]{13}$'`),
     check("people_phone_digits", sql`${table.phone} IS NULL OR ${table.phone} ~ '^[0-9]{8}$'`),
+    // A phone, or the reason there is none — never both, never neither.
+    check("people_phone_or_reason", sql`(${table.phone} IS NULL) <> (${table.phoneMissing} IS NULL)`),
   ],
 );
 

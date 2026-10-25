@@ -67,12 +67,19 @@ export const INACTIVE_REASONS = {
   entered_by_mistake: "Ingresado por error",
 } as const;
 
+/** Why a person has no phone on record. */
+export const PHONE_MISSING = {
+  no_phone: "No tiene teléfono",
+  declined: "Prefiere no darlo",
+} as const;
+
 export type Relation = keyof typeof RELATIONS;
 export type WaterConnection = keyof typeof WATER_CONNECTIONS;
 export type InactiveReason = keyof typeof INACTIVE_REASONS;
 
 export const RELATION_CODES = Object.keys(RELATIONS) as [Relation, ...Relation[]];
 export const WATER_CONNECTION_CODES = Object.keys(WATER_CONNECTIONS) as [WaterConnection, ...WaterConnection[]];
+export const PHONE_MISSING_CODES = Object.keys(PHONE_MISSING) as [keyof typeof PHONE_MISSING, ...Array<keyof typeof PHONE_MISSING>];
 export const INACTIVE_REASON_CODES = Object.keys(INACTIVE_REASONS) as [InactiveReason, ...InactiveReason[]];
 
 /** "L 70.00" — money is whole centavos, shown as lempiras. */
