@@ -1,0 +1,9 @@
+[Unit]
+Description=Nightly Junta de Agua Zoilabe history log check
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

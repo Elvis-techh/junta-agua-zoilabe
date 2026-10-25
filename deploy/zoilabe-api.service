@@ -1,0 +1,36 @@
+# The Junta de Agua API. Install:
+#
+#   cp deploy/zoilabe-api.service /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now zoilabe-api
+#
+# Logs: journalctl -u zoilabe-api -n 100
+
+[Unit]
+Description=Junta de Agua Zoilabe API
+After=network-online.target postgresql.service
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=4
+
+[Service]
+Type=simple
+# Its own OS user, separate from lindero's and from bascula's root process.
+User=zoilabe
+Group=zoilabe
+WorkingDirectory=/opt/zoilabe/backend
+EnvironmentFile=/opt/zoilabe/backend/.env
+# The Node 22 Lindero already installed beside bascula's /usr/bin/node.
+ExecStart=/opt/node22/bin/node dist/server.js
+# A small heap: the droplet (1 GB) is shared with two other apps.
+Environment=NODE_OPTIONS=--max-old-space-size=128
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
