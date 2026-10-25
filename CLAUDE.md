@@ -49,6 +49,11 @@ with `npm run db:generate --workspace @zoilabe/backend` from
 (`backend/src/db/roles.ts`) and are re-applied by `npm run db:migrate`. Never
 edit a migration that is already on `main`.
 
+Writes that must happen in single file take a PostgreSQL advisory lock
+inside their transaction, each with its own fixed key: `7_311_002` for the
+history log chain (`src/lib/audit.ts`), `7_311_003` for household codes
+(`src/routes/census.ts`). A new one takes the next number.
+
 Locally, `npm run db:local -- start` runs a private PostgreSQL server in
 `backend/.pgdata` on port 54329, so no `sudo` is needed. Tests create and drop
 their own throwaway databases on it.

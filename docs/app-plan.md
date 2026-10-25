@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 72, taken 2026-10-23.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 74, taken 2026-10-24.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -384,6 +384,18 @@ Five phases take the app from foundation to handover, and each ends with a test 
 | 2. Finances | Base fee and different amounts, paying ahead, month-end late fees, reconnection fee, payments with paper receipt numbers, expenses, receipt photos, digital receipts on request, household statements, arrears list | One full month runs alongside the paper receipt book and the balances match |
 | 3. Close, reports and guests | Month close with approval, monthly statement, yearly snapshot, temporary guest invitations, print layouts | A municipal official signs in with a guest invitation, opens and prints the census with full ID numbers, and the fiscal reviews a closed month |
 | 4. Handover | Restore test, runbook, board-owned accounts, training at a directive meeting, install on every director's phone | A second person restores from the runbook and the board runs a month without the builder |
+
+**Local first**
+
+Phases 1 to 3 are built and tested on the builder's computer before anything changes on the droplet (decided 2026-10-24). Each change merges to `main` only once its tests pass, so the droplet work at the end is one deployment, not five. Checks that need a phone, such as Phase 1's ten paper forms, run on the same Wi-Fi as the computer.
+
+| Phase | Status | Built and tested locally | Waits for the droplet |
+|---|---|---|---|
+| 0. Foundation | Merged | Invitation and PIN login, roles and permissions, history log, backup and restore scripts (merged in PR #1 on 2026-10-24) | Subdomain, the data-separation check, backups to the storage bucket, a restore on a test server |
+| 1. Census | Next | Everything, including paper entry mode and the offline queue | Nothing |
+| 2. Finances | Not started | Everything; receipt photos stay on the computer until the bucket is connected | Receipt photos in the storage bucket |
+| 3. Close, reports and guests | Not started | Everything, including print layouts and guest invitations | A guest signing in from a municipal phone at the real address |
+| 4. Handover | Not started | A first draft of the runbook | The restore test, board-owned accounts, training and installing on every director's phone |
 
 **Decisions made on 23 October 2026**
 

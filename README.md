@@ -19,10 +19,17 @@ changing how money, permissions or the history log work.
 
 ## Status
 
-Phase 0 (Foundation) is merged: invitation and PIN login, roles and
-permissions, the history log, and backup and restore scripts. Phase 1
-(Census) is next, then Phase 2 (Finances). See the phase table at the end of
-the app plan.
+- **Phase 0 (Foundation): merged.** Invitation and PIN login, roles and
+  permissions, the history log, and backup and restore scripts.
+- **Phase 1 (Census): built, in review.** Registrar familia (one question per
+  screen, with the fee question), paper entry mode, duplicate check, search
+  and list, household file, offline queue, inactive status, and
+  Configuración → Sectores. Its "done when" test (the secretary types in 10
+  paper forms from a phone without help) has not been run yet.
+- **Phase 2 (Finances): next.** Setting the base fee in Configuración comes
+  with it; until then the census shows "Precio base" without an amount.
+
+See the phase table at the end of the app plan.
 
 Phases 1 to 3 are built and tested on a computer before anything changes on
 the droplet. The parts of Phase 0 that need the droplet (the subdomain, the
@@ -69,6 +76,29 @@ It prints an invitation link. Open it, choose a 6-digit PIN, and you are in.
 Every other account is created from Usuarios. The command refuses to run
 once an administrator exists.
 
+### Trying the census
+
+1. As the administrator, open **Configuración** and add the village's
+   sectors. Registration cannot start without at least one.
+2. In **Usuarios**, create an account for the secretary and open its
+   invitation in a private browser window (or on a phone).
+3. As the secretary, tap **Registrar familia**. "Estoy en la vivienda" is the
+   normal flow; "Copiar una hoja de papel" is paper entry mode, which asks
+   first for the date and number written on the paper form.
+4. Type the same identity number twice: the second time the app opens that
+   person instead, and offers "Agregar otra vivienda".
+5. To try the offline queue, turn off the Wi-Fi (or, in Chrome, DevTools →
+   Network → Offline) while the app is open, register a family, and turn it
+   back on. The "por enviar" counter in the top bar goes back to zero by
+   itself.
+6. Open a household from **Censo** to correct it, deactivate it with a
+   reason, or reactivate it. Every step shows up in **Historial**.
+
+Opening the app from scratch with no signal needs the installed app (its
+service worker). To try that on the computer: `npm run build`, then
+`npx --workspace @zoilabe/frontend vite preview`, and open
+`http://localhost:4173` with `npm run dev:backend` running.
+
 ### Starting over
 
 `npm run db:reset` empties the local database (it refuses to run in
@@ -84,9 +114,10 @@ The phone must be on the same Wi-Fi as the computer.
    links point at the computer instead of `localhost`.
 3. Restart `npm run dev`, create an invitation, and open it on the phone.
 
-Screens and sign-in work this way. Three things need the secure (https)
-address that only the droplet gives: working with no signal after a cold
-start, installing the app properly on the home screen, and the GPS button.
+Screens, sign-in and the offline queue (signal lost while the app is open)
+work this way. Three things need the secure (https) address that only the
+droplet gives: opening the app from scratch with no signal, installing it
+properly on the home screen, and the GPS button.
 
 ## Checks before pushing
 
