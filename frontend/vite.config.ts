@@ -41,6 +41,10 @@ export default defineConfig({
     strictPort: true,
     // Reachable from a phone on the same Wi-Fi: http://<computer's IP>:5173
     host: true,
+    // Vite answers "Blocked request" to hostnames it does not know. This one is
+    // GitHub Codespaces' address (name-5173.app.github.dev), where a branch is
+    // tried from a phone before merging (.devcontainer/).
+    allowedHosts: [".app.github.dev"],
     proxy: {
       // Same origin for the browser, so the sign-in cookies just work.
       "/api": "http://127.0.0.1:3002",

@@ -31,6 +31,9 @@ changing how money, permissions or the history log work.
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
   so its amount starts with the month it is registered in.
+- **Trying a branch from a phone: ready.** Every pull request opens in a
+  GitHub Codespace, a private copy with made-up data, before it is merged
+  (see "Trying a branch from a phone" below).
 
 See the phase table at the end of the app plan.
 
@@ -125,6 +128,36 @@ Screens, sign-in and the offline queue (signal lost while the app is open)
 work this way. Three things need the secure (https) address that only the
 droplet gives: opening the app from scratch with no signal, installing it
 properly on the home screen, and the GPS button.
+
+### Trying a branch from a phone
+
+No computer needed. A GitHub Codespace is a private copy of the app on
+GitHub's machines, with its own empty database: nothing done there reaches the
+real data. Each pull request description starts with a link like this one:
+
+```text
+https://codespaces.new/Elvis-techh/junta-agua-zoilabe/tree/<branch>?quickstart=1
+```
+
+1. Open it in the phone's browser, signed in to GitHub, and tap **Create
+   codespace** (or **Resume** if one already exists for that branch). The first
+   time takes a few minutes: it installs PostgreSQL and the app, and builds the
+   database (`.devcontainer/setup.sh`).
+2. It opens `TRY-IT.md`, with an invitation link for a test administrator.
+   Tap it and choose a PIN. Later visits use the app link on the same page
+   and the PIN.
+3. Try what the pull request description asks you to try. If something is
+   wrong, tell Claude before merging.
+4. Delete the codespace when you are done: github.com/codespaces → ··· →
+   **Delete**. It stops by itself after 30 minutes unused, but a stopped one
+   is kept for 30 days and its storage counts against GitHub's free monthly
+   allowance (which also covers about 60 hours of use a month).
+
+Its address is `https://`, so the GPS button works there. It runs the
+development server, so installing on the home screen and opening with no
+signal still need the droplet. If the invitation has expired (48 hours), start
+the database over from the codespace's terminal:
+`npm run db:reset && bash .devcontainer/first-admin.sh`.
 
 ## Checks before pushing
 

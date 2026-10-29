@@ -67,12 +67,18 @@ their own throwaway databases on it.
 3. **One pull request per change.** The description says what was wrong or
    missing, what changed, how it was checked, and what the owner should look
    at. It is the permanent record of why the change exists.
-4. **Keep the docs current, in the same pull request.** The owner asked for
+4. **The owner tries it before merging.** The owner cannot judge code, so
+   the description starts with a link that opens the branch in a codespace
+   (README, "Trying a branch from a phone"), then says step by step what to
+   try there:
+   `https://codespaces.new/Elvis-techh/junta-agua-zoilabe/tree/<branch>?quickstart=1`.
+   It is merged once the owner has tried it and the Tests check is green.
+5. **Keep the docs current, in the same pull request.** The owner asked for
    this standing rule: every fix or feature updates `README.md` (how to run,
    test and use what changed, and its Status section), and this file when it
    changes how work is done here. A pull request whose docs are out of date
    is not finished.
-5. **If something broke, revert the pull request** with GitHub's Revert
+6. **If something broke, revert the pull request** with GitHub's Revert
    button. Never rewrite `main`'s history.
 
 ## Checks before pushing

@@ -1,0 +1,37 @@
+// GitHub Codespaces: a private copy of the app on GitHub's machines, for
+// trying a branch from any browser, a phone's included, before it is merged.
+//
+// Creating one installs PostgreSQL and the app, builds an empty database with a
+// test administrator, starts `npm run dev`, and opens TRY-IT.md with that
+// administrator's invitation link. It has its own made-up data, never the
+// real data.
+{
+  "name": "Junta de Agua Zoilabe",
+  // Ubuntu, like the laptop, so `apt install postgresql` gives the same
+  // PostgreSQL (16) that the README installs.
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" }
+  },
+  "forwardPorts": [5173],
+  "portsAttributes": {
+    "5173": { "label": "App", "onAutoForward": "notify" },
+    "3002": { "label": "API (reached through 5173)", "onAutoForward": "silent" },
+    "54329": { "label": "PostgreSQL", "onAutoForward": "ignore" }
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  // Open the editor only once setup is done, so TRY-IT.md exists by then.
+  "waitFor": "postCreateCommand",
+  // The database server does not survive the codespace stopping.
+  "postStartCommand": "npm run db:local -- start && npm run db:migrate",
+  "postAttachCommand": "npm run dev",
+  "customizations": {
+    "codespaces": { "openFiles": ["TRY-IT.md"] },
+    "vscode": {
+      "settings": {
+        // Rendered, so its links can be tapped on a phone.
+        "workbench.editorAssociations": { "TRY-IT.md": "vscode.markdown.preview.editor" }
+      }
+    }
+  }
+}
