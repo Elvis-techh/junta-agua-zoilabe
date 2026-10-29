@@ -1,8 +1,9 @@
 /**
  * The nightly backup (App Plan, "Backups"):
  *
- *  1. pg_dump the whole database, history log included, as the admin login.
- *  2. Prove the dump opens (pg_restore --list), or stop.
+ *  1. Copy the database file with `VACUUM INTO`, history log included, while
+ *     the API keeps running.
+ *  2. Prove the copy opens, passes `quick_check` and holds the log, or stop.
  *  3. Encrypt it (AES-256-GCM, BACKUP_ENCRYPTION_KEY).
  *  4. Upload it to this app's private Spaces bucket under daily/; on the first
  *     day of a month (Honduras time) also under monthly/. Keep 30 daily and
@@ -20,11 +21,11 @@ import { mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { loadConfig } from "../config/env.js";
 import { createDb } from "../db/client.js";
-import { requireEnv } from "../db/env.js";
 import { settings } from "../db/schema.js";
 import { backupName, encryptFile, expiredBackups, parseBackupKey } from "../lib/backupFiles.js";
-import { runPgTool } from "../lib/pgTools.js";
+import { snapshotDatabase } from "../lib/snapshot.js";
 import { spacesFromEnv } from "../lib/spaces.js";
 import { HONDURAS_TIME_ZONE, businessToday } from "../lib/time.js";
 
@@ -33,7 +34,7 @@ const KEEP_MONTHLY = 12;
 /** Recent copies kept on the droplet too, for a quick restore without downloading. */
 const KEEP_LOCAL_WITH_SPACES = 2;
 
-const adminUrl = requireEnv("DATABASE_ADMIN_URL");
+const config = loadConfig();
 const key = parseBackupKey(process.env.BACKUP_ENCRYPTION_KEY);
 const spaces = spacesFromEnv();
 
@@ -46,15 +47,11 @@ const plainFile = join(backupDir, name.replace(/\.enc$/, ""));
 const encryptedFile = join(backupDir, name);
 
 try {
-  await runPgTool("pg_dump", ["--format=custom", "--compress=9", `--file=${plainFile}`, `--dbname=${adminUrl}`]);
-  // A backup nobody has opened is a hope: list its contents before trusting it.
-  const contents = await runPgTool("pg_restore", ["--list", plainFile]);
-  if (!contents.includes("TABLE DATA public audit_log")) {
-    throw new Error("The dump does not contain the history log; stopping.");
-  }
+  // A backup nobody has opened is a hope: the copy is checked before it is trusted.
+  snapshotDatabase(config.databasePath, plainFile);
   await encryptFile(plainFile, encryptedFile, key);
 } finally {
-  // The unencrypted dump never outlives this run.
+  // The unencrypted copy never outlives this run.
   rmSync(plainFile, { force: true });
 }
 
@@ -81,20 +78,22 @@ if (spaces) {
   console.warn("SPACES_* are not set: this backup is only on this machine's disk.");
 }
 
-const local = readdirSync(backupDir).filter((file) => /^zoilabe-.*\.dump\.enc$/.test(file));
+const local = readdirSync(backupDir).filter((file) => /^zoilabe-.*\.db\.enc$/.test(file));
 for (const old of expiredBackups(local, spaces ? KEEP_LOCAL_WITH_SPACES : KEEP_DAILY)) {
   rmSync(join(backupDir, old));
 }
 
-const { db, pool } = createDb(adminUrl, 1);
+const { db, sqlite } = createDb(config.databasePath);
 try {
-  await db.insert(settings).values({
-    key: "system.last_backup",
-    value: { at: now.toISOString(), name, offsite: spaces !== null },
-    effectiveFrom: businessToday(HONDURAS_TIME_ZONE, now),
-  });
+  db.insert(settings)
+    .values({
+      key: "system.last_backup",
+      value: { at: now.toISOString(), name, offsite: spaces !== null },
+      effectiveFrom: businessToday(HONDURAS_TIME_ZONE, now),
+    })
+    .run();
 } finally {
-  await pool.end();
+  sqlite.close();
 }
 
 console.log(`Backup ${name} -> ${where}`);

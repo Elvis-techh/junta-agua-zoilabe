@@ -1,14 +1,17 @@
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config/env.js";
 import { createDb } from "./db/client.js";
+import { runMigrations } from "./db/migrations.js";
 
 /*
- * Migrations are NOT run here. The running app connects as the app login,
- * which cannot change the schema; `npm run db:migrate` (admin login) does
- * that as a deploy step before the service restarts.
+ * Migrations run here, before the API listens, as in Lindero: a deploy is
+ * "copy the files, restart the service", with no step to forget. Each start
+ * also puts the guards back (src/db/guards.ts). A migration that fails stops
+ * the start, so the old data is never served by code that expects new.
  */
 const config = loadConfig();
-const { db, pool } = createDb(config.databaseUrl);
+const { db, sqlite } = createDb(config.databasePath);
+runMigrations(db, sqlite);
 const app = await buildApp(config, db);
 
 let stopping = false;
@@ -31,7 +34,7 @@ const shutdown = async (signal: string, exitCode = 0) => {
   deadline.unref();
 
   await app.close();
-  await pool.end();
+  sqlite.close();
   process.exit(exitCode);
 };
 

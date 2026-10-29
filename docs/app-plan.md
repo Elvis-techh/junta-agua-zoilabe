@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 77, taken 2026-10-25.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 91, taken 2026-10-29.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -220,7 +220,7 @@ Page views are not logged. Exports are, because they are how data leaves the sys
 
 **How it is protected**
 
-- **Append-only.** The app's database login can add entries but cannot change or remove them.
+- **Append-only.** The database itself accepts new entries but refuses to change or remove any.
 - **Tamper-evident.** Each entry stores a fingerprint of the one before it, so an altered entry breaks the chain. A nightly check reports the result in Configuration.
 - **Backed up.** The log is part of every nightly backup and is kept permanently.
 - **Yearly extract.** A PDF and CSV of the year's log is saved for the board's records.
@@ -286,7 +286,7 @@ Seventeen tables hold everything, and people are kept apart from households so o
 
 **Rules for the builders**
 
-- **Append-only tables.** The app's database login can add rows to transactions and audit_log but cannot update or delete them. A closed month is locked in the database as well as in the app.
+- **Append-only tables.** The database itself lets rows be added to transactions and audit_log but never changed or deleted, and refuses to delete a row from any table. A closed month is locked in the database as well as in the app.
 - **Unique keys.** ID number on people and submission ID on households each allow one row only. A repeated paper receipt number is flagged for review, not blocked, because receipt books can restart their numbering.
 - **Phone-made IDs.** Census entries get their ID on the phone, so a retry after weak signal cannot create a second record.
 - **Time.** Timestamps are stored in UTC and shown in Honduras time (UTC-6).
@@ -334,7 +334,7 @@ On a phone the bottom bar shows at most four items plus "Más".
 
 ## Architecture, security and continuity
 
-One installable web app, one API and one PostgreSQL database run on the shared droplet, while receipt photos and backups go to Spaces. Use the same stack as Lindero and the weight station so one person can maintain all three.
+One installable web app, one API and one SQLite database file run on the shared droplet, while receipt photos and backups go to Spaces. Use the same stack as Lindero and the weight station so one person can maintain all three.
 
 *(Diagram in the original doc: architecture · 1 droplet, 1 storage bucket, 1 offsite copy)*
 
@@ -344,8 +344,8 @@ Phones and municipal computers reach one API. Lindero and the weight station sha
 
 - **Front end:** a progressive web app, installed from a WhatsApp link, that updates itself.
 - **API:** one service behind Nginx on its own subdomain, served over HTTPS.
-- **Database:** its own PostgreSQL database and login, separate from Lindero and the weight station.
-- **Separation from the other apps:** each app has its own database login that cannot open the others' databases, its own containers and env file, its own subdomain, its own storage key and bucket (or folder), and its own nightly dump, so one app can be restored without touching the others. Check this list before the first deployment.
+- **Database:** one SQLite file of its own, the same kind Lindero and the weight station use, so the droplet runs no database server. The file itself refuses to delete any row of any table, and to change any entry of the history log or of the money records (decided 29 October 2026).
+- **Separation from the other apps:** each app has its own database file that only its own system user on the droplet can open, its own containers and env file, its own subdomain, its own storage key and bucket (or folder), and its own nightly backup, so one app can be restored without touching the others. Check this list before the first deployment.
 - **Files:** receipt photos and backups in a private Spaces bucket.
 - **Capacity:** the current shared droplet is enough for version 1. Set DigitalOcean alerts at 80% memory and disk.
 
@@ -355,12 +355,12 @@ Phones and municipal computers reach one API. Lindero and the weight station sha
 - The server checks permissions on every request. ID numbers and phones are masked by the server for roles and invitations without access, not just hidden on screen.
 - Secrets live in environment variables, never in the repository.
 - Receipt photos open only through short-lived links.
-- Database access outside the app uses a separate credential held only by the technical administrators.
+- Only the app's own system user can open the database file; reaching it outside the app takes the technical administrator's server login. A history entry changed that way breaks the log's hash chain, which is checked every night.
 - The board and the municipality agree in writing who may see what, and that note is kept with the runbook.
 
 ### Backups
 
-- A nightly encrypted database dump goes to the Spaces bucket. Keep 30 daily and 12 monthly copies.
+- A nightly encrypted copy of the database file goes to the Spaces bucket. Keep 30 daily and 12 monthly copies.
 - A weekly second copy leaves DigitalOcean for a board-owned Google Drive or another provider, so one account problem cannot take everything.
 - DigitalOcean's weekly droplet backups stay on as a third layer.
 - A restore is tried on a fresh droplet before launch and every three months. The date shows in Configuration.
@@ -388,12 +388,12 @@ Five phases take the app from foundation to handover, and each ends with a test 
 
 **Local first**
 
-Phases 1 to 3 are built and tested on the builder's computer before anything changes on the droplet (decided 2026-10-24). Each change merges to `main` only once its tests pass, so the droplet work at the end is one deployment, not five. Checks that need a phone, such as Phase 1's ten paper forms, run on the same Wi-Fi as the computer.
+Phases 1 to 3 are built and tested on the builder's computer before anything changes on the droplet (decided 2026-10-24). Each change merges to `main` only once its tests pass, so the droplet work at the end is one deployment, not five. Checks that need a phone, such as Phase 1's ten paper forms, run against the computer, from the same Wi-Fi or over Tailscale.
 
 | Phase | Status | Built and tested locally | Waits for the droplet |
 |---|---|---|---|
 | 0. Foundation | Merged | Invitation and PIN login, roles and permissions, history log, backup and restore scripts (merged in PR #1 on 2026-10-24) | Subdomain, the data-separation check, backups to the storage bucket, a restore on a test server |
-| 1. Census | Merged | Everything, including paper entry mode and the offline queue | Nothing |
+| 1. Census | Merged | Everything, including paper entry mode and the offline queue (merged in PRs #3 to #5 on 2026-10-25). Its "done when" test, the secretary typing in ten paper forms from a phone, has not been run yet | Nothing |
 | 2. Finances | Next | Everything; receipt photos stay on the computer until the bucket is connected | Receipt photos in the storage bucket |
 | 3. Close, reports and guests | Not started | Everything, including print layouts and guest invitations | A guest signing in from a municipal phone at the real address |
 | 4. Handover | Not started | A first draft of the runbook | The restore test, board-owned accounts, training and installing on every director's phone |
@@ -417,7 +417,18 @@ Phases 1 to 3 are built and tested on the builder's computer before anything cha
 - The consent line on the review screen reads: "Al guardar, la familia acepta que la Junta de Agua guarde estos datos solo para el servicio de agua."
 - A family can be registered without a phone, with "No tiene teléfono" or "Prefiere no darlo" (see Module 1).
 
+**Decisions made on 29 October 2026**
+
+- A payment goes to the month or months the treasurer selects when recording it, as written on the paper receipt. The app does not move money to the oldest unpaid month by itself.
+- Before the first payment is recorded in the app, the treasurer enters what each house already owes, copied from the paper receipt book.
+- If the paper book shows late fees already owed, the treasurer enters them separately from the unpaid monthly fees.
+- The base monthly fee, the late fee (mora) and the reconnection fee are set in Configuración. The board can raise or lower them at any time; a change starts from its date and never rewrites months already charged or paid.
+- Phone testing runs against the builder's computer over Tailscale. GitHub Codespaces were tried and set aside as too slow.
+- The database is SQLite, one file like Lindero's and the weight station's, instead of PostgreSQL. The rules PostgreSQL's two logins enforced (nothing deleted, history never changed) are kept by the database file itself.
+- A test copy of the app will run on the droplet, at its own address and with made-up data only, so a change can be tried from a phone before it is merged. It is built after the switch to SQLite.
+
 **Still open**
 
-- [ ] Check the data separation on the droplet (own database login, storage key and backup for each app) before the first deployment. This has not been done yet and will be updated later.
+- [ ] Check the data separation on the droplet (own database file and system user, storage key and backup for each app) before the first deployment. This has not been done yet and will be updated later.
+- [ ] How the treasurer enters what each house already owes: month by month (so each unpaid month can carry its own late fee), or one total per house.
 

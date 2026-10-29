@@ -3,34 +3,30 @@
  *
  * Three things protect it, from the outside in:
  *
- *  1. The app's database login cannot UPDATE or DELETE `audit_log` at all
- *     (src/db/roles.ts). A bug in the app cannot rewrite history.
+ *  1. The database refuses any UPDATE or DELETE on `audit_log`
+ *     (src/db/guards.ts). A bug in the app cannot rewrite history.
  *  2. Each entry stores the hash of the entry before it, and its own hash
- *     covers that plus everything it says. Someone with the admin login who
- *     edits or removes an entry breaks the chain from that point on, and the
- *     nightly `verifyChain` reports it in Configuración.
+ *     covers that plus everything it says. Someone who opens the database
+ *     file with other tools and edits or removes an entry breaks the chain
+ *     from that point on, and the nightly `verifyChain` reports it in
+ *     Configuración.
  *  3. Every nightly backup carries the log, kept permanently.
  *
  * Entries are written in the same transaction as the change they describe, so
  * a change that rolls back takes its entry with it — a log that records things
- * that did not happen is worse than none.
+ * that did not happen is worse than none. Transactions run one at a time
+ * (`inTransaction`), so two entries can never chain to the same predecessor.
  */
 import { createHash } from "node:crypto";
 
-import { asc, desc, gt, sql } from "drizzle-orm";
+import { asc, desc, gt } from "drizzle-orm";
 
 import type { DbOrTx, Tx } from "../db/client.js";
+import { inTransaction } from "../db/client.js";
 import { auditLog } from "../db/schema.js";
 
 /** The `prev_hash` of the very first entry. */
 export const GENESIS_HASH = "0".repeat(64);
-
-/**
- * One fixed number for the advisory lock that puts log writes in single file.
- * Two entries written at the same instant must not both chain to the same
- * predecessor; the lock is held until the writer's transaction ends.
- */
-const AUDIT_LOCK_KEY = 7_311_002;
 
 export type AuditArea = (typeof auditLog.$inferInsert)["area"];
 
@@ -82,9 +78,9 @@ type HashedFields = {
 /**
  * JSON with object keys sorted at every level.
  *
- * PostgreSQL's jsonb does not keep the key order it was given, so the hash is
- * taken over a form that does not depend on it: what is hashed at write time
- * and what is read back at check time come out byte for byte the same.
+ * The hash is taken over a form that does not depend on the order keys were
+ * written in, so what is hashed at write time and what is read back at check
+ * time come out byte for byte the same, whatever stored them in between.
  */
 export function canonicalJson(value: unknown): string {
   if (value === undefined || value === null) {
@@ -113,14 +109,13 @@ export function entryHash(prevHash: string, fields: HashedFields): string {
  * Append one entry to the history log. Takes a transaction handle, never the
  * plain database: the entry must commit or roll back with the change.
  */
-export async function recordAudit(tx: Tx, actor: Actor, entry: AuditEntry): Promise<void> {
-  await tx.execute(sql`SELECT pg_advisory_xact_lock(${AUDIT_LOCK_KEY})`);
-
-  const [last] = await tx
+export function recordAudit(tx: Tx, actor: Actor, entry: AuditEntry): void {
+  const last = tx
     .select({ hash: auditLog.hash })
     .from(auditLog)
     .orderBy(desc(auditLog.id))
-    .limit(1);
+    .limit(1)
+    .get();
 
   const prevHash = last?.hash ?? GENESIS_HASH;
 
@@ -135,7 +130,7 @@ export async function recordAudit(tx: Tx, actor: Actor, entry: AuditEntry): Prom
     summary: entry.summary,
     entityType: entry.entityType ?? null,
     entityId: entry.entityId ?? null,
-    // Through JSON once, so what is hashed is exactly what jsonb will hold
+    // Through JSON once, so what is hashed is exactly what the column will hold
     // (no `undefined`, Dates as strings).
     before: entry.before === undefined ? null : JSON.parse(JSON.stringify(entry.before)),
     after: entry.after === undefined ? null : JSON.parse(JSON.stringify(entry.after)),
@@ -143,17 +138,19 @@ export async function recordAudit(tx: Tx, actor: Actor, entry: AuditEntry): Prom
     device: actor.device ? actor.device.slice(0, 300) : null,
   };
 
-  await tx.insert(auditLog).values({
-    ...fields,
-    area: entry.area,
-    prevHash,
-    hash: entryHash(prevHash, fields),
-  });
+  tx.insert(auditLog)
+    .values({
+      ...fields,
+      area: entry.area,
+      prevHash,
+      hash: entryHash(prevHash, fields),
+    })
+    .run();
 }
 
 /** Write one entry in a transaction of its own, for events that change nothing else. */
-export async function recordAuditAlone(db: DbOrTx, actor: Actor, entry: AuditEntry): Promise<void> {
-  await db.transaction(async (tx) => recordAudit(tx, actor, entry));
+export function recordAuditAlone(db: DbOrTx, actor: Actor, entry: AuditEntry): void {
+  inTransaction(db, (tx) => recordAudit(tx, actor, entry));
 }
 
 export interface ChainCheck {
@@ -170,18 +167,19 @@ export interface ChainCheck {
  * next entry pointing at a predecessor that is not there; an inserted one
  * breaks the link of the entry after it.
  */
-export async function verifyChain(db: DbOrTx, batchSize = 1000): Promise<ChainCheck> {
+export function verifyChain(db: DbOrTx, batchSize = 1000): ChainCheck {
   let prevHash = GENESIS_HASH;
   let lastId = 0;
   let checked = 0;
 
   for (;;) {
-    const rows = await db
+    const rows = db
       .select()
       .from(auditLog)
       .where(gt(auditLog.id, lastId))
       .orderBy(asc(auditLog.id))
-      .limit(batchSize);
+      .limit(batchSize)
+      .all();
 
     if (rows.length === 0) {
       return { ok: true, checked, brokenAtId: null };

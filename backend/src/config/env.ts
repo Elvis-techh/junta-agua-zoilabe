@@ -1,4 +1,10 @@
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { HONDURAS_TIME_ZONE } from "../lib/time.js";
+
+/** backend/data/zoilabe.db, from src/ (tsx) and from dist/ (the server) alike. */
+export const DEFAULT_DATABASE_PATH = fileURLToPath(new URL("../../data/zoilabe.db", import.meta.url));
 
 export type AppConfig = {
   nodeEnv: "development" | "test" | "production";
@@ -7,8 +13,8 @@ export type AppConfig = {
   /** The address people open; invitation links point here. */
   appUrl: string;
   frontendOrigins: string[];
-  /** The APP login (zoilabe_app). Never the admin one. */
-  databaseUrl: string;
+  /** The database file. Its folder holds its WAL companions too, and must be writable. */
+  databasePath: string;
   /**
    * How Fastify derives `request.ip`, which the rate limits key on. `false`
    * trusts nothing (local development); on the droplet, Nginx's own address
@@ -51,11 +57,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error(`NODE_ENV must be development, test or production, not "${env.NODE_ENV}".`);
   }
 
-  const databaseUrl = env.DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error("DATABASE_URL is not set. Copy backend/.env.example to backend/.env.");
-  }
-
   const appUrl = (env.APP_URL ?? "http://localhost:5173").replace(/\/+$/, "");
   if (nodeEnv === "production" && !appUrl.startsWith("https://")) {
     throw new Error("APP_URL must be an https:// address in production.");
@@ -70,7 +71,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       .split(",")
       .map((origin) => origin.trim())
       .filter(Boolean),
-    databaseUrl,
+    databasePath: env.DATABASE_PATH ? resolve(env.DATABASE_PATH) : DEFAULT_DATABASE_PATH,
     trustProxy: parseTrustProxy(env.TRUST_PROXY),
     pinAttemptsPerMinute: positiveInteger("PIN_ATTEMPTS_PER_MINUTE", 10),
     requestsPerMinute: positiveInteger("REQUESTS_PER_MINUTE", 300),

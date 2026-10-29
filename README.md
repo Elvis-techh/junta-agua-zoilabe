@@ -13,7 +13,7 @@ changing how money, permissions or the history log work.
 ```text
 .
 ├── frontend/   Installable web app (PWA) for phones and computers — React + Vite
-├── backend/    HTTP API, business rules and database migrations — Fastify + PostgreSQL
+├── backend/    HTTP API, business rules and database migrations — Fastify + SQLite
 └── docs/       The app plan, deployment notes and the runbook
 ```
 
@@ -31,6 +31,10 @@ changing how money, permissions or the history log work.
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
   so its amount starts with the month it is registered in.
+- **Database: SQLite** (decided 29 October 2026), one file like Lindero's and
+  Báscula Central's, so the droplet needs no database server. The rules that
+  PostgreSQL's two logins enforced are now triggers in the file itself (see
+  "The database" below).
 
 See the phase table at the end of the app plan.
 
@@ -41,27 +45,21 @@ server) wait for that one deployment.
 
 ## Local development
 
-Requirements: Node.js 22+, npm, and PostgreSQL 16+ installed
-(`sudo apt install postgresql` on Ubuntu). The app does not use the system
-server; it runs its own private one, owned by you, so no `sudo` is needed
-after the install.
+Requirements: Node.js 22+ and npm. Nothing else: the database is a file
+the app creates itself.
 
 The first time:
 
 ```bash
 npm install
 cp backend/.env.example backend/.env
-npm run db:local -- start          # private server on localhost:54329
-npm run db:setup                   # creates the database and its two logins
-npm run db:migrate
+npm run db:migrate                 # creates backend/data/zoilabe.db
 npm run db:seed
 ```
 
 Every time:
 
 ```bash
-npm run db:local -- start          # after a restart of the computer
-npm run db:migrate                 # after updating the code: applies any new database changes
 npm run dev                        # leave this terminal open; Ctrl+C stops it
 ```
 
@@ -111,6 +109,27 @@ service worker). To try that on the computer: `npm run build`, then
 `npm run db:reset` empties the local database (it refuses to run in
 production). Run `user:first-admin` again afterwards.
 
+### The database
+
+One SQLite file, `backend/data/zoilabe.db` (set `DATABASE_PATH` in
+`backend/.env` to put it elsewhere), with its `-wal` and `-shm` companions
+beside it. Git ignores the folder. The API applies new migrations every time
+it starts, so `npm run db:migrate` is only needed to update the file without
+starting the API.
+
+The file refuses, by itself, to delete any row of any table, and to change
+any row of the history log (`audit_log`) or of the money entries
+(`transactions`): triggers that `src/db/guards.ts` puts back after every
+migration. Taking one away would take a deliberate `DROP TRIGGER` with
+other tools, and the history log's hash chain (`npm run db:verify-log`)
+catches any entry changed that way.
+
+`npm run db:backup` copies the file while the API keeps running
+(`VACUUM INTO`), checks the copy, and encrypts it with
+`BACKUP_ENCRYPTION_KEY` (`openssl rand -base64 32`). `npm run db:restore`
+puts a backup into a new file and checks it: see
+[docs/restore.md](docs/restore.md).
+
 ### Testing on a phone
 
 The phone must be on the same Wi-Fi as the computer.
@@ -132,3 +151,6 @@ properly on the home screen, and the GPS button.
 npm run typecheck
 npm test
 ```
+
+The tests need no database server or settings: each one makes its own
+database in memory and throws it away.

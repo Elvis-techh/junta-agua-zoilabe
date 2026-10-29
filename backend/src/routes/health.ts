@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 export const healthRoutes: FastifyPluginAsync = async (app) => {
   app.get("/health", async (_request, reply) => {
     try {
-      await app.db.execute(sql`SELECT 1`);
+      app.db.get(sql`SELECT 1`);
     } catch {
       return reply.code(503).send({ status: "database_unreachable", service: "zoilabe-api" });
     }

@@ -34,14 +34,15 @@ export function differentFeeStart(lastPaidMonth: string | null, today: string): 
  * A payment that was reversed does not count, nor does the reversal itself:
  * a correction must not move the start of a fee.
  */
-export async function lastPaidMonth(db: DbOrTx, householdId: string): Promise<string | null> {
-  const result = await db.execute<{ month: string | null }>(sql`
-    SELECT to_char(max(covered), 'YYYY-MM-DD') AS month
-    FROM transactions t, unnest(t.months_covered) AS covered
+export function lastPaidMonth(db: DbOrTx, householdId: string): string | null {
+  // `months_covered` is a JSON list of "YYYY-MM-01" dates, which sort as text.
+  const row = db.get<{ month: string | null }>(sql`
+    SELECT max(covered.value) AS month
+    FROM transactions t, json_each(t.months_covered) AS covered
     WHERE t.household_id = ${householdId}
       AND t.kind = 'income'
       AND t.reverses_id IS NULL
       AND NOT EXISTS (SELECT 1 FROM transactions r WHERE r.reverses_id = t.id)
   `);
-  return result.rows[0]?.month ?? null;
+  return row?.month ?? null;
 }

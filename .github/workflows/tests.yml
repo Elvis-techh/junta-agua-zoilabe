@@ -2,11 +2,8 @@
 # build) on every pull request and every push to main, so each pull request
 # page shows a green ✅ or a red ❌ before anyone merges it.
 #
-# The backend tests need PostgreSQL: a throwaway server runs beside the job,
-# and each test file makes and drops its own database on it. It accepts the
-# job without a password (it is reachable only from this job and gone when
-# it ends), and the app's two logins get random passwords per run, so no
-# password is written in this file.
+# The backend tests need no database server: each one makes its own SQLite
+# database in memory, so there is nothing to start and no password anywhere.
 
 name: Tests
 
@@ -28,28 +25,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
 
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_HOST_AUTH_METHOD: trust
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
-    env:
-      DATABASE_SUPERUSER_URL: postgres://postgres@localhost:5432/postgres
-
     steps:
-      - name: Random passwords for the app's two logins
-        run: |
-          echo "DATABASE_ADMIN_URL=postgres://zoilabe_admin:$(openssl rand -hex 16)@localhost:5432/zoilabe" >> "$GITHUB_ENV"
-          echo "DATABASE_URL=postgres://zoilabe_app:$(openssl rand -hex 16)@localhost:5432/zoilabe" >> "$GITHUB_ENV"
-
       - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v7

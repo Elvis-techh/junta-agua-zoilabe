@@ -3,6 +3,7 @@ import { after, before, describe, it } from "node:test";
 
 import { asc, eq, sql } from "drizzle-orm";
 
+import { inTransaction } from "../src/db/client.js";
 import { auditLog } from "../src/db/schema.js";
 import {
   GENESIS_HASH,
@@ -59,9 +60,9 @@ describe("history log", () => {
   });
 
   it("drops the entry when the change it describes rolls back", async () => {
-    await assert.rejects(
-      t.db.transaction(async (tx) => {
-        await recordAudit(tx, SYSTEM_ACTOR, entry(999));
+    assert.throws(() =>
+      inTransaction(t.db, (tx) => {
+        recordAudit(tx, SYSTEM_ACTOR, entry(999));
         throw new Error("the change failed");
       }),
     );
@@ -71,23 +72,18 @@ describe("history log", () => {
     assert.equal((await verifyChain(t.db)).ok, true);
   });
 
-  it("refuses the app login any change or removal of an entry", async () => {
-    await rejectsWithDbError(
-      t.db.execute(sql`UPDATE audit_log SET summary = 'cambiado'`),
-      /permission denied for table audit_log/,
-    );
-    await rejectsWithDbError(
-      t.db.execute(sql`DELETE FROM audit_log`),
-      /permission denied for table audit_log/,
-    );
-    await rejectsWithDbError(t.db.execute(sql`TRUNCATE audit_log`), /permission denied/);
+  it("refuses any change or removal of an entry", async () => {
+    await rejectsWithDbError(t.db.update(auditLog).set({ summary: "cambiado" }), /history is never changed: audit_log/);
+    await rejectsWithDbError(t.db.delete(auditLog), /nothing is deleted: audit_log/);
   });
 
-  it("reports the first altered entry when someone with the admin login edits one", async () => {
-    const rows = await t.adminDb.select({ id: auditLog.id }).from(auditLog).orderBy(asc(auditLog.id));
+  it("reports the first altered entry when someone edits one with other tools", async () => {
+    const rows = await t.db.select({ id: auditLog.id }).from(auditLog).orderBy(asc(auditLog.id));
     const target = rows[1]!.id;
 
-    await t.adminDb.execute(sql`UPDATE audit_log SET summary = 'Nadie hizo nada' WHERE id = ${target}`);
+    // What the app never does: take the guard away first.
+    t.sqlite.exec("DROP TRIGGER audit_log_no_update");
+    t.db.run(sql`UPDATE audit_log SET summary = 'Nadie hizo nada' WHERE id = ${target}`);
 
     assert.deepEqual(await verifyChain(t.db), { ok: false, checked: 1, brokenAtId: target });
   });
@@ -98,8 +94,9 @@ describe("history log", () => {
       for (let i = 0; i < 4; i += 1) {
         await recordAuditAlone(t2.db, SYSTEM_ACTOR, entry(i));
       }
-      const rows = await t2.adminDb.select({ id: auditLog.id }).from(auditLog).orderBy(asc(auditLog.id));
-      await t2.adminDb.execute(sql`DELETE FROM audit_log WHERE id = ${rows[2]!.id}`);
+      const rows = await t2.db.select({ id: auditLog.id }).from(auditLog).orderBy(asc(auditLog.id));
+      t2.sqlite.exec("DROP TRIGGER audit_log_no_delete");
+      t2.db.run(sql`DELETE FROM audit_log WHERE id = ${rows[2]!.id}`);
 
       assert.deepEqual(await verifyChain(t2.db), { ok: false, checked: 2, brokenAtId: rows[3]!.id });
     } finally {

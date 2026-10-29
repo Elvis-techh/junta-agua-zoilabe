@@ -55,7 +55,7 @@ const authPlugin: FastifyPluginAsync<{ db: Db }> = async (app, options) => {
   // user and their permissions are read from the database, never the cookie.
   app.addHook("onRequest", async (request) => {
     const token = request.cookies[SESSION_COOKIE];
-    request.user = token ? await getSessionUser(options.db, token) : null;
+    request.user = token ? getSessionUser(options.db, token) : null;
   });
 
   app.decorate("requireUser", async (request: FastifyRequest, reply: FastifyReply) => {

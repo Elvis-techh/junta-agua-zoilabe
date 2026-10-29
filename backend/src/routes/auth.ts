@@ -7,7 +7,7 @@
  *  2. From then on: open the app, type the PIN. 5 wrong PINs lock the account.
  *  3. Sensitive actions ask for the PIN again (`/auth/confirm-pin`).
  */
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
@@ -25,6 +25,7 @@ import {
   tokenHash,
 } from "../auth/session.js";
 import type { Tx } from "../db/client.js";
+import { inTransaction } from "../db/client.js";
 import { accessTokens, roles, users } from "../db/schema.js";
 import type { Actor } from "../lib/audit.js";
 import { recordAudit } from "../lib/audit.js";
@@ -92,8 +93,8 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (app, options) 
     });
   };
 
-  const loadUser = async (userId: string) => {
-    const [row] = await app.db
+  const loadUser = (userId: string) => {
+    const row = app.db
       .select({
         id: users.id,
         name: users.name,
@@ -104,7 +105,8 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (app, options) 
       })
       .from(users)
       .innerJoin(roles, eq(roles.code, users.roleCode))
-      .where(eq(users.id, userId));
+      .where(eq(users.id, userId))
+      .get();
     return row ?? null;
   };
 
@@ -121,12 +123,12 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (app, options) 
 
   app.post("/auth/invitation/check", { config: strictLimit }, async (request) => {
     const { token } = parse(tokenBody, request.body);
-    const invitation = await findLiveToken(app.db, token, "invitation");
+    const invitation = findLiveToken(app.db, token, "invitation");
     if (!invitation || invitation.usedAt) {
       throw INVITATION_INVALID;
     }
 
-    const user = await loadUser(invitation.userId);
+    const user = loadUser(invitation.userId);
     if (!user || user.status === "suspended" || user.status === "deactivated") {
       throw INVITATION_INVALID;
     }
@@ -138,10 +140,10 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (app, options) 
     const { token, pin } = parse(acceptBody, request.body);
     const pinHash = await hashPin(pin);
 
-    const result = await app.db.transaction(async (tx) => {
-      // Locked for the rest of the transaction, so the same link opened twice
-      // at once is used once.
-      const [invitation] = await tx
+    const result = inTransaction(app.db, (tx) => {
+      // Read and marked used inside one transaction, so the same link opened
+      // twice at once is used once.
+      const invitation = tx
         .select()
         .from(accessTokens)
         .where(
@@ -150,38 +152,38 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (app, options) 
             eq(accessTokens.kind, "invitation"),
             isNull(accessTokens.usedAt),
             isNull(accessTokens.revokedAt),
-            sql`${accessTokens.expiresAt} > now()`,
+            gt(accessTokens.expiresAt, new Date()),
           ),
         )
-        .for("update");
+        .get();
       if (!invitation) {
         throw INVITATION_INVALID;
       }
 
-      const user = await loadUser(invitation.userId);
+      const user = loadUser(invitation.userId);
       if (!user || user.status === "suspended" || user.status === "deactivated") {
         throw INVITATION_INVALID;
       }
 
       const replacesPin = user.pinHash !== null;
 
-      await tx.update(accessTokens).set({ usedAt: new Date() }).where(eq(accessTokens.id, invitation.id));
+      tx.update(accessTokens).set({ usedAt: new Date() }).where(eq(accessTokens.id, invitation.id)).run();
       // A new invitation is also how a forgotten PIN or a lock is undone; an
       // administrator sends one only after confirming the person by phone.
-      await tx
-        .update(users)
+      tx.update(users)
         .set({ pinHash, status: "active", failedPinCount: 0, lockedAt: null, lastLoginAt: new Date() })
-        .where(eq(users.id, user.id));
+        .where(eq(users.id, user.id))
+        .run();
 
-      const device = await issueToken(tx, {
+      const device = issueToken(tx, {
         userId: user.id,
         kind: "device",
         lifetimeMs: DEVICE_IDLE_LIMIT_MS,
         label: deviceLabel(request),
       });
-      const session = await openSession(tx, user.id, device.id);
+      const session = openSession(tx, user.id, device.id);
 
-      await recordAudit(tx, actorFor(request, user), {
+      recordAudit(tx, actorFor(request, user), {
         area: "users",
         action: replacesPin ? "user.pin_reset" : "user.invitation_accepted",
         summary: replacesPin
@@ -202,7 +204,7 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (app, options) 
     const { pin } = parse(pinBody, request.body);
 
     const deviceToken = request.cookies[DEVICE_COOKIE];
-    const device = deviceToken ? await findLiveToken(app.db, deviceToken, "device") : null;
+    const device = deviceToken ? findLiveToken(app.db, deviceToken, "device") : null;
     if (!device || !deviceToken) {
       throw new HttpError(
         401,
@@ -211,7 +213,7 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (app, options) 
       );
     }
 
-    const user = await loadUser(device.userId);
+    const user = loadUser(device.userId);
     if (!user || user.status !== "active") {
       throw new HttpError(403, "account_inactive", "Su cuenta no está activa. Hable con el administrador.");
     }
@@ -237,17 +239,17 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (app, options) 
       });
     }
 
-    const session = await app.db.transaction(async (tx) => {
+    const session = inTransaction(app.db, (tx) => {
       const now = new Date();
-      await tx.update(users).set({ lastLoginAt: now }).where(eq(users.id, user.id));
+      tx.update(users).set({ lastLoginAt: now }).where(eq(users.id, user.id)).run();
       // Using the phone keeps it remembered for another 90 days.
-      await tx
-        .update(accessTokens)
+      tx.update(accessTokens)
         .set({ lastUsedAt: now, expiresAt: new Date(now.getTime() + DEVICE_IDLE_LIMIT_MS) })
-        .where(eq(accessTokens.id, device.id));
-      const opened = await openSession(tx, user.id, device.id);
+        .where(eq(accessTokens.id, device.id))
+        .run();
+      const opened = openSession(tx, user.id, device.id);
 
-      await recordAudit(tx, actor, {
+      recordAudit(tx, actor, {
         area: "security",
         action: "security.login",
         summary: `${user.name} (${user.roleName}) entró a la app`,
@@ -270,8 +272,8 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (app, options) 
     // to show the PIN pad (with the person's name) or the "open your
     // invitation" screen.
     const deviceToken = request.cookies[DEVICE_COOKIE];
-    const device = deviceToken ? await findLiveToken(app.db, deviceToken, "device") : null;
-    const user = device ? await loadUser(device.userId) : null;
+    const device = deviceToken ? findLiveToken(app.db, deviceToken, "device") : null;
+    const user = device ? loadUser(device.userId) : null;
 
     if (user && user.status === "active") {
       return reply.code(401).send({
@@ -287,7 +289,7 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (app, options) 
   });
 
   app.post("/auth/logout", { preHandler: app.requireUser }, async (request, reply) => {
-    await revokeTokens(app.db, { ids: [request.user!.sessionId] }, request.user!.id);
+    revokeTokens(app.db, { ids: [request.user!.sessionId] }, request.user!.id);
     reply.clearCookie(SESSION_COOKIE, { path: "/" });
     return { ok: true };
   });
@@ -298,7 +300,7 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (app, options) 
     async (request, reply) => {
       const { pin } = parse(pinBody, request.body);
       const actor = actorOf(request);
-      const user = await loadUser(request.user!.id);
+      const user = loadUser(request.user!.id);
       if (!user) {
         throw new HttpError(401, "unauthenticated", "Escriba su PIN para entrar.");
       }

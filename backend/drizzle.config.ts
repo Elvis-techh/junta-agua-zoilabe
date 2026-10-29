@@ -6,10 +6,10 @@ import { defineConfig } from "drizzle-kit";
  * the generated files through `npm run db:migrate`.
  */
 export default defineConfig({
-  dialect: "postgresql",
+  dialect: "sqlite",
   schema: "./src/db/schema.ts",
   out: "./drizzle",
   dbCredentials: {
-    url: process.env.DATABASE_ADMIN_URL ?? "",
+    url: process.env.DATABASE_PATH ?? "./data/zoilabe.db",
   },
 });

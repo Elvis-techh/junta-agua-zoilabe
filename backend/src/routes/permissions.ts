@@ -6,6 +6,7 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { actorOf } from "../auth/plugin.js";
+import { inTransaction } from "../db/client.js";
 import { rolePermissions, roles } from "../db/schema.js";
 import { recordAudit } from "../lib/audit.js";
 import { HttpError, parse } from "../lib/http.js";
@@ -66,11 +67,12 @@ export const permissionRoutes: FastifyPluginAsync = async (app) => {
 
       const actor = actorOf(request);
 
-      return app.db.transaction(async (tx) => {
-        const current = await tx
+      return inTransaction(app.db, (tx) => {
+        const current = tx
           .select({ permission: rolePermissions.permission })
           .from(rolePermissions)
-          .where(sql`${rolePermissions.roleCode} = ${role} AND ${rolePermissions.granted}`);
+          .where(sql`${rolePermissions.roleCode} = ${role} AND ${rolePermissions.granted}`)
+          .all();
         const before = current.map((row) => row.permission).sort();
         const after = [...granted].sort();
 
@@ -78,7 +80,7 @@ export const permissionRoutes: FastifyPluginAsync = async (app) => {
           return { changed: false };
         }
 
-        await tx
+        tx
           .insert(rolePermissions)
           .values(
             PERMISSION_CODES.map((permission) => ({
@@ -92,13 +94,14 @@ export const permissionRoutes: FastifyPluginAsync = async (app) => {
             target: [rolePermissions.roleCode, rolePermissions.permission],
             set: {
               granted: sql`excluded.granted`,
-              updatedAt: sql`now()`,
+              updatedAt: new Date(),
               updatedBy: sql`excluded.updated_by`,
             },
-          });
+          })
+          .run();
 
-        const [roleRow] = await tx.select({ name: roles.name }).from(roles).where(eq(roles.code, role));
-        await recordAudit(tx, actor, {
+        const roleRow = tx.select({ name: roles.name }).from(roles).where(eq(roles.code, role)).get();
+        recordAudit(tx, actor, {
           area: "settings",
           action: "permissions.updated",
           summary: `${actor.name} (${actor.role}) cambió los permisos del cargo ${roleRow?.name ?? role}`,

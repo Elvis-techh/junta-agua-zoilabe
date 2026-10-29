@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import type { LightMyRequestResponse } from "fastify";
 
 import { DEVICE_COOKIE, SESSION_COOKIE } from "../src/auth/session.js";
@@ -119,9 +119,10 @@ describe("invitation and PIN sign-in", () => {
     const invite = await post(`/api/users/${created.json().user.id}/invitation`, {}, admin.cookie);
     const token = new URL(invite.json().url).hash.slice(1);
 
-    await t.adminDb.execute(
-      sql`UPDATE access_tokens SET expires_at = now() - interval '1 minute' WHERE kind = 'invitation' AND used_at IS NULL`,
-    );
+    await t.db
+      .update(accessTokens)
+      .set({ expiresAt: new Date(Date.now() - 60_000) })
+      .where(and(eq(accessTokens.kind, "invitation"), isNull(accessTokens.usedAt)));
     assert.equal((await post("/api/auth/invitation/check", { token })).statusCode, 410);
     assert.equal((await post("/api/auth/invitation/accept", { token, pin: "111222" })).statusCode, 410);
   });

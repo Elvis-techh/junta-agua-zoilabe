@@ -10,6 +10,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 
 import { actorOf } from "../auth/plugin.js";
+import { inTransaction } from "../db/client.js";
 import { households, sectors } from "../db/schema.js";
 import { recordAudit } from "../lib/audit.js";
 import { HttpError, parse } from "../lib/http.js";
@@ -29,12 +30,11 @@ const NAME_TAKEN = new HttpError(409, "name_taken", "Ya hay un sector con ese no
 export const sectorRoutes: FastifyPluginAsync = async (app) => {
   const guard = { preHandler: app.requirePermission("settings:edit") };
 
+  /** Compared here rather than in SQL: SQLite's `lower()` only knows A to Z, and the list is short. */
   const nameTaken = async (wanted: string, exceptId?: number) => {
-    const rows = await app.db
-      .select({ id: sectors.id })
-      .from(sectors)
-      .where(sql`lower(${sectors.name}) = lower(${wanted})`);
-    return rows.some((row) => row.id !== exceptId);
+    const same = (name: string) => name.toLocaleLowerCase("es-HN") === wanted.toLocaleLowerCase("es-HN");
+    const rows = await app.db.select({ id: sectors.id, name: sectors.name }).from(sectors);
+    return rows.some((row) => row.id !== exceptId && same(row.name));
   };
 
   app.get("/settings/sectors", guard, async () => {
@@ -43,7 +43,7 @@ export const sectorRoutes: FastifyPluginAsync = async (app) => {
         id: sectors.id,
         name: sectors.name,
         active: sectors.active,
-        households: sql<number>`count(${households.id})::int`,
+        households: sql<number>`count(${households.id})`,
       })
       .from(sectors)
       .leftJoin(households, eq(households.sectorId, sectors.id))
@@ -59,12 +59,13 @@ export const sectorRoutes: FastifyPluginAsync = async (app) => {
       throw NAME_TAKEN;
     }
 
-    const sector = await app.db.transaction(async (tx) => {
-      const [created] = await tx
+    const sector = inTransaction(app.db, (tx) => {
+      const created = tx
         .insert(sectors)
         .values({ name: body.name, createdBy: actor.userId })
-        .returning({ id: sectors.id, name: sectors.name });
-      await recordAudit(tx, actor, {
+        .returning({ id: sectors.id, name: sectors.name })
+        .get();
+      recordAudit(tx, actor, {
         area: "settings",
         action: "sector.created",
         summary: `${actor.name} (${actor.role}) agregó el sector ${body.name}`,
@@ -89,8 +90,8 @@ export const sectorRoutes: FastifyPluginAsync = async (app) => {
       throw NAME_TAKEN;
     }
 
-    await app.db.transaction(async (tx) => {
-      const [sector] = await tx.select().from(sectors).where(eq(sectors.id, id)).for("update");
+    inTransaction(app.db, (tx) => {
+      const sector = tx.select().from(sectors).where(eq(sectors.id, id)).get();
       if (!sector) {
         throw NOT_FOUND;
       }
@@ -109,7 +110,7 @@ export const sectorRoutes: FastifyPluginAsync = async (app) => {
         return;
       }
 
-      await tx.update(sectors).set(after).where(eq(sectors.id, id));
+      tx.update(sectors).set(after).where(eq(sectors.id, id)).run();
 
       const what =
         after.active === false
@@ -117,7 +118,7 @@ export const sectorRoutes: FastifyPluginAsync = async (app) => {
           : after.active === true
             ? `volvió a poner en la lista el sector ${sector.name}`
             : `cambió el nombre del sector ${sector.name} a ${body.name}`;
-      await recordAudit(tx, actor, {
+      recordAudit(tx, actor, {
         area: "settings",
         action: "sector.updated",
         summary: `${actor.name} (${actor.role}) ${what}`,

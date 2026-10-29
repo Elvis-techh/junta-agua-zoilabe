@@ -12,6 +12,7 @@ import { z } from "zod";
 import { actorOf } from "../auth/plugin.js";
 import { newId, revokeTokens } from "../auth/session.js";
 import type { Tx } from "../db/client.js";
+import { inTransaction } from "../db/client.js";
 import { accessTokens, roles, users } from "../db/schema.js";
 import { recordAudit } from "../lib/audit.js";
 import { HttpError, parse } from "../lib/http.js";
@@ -39,7 +40,7 @@ type Params = { Params: { id: string } };
 const NOT_FOUND = new HttpError(404, "not_found", "No se encontró esa cuenta.");
 const DEVICE_NOT_FOUND = new HttpError(404, "not_found", "Ese teléfono ya no está registrado.");
 
-/** A malformed id would reach PostgreSQL as an error; answer 404 before that. */
+/** A malformed id can match nothing; answer 404 before asking the database. */
 function requireUuid(id: string, error: HttpError): void {
   if (!z.uuid().safeParse(id).success) {
     throw error;
@@ -50,9 +51,9 @@ export const userRoutes: FastifyPluginAsync<{ appUrl: string }> = async (app, op
   const guard = { preHandler: app.requirePermission("users:manage") };
 
   /** The target account, locked for the rest of the transaction. */
-  const lockUser = async (tx: Tx, id: string) => {
+  const lockUser = (tx: Tx, id: string) => {
     requireUuid(id, NOT_FOUND);
-    const [user] = await tx.select().from(users).where(eq(users.id, id)).for("update");
+    const user = tx.select().from(users).where(eq(users.id, id)).get();
     if (!user) {
       throw NOT_FOUND;
     }
@@ -76,7 +77,7 @@ export const userRoutes: FastifyPluginAsync<{ appUrl: string }> = async (app, op
         roleCode: users.roleCode,
         roleName: roles.name,
         status: users.status,
-        locked: sql<boolean>`${users.lockedAt} IS NOT NULL`,
+        locked: sql<boolean>`${users.lockedAt} IS NOT NULL`.mapWith(Boolean),
         lastLoginAt: users.lastLoginAt,
         createdAt: users.createdAt,
       })
@@ -92,7 +93,7 @@ export const userRoutes: FastifyPluginAsync<{ appUrl: string }> = async (app, op
           inArray(accessTokens.kind, ["device", "invitation"]),
           isNull(accessTokens.revokedAt),
           isNull(accessTokens.usedAt),
-          gt(accessTokens.expiresAt, sql`now()`),
+          gt(accessTokens.expiresAt, new Date()),
         ),
       );
 
@@ -110,8 +111,8 @@ export const userRoutes: FastifyPluginAsync<{ appUrl: string }> = async (app, op
     const body = parse(createBody, request.body);
     const actor = actorOf(request);
 
-    const user = await app.db.transaction(async (tx) => {
-      const [taken] = await tx.select({ id: users.id }).from(users).where(eq(users.phone, body.phone));
+    const user = inTransaction(app.db, (tx) => {
+      const taken = tx.select({ id: users.id }).from(users).where(eq(users.phone, body.phone)).get();
       if (taken) {
         throw new HttpError(409, "phone_taken", "Ya hay una cuenta con ese número de WhatsApp.");
       }
@@ -124,9 +125,9 @@ export const userRoutes: FastifyPluginAsync<{ appUrl: string }> = async (app, op
         status: "invited" as const,
         createdBy: actor.userId,
       };
-      await tx.insert(users).values(created);
+      tx.insert(users).values(created).run();
 
-      await recordAudit(tx, actor, {
+      recordAudit(tx, actor, {
         area: "users",
         action: "user.created",
         summary: `${actor.name} (${actor.role}) creó la cuenta de ${body.name} (${roleName(body.roleCode)})`,
@@ -143,15 +144,15 @@ export const userRoutes: FastifyPluginAsync<{ appUrl: string }> = async (app, op
   app.post<Params>("/users/:id/invitation", guard, async (request) => {
     const actor = actorOf(request);
 
-    const invitation = await app.db.transaction(async (tx) => {
-      const user = await lockUser(tx, request.params.id);
+    const invitation = inTransaction(app.db, (tx) => {
+      const user = lockUser(tx, request.params.id);
       if (user.status === "suspended" || user.status === "deactivated") {
         throw new HttpError(409, "not_allowed", "Reactive la cuenta antes de enviar una invitación.");
       }
 
-      const made = await createInvitation(tx, user, actor.userId, options.appUrl);
+      const made = createInvitation(tx, user, actor.userId, options.appUrl);
 
-      await recordAudit(tx, actor, {
+      recordAudit(tx, actor, {
         area: "users",
         action: "user.invitation_sent",
         summary: `${actor.name} (${actor.role}) preparó una invitación para ${user.name}`,
@@ -172,14 +173,14 @@ export const userRoutes: FastifyPluginAsync<{ appUrl: string }> = async (app, op
       notSelf(request, request.params.id, "Nadie puede cambiar su propio cargo.");
       const actor = actorOf(request);
 
-      await app.db.transaction(async (tx) => {
-        const user = await lockUser(tx, request.params.id);
+      inTransaction(app.db, (tx) => {
+        const user = lockUser(tx, request.params.id);
         if (user.roleCode === roleCode) {
           return;
         }
 
-        await tx.update(users).set({ roleCode }).where(eq(users.id, user.id));
-        await recordAudit(tx, actor, {
+        tx.update(users).set({ roleCode }).where(eq(users.id, user.id)).run();
+        recordAudit(tx, actor, {
           area: "users",
           action: "user.role_changed",
           summary: `${actor.name} (${actor.role}) cambió el cargo de ${user.name} de ${roleName(user.roleCode)} a ${roleName(roleCode)}`,
@@ -199,16 +200,16 @@ export const userRoutes: FastifyPluginAsync<{ appUrl: string }> = async (app, op
     notSelf(request, request.params.id, "No puede suspender su propia cuenta.");
     const actor = actorOf(request);
 
-    await app.db.transaction(async (tx) => {
-      const user = await lockUser(tx, request.params.id);
+    inTransaction(app.db, (tx) => {
+      const user = lockUser(tx, request.params.id);
       if (user.status !== "active" && user.status !== "invited") {
         throw new HttpError(409, "not_allowed", "Esa cuenta no está activa.");
       }
 
-      await tx.update(users).set({ status: "suspended" }).where(eq(users.id, user.id));
+      tx.update(users).set({ status: "suspended" }).where(eq(users.id, user.id)).run();
       // Signed out everywhere, at once.
-      await revokeTokens(tx, { userId: user.id }, actor.userId);
-      await recordAudit(tx, actor, {
+      revokeTokens(tx, { userId: user.id }, actor.userId);
+      recordAudit(tx, actor, {
         area: "users",
         action: "user.suspended",
         summary: `${actor.name} (${actor.role}) suspendió la cuenta de ${user.name}`,
@@ -226,8 +227,8 @@ export const userRoutes: FastifyPluginAsync<{ appUrl: string }> = async (app, op
   app.post<Params>("/users/:id/reactivate", guard, async (request) => {
     const actor = actorOf(request);
 
-    await app.db.transaction(async (tx) => {
-      const user = await lockUser(tx, request.params.id);
+    inTransaction(app.db, (tx) => {
+      const user = lockUser(tx, request.params.id);
       if (user.status !== "suspended") {
         throw new HttpError(409, "not_allowed", "Solo se puede reactivar una cuenta suspendida.");
       }
@@ -235,8 +236,8 @@ export const userRoutes: FastifyPluginAsync<{ appUrl: string }> = async (app, op
       // Their phones were forgotten when it was suspended, so either way the
       // next step is a new invitation.
       const status = user.pinHash ? "active" : "invited";
-      await tx.update(users).set({ status }).where(eq(users.id, user.id));
-      await recordAudit(tx, actor, {
+      tx.update(users).set({ status }).where(eq(users.id, user.id)).run();
+      recordAudit(tx, actor, {
         area: "users",
         action: "user.reactivated",
         summary: `${actor.name} (${actor.role}) reactivó la cuenta de ${user.name}`,
@@ -255,15 +256,15 @@ export const userRoutes: FastifyPluginAsync<{ appUrl: string }> = async (app, op
     notSelf(request, request.params.id, "No puede desactivar su propia cuenta.");
     const actor = actorOf(request);
 
-    await app.db.transaction(async (tx) => {
-      const user = await lockUser(tx, request.params.id);
+    inTransaction(app.db, (tx) => {
+      const user = lockUser(tx, request.params.id);
       if (user.status === "deactivated") {
         return;
       }
 
-      await tx.update(users).set({ status: "deactivated" }).where(eq(users.id, user.id));
-      await revokeTokens(tx, { userId: user.id }, actor.userId);
-      await recordAudit(tx, actor, {
+      tx.update(users).set({ status: "deactivated" }).where(eq(users.id, user.id)).run();
+      revokeTokens(tx, { userId: user.id }, actor.userId);
+      recordAudit(tx, actor, {
         area: "users",
         action: "user.deactivated",
         summary: `${actor.name} (${actor.role}) desactivó la cuenta de ${user.name}`,
@@ -281,14 +282,14 @@ export const userRoutes: FastifyPluginAsync<{ appUrl: string }> = async (app, op
   app.post<Params>("/users/:id/unlock", guard, async (request) => {
     const actor = actorOf(request);
 
-    await app.db.transaction(async (tx) => {
-      const user = await lockUser(tx, request.params.id);
+    inTransaction(app.db, (tx) => {
+      const user = lockUser(tx, request.params.id);
       if (!user.lockedAt) {
         return;
       }
 
-      await tx.update(users).set({ lockedAt: null, failedPinCount: 0 }).where(eq(users.id, user.id));
-      await recordAudit(tx, actor, {
+      tx.update(users).set({ lockedAt: null, failedPinCount: 0 }).where(eq(users.id, user.id)).run();
+      recordAudit(tx, actor, {
         area: "users",
         action: "user.unlocked",
         summary: `${actor.name} (${actor.role}) desbloqueó la cuenta de ${user.name}`,
@@ -316,7 +317,7 @@ export const userRoutes: FastifyPluginAsync<{ appUrl: string }> = async (app, op
           eq(accessTokens.userId, request.params.id),
           eq(accessTokens.kind, "device"),
           isNull(accessTokens.revokedAt),
-          gt(accessTokens.expiresAt, sql`now()`),
+          gt(accessTokens.expiresAt, new Date()),
         ),
       )
       .orderBy(asc(accessTokens.createdAt));
@@ -332,9 +333,9 @@ export const userRoutes: FastifyPluginAsync<{ appUrl: string }> = async (app, op
 
       requireUuid(request.params.deviceId, DEVICE_NOT_FOUND);
 
-      await app.db.transaction(async (tx) => {
-        const user = await lockUser(tx, request.params.id);
-        const [device] = await tx
+      inTransaction(app.db, (tx) => {
+        const user = lockUser(tx, request.params.id);
+        const device = tx
           .select()
           .from(accessTokens)
           .where(
@@ -344,14 +345,15 @@ export const userRoutes: FastifyPluginAsync<{ appUrl: string }> = async (app, op
               eq(accessTokens.kind, "device"),
               isNull(accessTokens.revokedAt),
             ),
-          );
+          )
+          .get();
         if (!device) {
           throw DEVICE_NOT_FOUND;
         }
 
-        await revokeTokens(tx, { ids: [device.id] }, actor.userId);
-        await revokeTokens(tx, { deviceId: device.id }, actor.userId);
-        await recordAudit(tx, actor, {
+        revokeTokens(tx, { ids: [device.id] }, actor.userId);
+        revokeTokens(tx, { deviceId: device.id }, actor.userId);
+        recordAudit(tx, actor, {
           area: "users",
           action: "user.device_removed",
           summary: `${actor.name} (${actor.role}) quitó un teléfono de la cuenta de ${user.name}`,

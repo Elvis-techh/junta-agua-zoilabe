@@ -1,36 +1,43 @@
 import { fileURLToPath } from "node:url";
 
-import { migrate } from "drizzle-orm/node-postgres/migrator";
+import type Database from "better-sqlite3";
+import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 
-import { createDb } from "./client.js";
-import { applyGrants, parseLogin } from "./roles.js";
+import type { Db } from "./client.js";
+import { applyGuards } from "./guards.js";
 
 /** drizzle/ sits beside src/ and dist/, so the same path works from either. */
 export const MIGRATIONS_FOLDER = fileURLToPath(new URL("../../drizzle", import.meta.url));
 
 /**
- * Bring the schema up to date as the admin login, then re-apply the app
- * login's grants. Drizzle skips migrations already applied, so this is safe to
- * run on every deploy.
+ * Bring the schema up to date, then put the guards back (src/db/guards.ts).
+ * Drizzle skips migrations already applied, so this is safe on every start:
+ * the server runs it before it listens (src/server.ts).
+ *
+ * Foreign keys are off while it runs, as SQLite's own instructions for
+ * changing a table say (Lindero's `runMigrations` explains it in full): a
+ * changed column means building a new table and dropping the old one, which
+ * enforcement would refuse the moment any row pointed at it. It has to be
+ * set out here, because inside the transaction Drizzle wraps the migrations
+ * in, the PRAGMA does nothing. `foreign_key_check` afterwards stops the start
+ * if a migration left a broken reference behind.
  */
-export async function runMigrations(adminUrl: string, appUrl: string): Promise<void> {
-  const { db, pool } = createDb(adminUrl, 1);
-
+export function runMigrations(db: Db, sqlite: Database.Database, migrationsFolder = MIGRATIONS_FOLDER): void {
+  sqlite.pragma("foreign_keys = OFF");
   try {
-    await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
+    migrate(db, { migrationsFolder });
 
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-      await applyGrants(client, parseLogin(appUrl).user);
-      await client.query("COMMIT");
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
+    const broken = sqlite.pragma("foreign_key_check") as Array<{ table: string; rowid: number; parent: string }>;
+    if (broken.length > 0) {
+      const sample = broken
+        .slice(0, 5)
+        .map((row) => `${row.table} row ${row.rowid} → ${row.parent}`)
+        .join(", ");
+      throw new Error(`The migrations left ${broken.length} broken reference(s): ${sample}. Not starting.`);
     }
+
+    applyGuards(sqlite);
   } finally {
-    await pool.end();
+    sqlite.pragma("foreign_keys = ON");
   }
 }

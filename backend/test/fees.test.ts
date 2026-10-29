@@ -35,9 +35,9 @@ describe("a house's last payment", () => {
     t = await buildTestApp();
     treasurerId = (await signedInUser(t, "tesorero")).id;
 
-    const [sector] = await t.adminDb.insert(sectors).values({ name: "El Centro" }).returning();
+    const [sector] = await t.db.insert(sectors).values({ name: "El Centro" }).returning();
     householdId = newId();
-    await t.adminDb.insert(households).values({
+    await t.db.insert(households).values({
       id: householdId,
       code: "Z-0001",
       sectorId: sector!.id,
@@ -46,9 +46,9 @@ describe("a house's last payment", () => {
       status: "active",
       submissionId: newId(),
     });
-    const [month] = await t.adminDb.insert(months).values({ month: "2026-10-01", status: "open" }).returning();
+    const [month] = await t.db.insert(months).values({ month: "2026-10-01", status: "open" }).returning();
     monthId = month!.id;
-    const [fee] = await t.adminDb.select().from(categories).where(eq(categories.name, "Cuota mensual"));
+    const [fee] = await t.db.select().from(categories).where(eq(categories.name, "Cuota mensual"));
     categoryId = fee!.id;
   });
   after(async () => {
