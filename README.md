@@ -113,13 +113,43 @@ production). Run `user:first-admin` again afterwards.
 
 ### Testing on a phone
 
-The phone must be on the same Wi-Fi as the computer.
+The app runs on the computer and the phone opens it over
+[Tailscale](https://tailscale.com), a private network between your own
+devices, so the phone can be anywhere with signal. Nothing is published
+while testing this way: pushing a branch or merging to `main` does not
+change anything people use until the one deployment at the end of Phase 3.
 
-1. Find the computer's address on the Wi-Fi: `hostname -I` (the first
-   number, e.g. `192.168.1.37`).
-2. In `backend/.env`, set `APP_URL=http://192.168.1.37:5173`, so invitation
-   links point at the computer instead of `localhost`.
-3. Restart `npm run dev`, create an invitation, and open it on the phone.
+Once:
+
+1. Install Tailscale on the computer and on the phone, signed in to the same
+   account. `tailscale ip -4` on the computer prints its address (the
+   builder's computer is `100.111.187.126`).
+2. In `backend/.env`, point invitation links at that address and let it in:
+
+   ```bash
+   APP_URL=http://100.111.187.126:5173
+   FRONTEND_ORIGINS=http://localhost:5173,http://100.111.187.126:5173
+   ```
+
+3. Set the computer not to sleep while plugged in, so it is there when the
+   phone looks for it.
+
+Each time:
+
+1. On the computer, switch to the branch to try (`git switch <branch>`), run
+   `npm run db:migrate` in case it adds a database change, and start
+   `npm run dev`.
+2. Create an invitation and open it on the phone, or open
+   `http://100.111.187.126:5173` directly if the phone is already signed in.
+   Invitations made before `APP_URL` changed still point at `localhost`.
+3. When done, `git switch main` again.
+
+Away from the computer, leave it on with Claude Code open in this folder
+and Remote Control turned on (`/remote-control`). From the Claude app on the
+phone, ask Claude to switch to the branch and start `npm run dev` in the
+background, then open the address above. A phone on the same Wi-Fi as the
+computer can also use the computer's Wi-Fi address (`ipconfig` on Windows,
+`hostname -I` on Ubuntu) in place of the Tailscale one.
 
 Screens, sign-in and the offline queue (signal lost while the app is open)
 work this way. Three things need the secure (https) address that only the

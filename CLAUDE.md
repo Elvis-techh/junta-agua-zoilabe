@@ -63,7 +63,9 @@ their own throwaway databases on it.
 1. **One change per branch, started from the latest `main`**, named after its
    purpose, e.g. `feat/census-paper-mode` or `fix/pin-lockout-count`.
 2. **Prove it before merging.** A test that fails without the change and
-   passes with it, plus `npm run typecheck` and `npm test`.
+   passes with it, plus `npm run typecheck` and `npm test`. A change people
+   see on screen is also tried on a phone over Tailscale (README, "Testing
+   on a phone") before it merges.
 3. **One pull request per change.** The description says what was wrong or
    missing, what changed, how it was checked, and what the owner should look
    at. It is the permanent record of why the change exists.

@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 77, taken 2026-10-25.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 82, taken 2026-10-29.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -388,12 +388,12 @@ Five phases take the app from foundation to handover, and each ends with a test 
 
 **Local first**
 
-Phases 1 to 3 are built and tested on the builder's computer before anything changes on the droplet (decided 2026-10-24). Each change merges to `main` only once its tests pass, so the droplet work at the end is one deployment, not five. Checks that need a phone, such as Phase 1's ten paper forms, run on the same Wi-Fi as the computer.
+Phases 1 to 3 are built and tested on the builder's computer before anything changes on the droplet (decided 2026-10-24). Each change merges to `main` only once its tests pass, so the droplet work at the end is one deployment, not five. Checks that need a phone, such as Phase 1's ten paper forms, run against the computer, from the same Wi-Fi or over Tailscale.
 
 | Phase | Status | Built and tested locally | Waits for the droplet |
 |---|---|---|---|
 | 0. Foundation | Merged | Invitation and PIN login, roles and permissions, history log, backup and restore scripts (merged in PR #1 on 2026-10-24) | Subdomain, the data-separation check, backups to the storage bucket, a restore on a test server |
-| 1. Census | Merged | Everything, including paper entry mode and the offline queue | Nothing |
+| 1. Census | Merged | Everything, including paper entry mode and the offline queue (merged in PRs #3 to #5 on 2026-10-25). Its "done when" test, the secretary typing in ten paper forms from a phone, has not been run yet | Nothing |
 | 2. Finances | Next | Everything; receipt photos stay on the computer until the bucket is connected | Receipt photos in the storage bucket |
 | 3. Close, reports and guests | Not started | Everything, including print layouts and guest invitations | A guest signing in from a municipal phone at the real address |
 | 4. Handover | Not started | A first draft of the runbook | The restore test, board-owned accounts, training and installing on every director's phone |
@@ -417,7 +417,16 @@ Phases 1 to 3 are built and tested on the builder's computer before anything cha
 - The consent line on the review screen reads: "Al guardar, la familia acepta que la Junta de Agua guarde estos datos solo para el servicio de agua."
 - A family can be registered without a phone, with "No tiene teléfono" or "Prefiere no darlo" (see Module 1).
 
+**Decisions made on 29 October 2026**
+
+- A payment goes to the month or months the treasurer selects when recording it, as written on the paper receipt. The app does not move money to the oldest unpaid month by itself.
+- Before the first payment is recorded in the app, the treasurer enters what each house already owes, copied from the paper receipt book.
+- If the paper book shows late fees already owed, the treasurer enters them separately from the unpaid monthly fees.
+- The base monthly fee, the late fee (mora) and the reconnection fee are set in Configuración. The board can raise or lower them at any time; a change starts from its date and never rewrites months already charged or paid.
+- Phone testing runs against the builder's computer over Tailscale. GitHub Codespaces were tried and set aside as too slow.
+
 **Still open**
 
 - [ ] Check the data separation on the droplet (own database login, storage key and backup for each app) before the first deployment. This has not been done yet and will be updated later.
+- [ ] How the treasurer enters what each house already owes: month by month (so each unpaid month can carry its own late fee), or one total per house.
 
