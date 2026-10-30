@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 91, taken 2026-10-29.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 93, taken 2026-10-30.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -388,7 +388,7 @@ Five phases take the app from foundation to handover, and each ends with a test 
 
 **Local first**
 
-Phases 1 to 3 are built and tested on the builder's computer before anything changes on the droplet (decided 2026-10-24). Each change merges to `main` only once its tests pass, so the droplet work at the end is one deployment, not five. Checks that need a phone, such as Phase 1's ten paper forms, run against the computer, from the same Wi-Fi or over Tailscale.
+Phases 1 to 3 are built and tested on the builder's computer before anything changes on the droplet (decided 2026-10-24). Each change merges to `main` only once its tests pass, so the droplet work at the end is one deployment, not five. Checks that need a phone, such as Phase 1's ten paper forms, run on the droplet's test copy once it is built, and until then against the computer from the same Wi-Fi.
 
 | Phase | Status | Built and tested locally | Waits for the droplet |
 |---|---|---|---|
@@ -423,9 +423,14 @@ Phases 1 to 3 are built and tested on the builder's computer before anything cha
 - Before the first payment is recorded in the app, the treasurer enters what each house already owes, copied from the paper receipt book.
 - If the paper book shows late fees already owed, the treasurer enters them separately from the unpaid monthly fees.
 - The base monthly fee, the late fee (mora) and the reconnection fee are set in Configuración. The board can raise or lower them at any time; a change starts from its date and never rewrites months already charged or paid.
-- Phone testing runs against the builder's computer over Tailscale. GitHub Codespaces were tried and set aside as too slow.
+- Phone testing runs against the builder's computer over Tailscale (dropped on 30 October). GitHub Codespaces were tried and set aside as too slow.
 - The database is SQLite, one file like Lindero's and the weight station's, instead of PostgreSQL. The rules PostgreSQL's two logins enforced (nothing deleted, history never changed) are kept by the database file itself.
 - A test copy of the app will run on the droplet, at its own address and with made-up data only, so a change can be tried from a phone before it is merged. It is built after the switch to SQLite.
+
+**Decisions made on 30 October 2026**
+
+- Tailscale is dropped: it reaches the builder's computer only while that computer is on, so a phone away from it cannot test anything. Phone checks move to the droplet's test copy (29 October), which stays on.
+- Pull request #7 (the Tailscale phone steps) is closed without merging.
 
 **Still open**
 
