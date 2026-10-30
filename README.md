@@ -34,7 +34,9 @@ changing how money, permissions or the history log work.
 - **Database: SQLite** (decided 29 October 2026), one file like Lindero's and
   Báscula Central's, so the droplet needs no database server. The rules that
   PostgreSQL's two logins enforced are now triggers in the file itself (see
-  "The database" below).
+  "The database" below). If the apps outgrow it,
+  [docs/postgres-readiness.md](docs/postgres-readiness.md) maps the move
+  back; a trial copy of the data into PostgreSQL passed every check.
 
 See the phase table at the end of the app plan.
 
@@ -130,6 +132,10 @@ catches any entry changed that way.
 `BACKUP_ENCRYPTION_KEY` (`openssl rand -base64 32`). `npm run db:restore`
 puts a backup into a new file and checks it: see
 [docs/restore.md](docs/restore.md).
+
+Moving to PostgreSQL one day: [docs/postgres-readiness.md](docs/postgres-readiness.md)
+says when it would be worth it, what changes, and how to move the data
+with checks.
 
 ### Testing on a phone
 
