@@ -6,45 +6,65 @@
  *
  * Rules every table follows:
  *
- *  - Nothing is deleted. The app's database login has no DELETE grant on any
- *    table (src/db/grants.sql). Records carry a status, a revoked date or an
- *    end date instead.
+ *  - Nothing is deleted. Every table has a trigger that refuses DELETE
+ *    (src/db/guards.ts). Records carry a status, a revoked date or an end
+ *    date instead.
  *  - Every row says who created it and when. `created_by` is null only for
  *    rows the system writes itself (the seed, the first administrator).
  *  - Money is whole centavos in integer columns, never a float or a decimal.
- *  - Instants are `timestamptz` (stored in UTC). Calendar facts — the day a
- *    payment was received, the month it covers — are `date`, decided in
- *    Honduras time by the app.
+ *  - Instants are ISO-8601 text in UTC ("2026-10-23T18:04:05.123Z"), read
+ *    back as a Date. Text in that one fixed form sorts by time, reads plainly
+ *    when the file is opened, and moves to PostgreSQL unchanged. Calendar
+ *    facts — the day a payment was received, the month it covers — are text
+ *    "2026-10-23", decided in Honduras time by the app.
+ *  - IDs are text UUIDs made by the app; lists the board edits (sectors,
+ *    categories, fee rates) count up from 1.
  */
 import { sql } from "drizzle-orm";
+import type { AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 import {
-  bigint,
-  bigserial,
-  boolean,
   check,
-  date,
-  doublePrecision,
+  customType,
   index,
   integer,
-  jsonb,
-  pgTable,
   primaryKey,
-  serial,
+  real,
+  sqliteTable,
   text,
-  timestamp,
   uniqueIndex,
-  uuid,
-} from "drizzle-orm/pg-core";
+} from "drizzle-orm/sqlite-core";
 
-const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
-const instant = (name: string) => timestamp(name, { withTimezone: true });
+/** An instant, kept as ISO-8601 UTC text and handed to the code as a Date. */
+const instant = customType<{ data: Date; driverData: string }>({
+  dataType: () => "text",
+  toDriver: (value) => value.toISOString(),
+  fromDriver: (value) => new Date(value),
+});
+/** Now, in the same form `toISOString()` writes: milliseconds and a Z. */
+const NOW = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
+const createdAt = () => instant("created_at").notNull().default(NOW);
+
+/** Text UUIDs, made by the app (`newId()`). */
+const uuid = (name: string) => text(name);
+/** A calendar date, "2026-10-23". */
+const date = (name: string) => text(name);
+const boolean = (name: string) => integer(name, { mode: "boolean" });
+/** Whole numbers; SQLite's integers are 64-bit, so this holds any amount of centavos. */
+const bigint = (name: string) => integer(name);
+const serial = (name: string) => integer(name).primaryKey({ autoIncrement: true });
+/** JSON, kept as text. */
+const json = <T = unknown>(name: string) => text(name, { mode: "json" }).$type<T>();
+
+/** `column` is exactly `digits` characters, all of them 0–9. */
+const onlyDigits = (column: AnySQLiteColumn, digits: number) =>
+  sql`(length(${column}) = ${sql.raw(String(digits))} AND ${column} NOT GLOB '*[^0-9]*')`;
 
 // ---------------------------------------------------------------------------
 // Users and access
 // ---------------------------------------------------------------------------
 
 /** The eight board roles. `code` is what the code compares; `name` is shown. */
-export const roles = pgTable("roles", {
+export const roles = sqliteTable("roles", {
   code: text("code").primaryKey(),
   name: text("name").notNull(),
   sortOrder: integer("sort_order").notNull(),
@@ -54,9 +74,9 @@ export const roles = pgTable("roles", {
  * Which permission codes each role holds — the Permisos tab edits this.
  *
  * A permission is switched off by setting `granted` to false, not by deleting
- * the row, because the app's login cannot delete.
+ * the row, because no row can be deleted.
  */
-export const rolePermissions = pgTable(
+export const rolePermissions = sqliteTable(
   "role_permissions",
   {
     roleCode: text("role_code")
@@ -64,13 +84,13 @@ export const rolePermissions = pgTable(
       .references(() => roles.code),
     permission: text("permission").notNull(),
     granted: boolean("granted").notNull(),
-    updatedAt: instant("updated_at").notNull().defaultNow(),
+    updatedAt: instant("updated_at").notNull().default(NOW),
     updatedBy: uuid("updated_by").references(() => users.id),
   },
   (table) => [primaryKey({ columns: [table.roleCode, table.permission] })],
 );
 
-export const users = pgTable(
+export const users = sqliteTable(
   "users",
   {
     id: uuid("id").primaryKey(),
@@ -92,7 +112,7 @@ export const users = pgTable(
   },
   (table) => [
     uniqueIndex("users_phone_unique").on(table.phone),
-    check("users_phone_digits", sql`${table.phone} ~ '^[0-9]{8}$'`),
+    check("users_phone_digits", onlyDigits(table.phone, 8)),
   ],
 );
 
@@ -103,7 +123,7 @@ export const users = pgTable(
  * used to sign in. A session points at the device it was opened on: removing
  * the device ends its sessions.
  */
-export const accessTokens = pgTable(
+export const accessTokens = sqliteTable(
   "access_tokens",
   {
     id: uuid("id").primaryKey(),
@@ -140,14 +160,14 @@ export const accessTokens = pgTable(
  * (src/lib/permissions.ts, GUEST_PERMISSIONS). History, users and settings
  * can never be among them.
  */
-export const guestInvitations = pgTable(
+export const guestInvitations = sqliteTable(
   "guest_invitations",
   {
     id: uuid("id").primaryKey(),
     guestName: text("guest_name").notNull(),
     email: text("email").notNull(),
     passwordHash: text("password_hash").notNull(),
-    permissions: text("permissions").array().notNull(),
+    permissions: json<string[]>("permissions").notNull(),
     expiresAt: instant("expires_at").notNull(),
     revokedAt: instant("revoked_at"),
     revokedBy: uuid("revoked_by").references(() => users.id),
@@ -164,8 +184,8 @@ export const guestInvitations = pgTable(
 // Census
 // ---------------------------------------------------------------------------
 
-export const sectors = pgTable("sectors", {
-  id: serial("id").primaryKey(),
+export const sectors = sqliteTable("sectors", {
+  id: serial("id"),
   name: text("name").notNull().unique(),
   active: boolean("active").notNull().default(true),
   createdAt: createdAt(),
@@ -173,7 +193,7 @@ export const sectors = pgTable("sectors", {
 });
 
 /** One row per person. One person can own several households. */
-export const people = pgTable(
+export const people = sqliteTable(
   "people",
   {
     id: uuid("id").primaryKey(),
@@ -189,14 +209,14 @@ export const people = pgTable(
   },
   (table) => [
     uniqueIndex("people_id_number_unique").on(table.idNumber),
-    check("people_id_number_digits", sql`${table.idNumber} ~ '^[0-9]{13}$'`),
-    check("people_phone_digits", sql`${table.phone} IS NULL OR ${table.phone} ~ '^[0-9]{8}$'`),
+    check("people_id_number_digits", onlyDigits(table.idNumber, 13)),
+    check("people_phone_digits", sql`${table.phone} IS NULL OR ${onlyDigits(table.phone, 8)}`),
     // A phone, or the reason there is none — never both, never neither.
     check("people_phone_or_reason", sql`(${table.phone} IS NULL) <> (${table.phoneMissing} IS NULL)`),
   ],
 );
 
-export const households = pgTable(
+export const households = sqliteTable(
   "households",
   {
     id: uuid("id").primaryKey(),
@@ -206,8 +226,8 @@ export const households = pgTable(
       .notNull()
       .references(() => sectors.id),
     references: text("references").notNull(),
-    gpsLat: doublePrecision("gps_lat"),
-    gpsLng: doublePrecision("gps_lng"),
+    gpsLat: real("gps_lat"),
+    gpsLng: real("gps_lng"),
     waterConnection: text("water_connection", {
       enum: ["connected", "not_connected", "shared"],
     }).notNull(),
@@ -233,7 +253,7 @@ export const households = pgTable(
 );
 
 /** Who owns (or rents, or looks after) which household, and from when to when. */
-export const householdOwners = pgTable(
+export const householdOwners = sqliteTable(
   "household_owners",
   {
     id: uuid("id").primaryKey(),
@@ -253,7 +273,7 @@ export const householdOwners = pgTable(
 );
 
 /** A monthly amount different from the base fee, with the board's reason. */
-export const householdFees = pgTable(
+export const householdFees = sqliteTable(
   "household_fees",
   {
     id: uuid("id").primaryKey(),
@@ -278,10 +298,10 @@ export const householdFees = pgTable(
 // ---------------------------------------------------------------------------
 
 /** Base monthly fee, late fee (mora) and reconnection fee, each from a start date. */
-export const feeRates = pgTable(
+export const feeRates = sqliteTable(
   "fee_rates",
   {
-    id: serial("id").primaryKey(),
+    id: serial("id"),
     kind: text("kind", { enum: ["base_monthly", "late_fee", "reconnection"] }).notNull(),
     amountCentavos: integer("amount_centavos").notNull(),
     startsOn: date("starts_on").notNull(),
@@ -294,10 +314,10 @@ export const feeRates = pgTable(
   ],
 );
 
-export const categories = pgTable(
+export const categories = sqliteTable(
   "categories",
   {
-    id: serial("id").primaryKey(),
+    id: serial("id"),
     kind: text("kind", { enum: ["income", "expense"] }).notNull(),
     name: text("name").notNull(),
     active: boolean("active").notNull().default(true),
@@ -308,13 +328,13 @@ export const categories = pgTable(
 );
 
 /** One row per calendar month; `month` is its first day. */
-export const months = pgTable(
+export const months = sqliteTable(
   "months",
   {
-    id: serial("id").primaryKey(),
+    id: serial("id"),
     month: date("month").notNull(),
     status: text("status", { enum: ["open", "prepared", "closed"] }).notNull(),
-    cashCountedCentavos: bigint("cash_counted_centavos", { mode: "number" }),
+    cashCountedCentavos: bigint("cash_counted_centavos"),
     preparedBy: uuid("prepared_by").references(() => users.id),
     preparedAt: instant("prepared_at"),
     approvedBy: uuid("approved_by").references(() => users.id),
@@ -323,7 +343,7 @@ export const months = pgTable(
   },
   (table) => [
     uniqueIndex("months_month_unique").on(table.month),
-    check("months_first_day", sql`extract(day from ${table.month}) = 1`),
+    check("months_first_day", sql`substr(${table.month}, 9, 2) = '01'`),
     // Separation of duties, in the database as well as in the app.
     check(
       "months_preparer_not_approver",
@@ -335,11 +355,11 @@ export const months = pgTable(
 /**
  * Every income and expense, as permanent entries.
  *
- * Append-only: the app's login can insert and read, never update or delete. A
+ * Append-only: rows are inserted and read, never updated or deleted. A
  * mistake is fixed with a reversal row whose `reverses_id` points at the
  * original and whose amount has the opposite sign; both stay visible.
  */
-export const transactions = pgTable(
+export const transactions = sqliteTable(
   "transactions",
   {
     id: uuid("id").primaryKey(),
@@ -353,9 +373,9 @@ export const transactions = pgTable(
       .references(() => months.id),
     occurredOn: date("occurred_on").notNull(),
     /** Signed: a reversal carries the opposite sign of the entry it reverses. */
-    amountCentavos: bigint("amount_centavos", { mode: "number" }).notNull(),
+    amountCentavos: bigint("amount_centavos").notNull(),
     /** The month(s) a fee payment covers, as first-of-month dates. */
-    monthsCovered: date("months_covered").array(),
+    monthsCovered: json<string[]>("months_covered"),
     paymentMethod: text("payment_method", { enum: ["cash", "transfer", "other"] }),
     bankReference: text("bank_reference"),
     /** The number printed on the paper receipt handed to the payer. */
@@ -380,13 +400,13 @@ export const transactions = pgTable(
     ),
     check(
       "transactions_transfer_reference",
-      sql`${table.paymentMethod} IS DISTINCT FROM 'transfer' OR ${table.bankReference} IS NOT NULL`,
+      sql`${table.paymentMethod} IS NOT 'transfer' OR ${table.bankReference} IS NOT NULL`,
     ),
   ],
 );
 
 /** Where each receipt photo sits in the private storage bucket. */
-export const receiptFiles = pgTable("receipt_files", {
+export const receiptFiles = sqliteTable("receipt_files", {
   id: uuid("id").primaryKey(),
   transactionId: uuid("transaction_id")
     .notNull()
@@ -411,10 +431,10 @@ export const receiptFiles = pgTable("receipt_files", {
  * Who acted is copied in (name and role at that moment) rather than only
  * pointed at, so the log still reads correctly after a rename or role change.
  */
-export const auditLog = pgTable(
+export const auditLog = sqliteTable(
   "audit_log",
   {
-    id: bigserial("id", { mode: "number" }).primaryKey(),
+    id: serial("id"),
     occurredAt: instant("occurred_at").notNull(),
     actorUserId: uuid("actor_user_id").references(() => users.id),
     actorGuestId: uuid("actor_guest_id").references(() => guestInvitations.id),
@@ -428,8 +448,8 @@ export const auditLog = pgTable(
     summary: text("summary").notNull(),
     entityType: text("entity_type"),
     entityId: text("entity_id"),
-    before: jsonb("before"),
-    after: jsonb("after"),
+    before: json("before"),
+    after: json("after"),
     reason: text("reason"),
     device: text("device"),
     prevHash: text("prev_hash").notNull(),
@@ -448,12 +468,12 @@ export const auditLog = pgTable(
  * be read back. The current value of a key is the newest row whose
  * `effective_from` is not in the future.
  */
-export const settings = pgTable(
+export const settings = sqliteTable(
   "settings",
   {
-    id: serial("id").primaryKey(),
+    id: serial("id"),
     key: text("key").notNull(),
-    value: jsonb("value").notNull(),
+    value: json("value").notNull(),
     effectiveFrom: date("effective_from").notNull(),
     createdAt: createdAt(),
     createdBy: uuid("created_by").references(() => users.id),

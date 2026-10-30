@@ -1,31 +1,26 @@
 /**
- * Restore a backup into a NEW database, check it, and report what it holds.
+ * Restore a backup into a NEW database file, check it, and report what it holds.
  *
- *   npm run db:restore -- --file backups/zoilabe-….dump.enc --into zoilabe_restored
- *   npm run db:restore -- --from-spaces latest --into zoilabe_restored
+ *   npm run db:restore -- --file backups/zoilabe-….db.enc --into data/restored.db
+ *   npm run db:restore -- --from-spaces latest --into data/restored.db
  *
- * It never writes into the live database: `--into` must name a database that
- * does not exist yet. Switching the app over to the restored copy is a
+ * It never writes over the live database: `--into` must name a file that
+ * does not exist yet. Putting the restored copy in the live one's place is a
  * separate, deliberate step in docs/restore.md. Used for the restore test
  * before launch and every three months, and for a real recovery.
  *
- * Needs DATABASE_SUPERUSER_URL (to create the database), DATABASE_ADMIN_URL,
- * DATABASE_URL and BACKUP_ENCRYPTION_KEY.
+ * Needs BACKUP_ENCRYPTION_KEY, and SPACES_* for --from-spaces.
  */
-import { mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
-import { sql } from "drizzle-orm";
-import pg from "pg";
-
+import { loadConfig } from "../config/env.js";
 import { createDb } from "../db/client.js";
-import { requireEnv } from "../db/env.js";
-import { applyGrants, ensureDatabase, parseLogin } from "../db/roles.js";
 import { verifyChain } from "../lib/audit.js";
 import { decryptFile, parseBackupKey } from "../lib/backupFiles.js";
-import { runPgTool } from "../lib/pgTools.js";
+import { countRows, databaseFileProblem } from "../lib/snapshot.js";
 import { spacesFromEnv } from "../lib/spaces.js";
 
 const { values } = parseArgs({
@@ -36,40 +31,26 @@ const { values } = parseArgs({
   },
 });
 
-function withDatabase(url: string, database: string): string {
-  const parsed = new URL(url);
-  parsed.pathname = `/${database}`;
-  return parsed.toString();
-}
-
-const into = values.into ?? "";
-if (!/^[a-z_][a-z0-9_]{0,62}$/.test(into)) {
-  console.error("Name the new database with --into, e.g. --into zoilabe_restored");
+if (!values.into) {
+  console.error("Name the new database file with --into, e.g. --into data/restored.db");
   process.exit(1);
 }
 
-const superuserUrl = requireEnv("DATABASE_SUPERUSER_URL");
-const adminUrl = requireEnv("DATABASE_ADMIN_URL");
-const appUrl = requireEnv("DATABASE_URL");
+const into = resolve(values.into);
 const key = parseBackupKey(process.env.BACKUP_ENCRYPTION_KEY);
 
-if (into === parseLogin(adminUrl).database) {
-  console.error(`"${into}" is the live database. Restore into a new name, then follow docs/restore.md.`);
+if (into === loadConfig().databasePath) {
+  console.error(`${into} is the live database. Restore into a new file, then follow docs/restore.md.`);
   process.exit(1);
 }
-
-const check = new pg.Client({ connectionString: superuserUrl });
-await check.connect();
-const exists = await check.query("SELECT 1 FROM pg_database WHERE datname = $1", [into]);
-await check.end();
-if (exists.rowCount) {
-  console.error(`A database called "${into}" already exists. Choose another name.`);
+if (existsSync(into)) {
+  console.error(`${into} already exists. Choose another name.`);
   process.exit(1);
 }
 
 const work = mkdtempSync(join(tmpdir(), "zoilabe-restore-"));
-const encrypted = join(work, "backup.dump.enc");
-const plain = join(work, "backup.dump");
+const encrypted = join(work, "backup.db.enc");
+const plain = join(work, "backup.db");
 
 try {
   let source: string;
@@ -92,41 +73,28 @@ try {
   }
 
   await decryptFile(source, plain, key);
-
-  const targetAdmin = withDatabase(adminUrl, into);
-  const targetApp = withDatabase(appUrl, into);
-  await ensureDatabase(superuserUrl, targetAdmin, targetApp);
-  await runPgTool("pg_restore", ["--no-owner", "--exit-on-error", `--dbname=${targetAdmin}`, plain]);
-
-  const { db, pool } = createDb(targetAdmin, 1);
-  try {
-    const client = await pool.connect();
-    try {
-      await applyGrants(client, parseLogin(appUrl).user);
-    } finally {
-      client.release();
-    }
-
-    const counts = await db.execute<{ table: string; rows: string }>(sql`
-      SELECT 'users' AS table, count(*)::text AS rows FROM users
-      UNION ALL SELECT 'households', count(*)::text FROM households
-      UNION ALL SELECT 'people', count(*)::text FROM people
-      UNION ALL SELECT 'transactions', count(*)::text FROM transactions
-      UNION ALL SELECT 'audit_log', count(*)::text FROM audit_log
-      UNION ALL SELECT 'settings', count(*)::text FROM settings`);
-    const chain = await verifyChain(db);
-
-    console.log(`\nRestored into "${into}".`);
-    for (const row of counts.rows) console.log(`  ${row.table.padEnd(13)} ${row.rows}`);
-    console.log(
-      chain.ok
-        ? `  History log chain intact (${chain.checked} entries).`
-        : `  History log chain BROKEN at entry ${chain.brokenAtId}.`,
-    );
-    if (!chain.ok) process.exitCode = 1;
-  } finally {
-    await pool.end();
+  const problem = databaseFileProblem(plain);
+  if (problem) {
+    throw new Error(`The backup opened but cannot be trusted. ${problem}`);
   }
+  copyFileSync(plain, into);
+
+  const { db, sqlite } = createDb(into);
+  let chain;
+  try {
+    chain = verifyChain(db);
+  } finally {
+    sqlite.close();
+  }
+
+  console.log(`\nRestored into ${into}.`);
+  for (const row of countRows(into)) console.log(`  ${row.table.padEnd(13)} ${row.rows}`);
+  console.log(
+    chain.ok
+      ? `  History log chain intact (${chain.checked} entries).`
+      : `  History log chain BROKEN at entry ${chain.brokenAtId}.`,
+  );
+  if (!chain.ok) process.exitCode = 1;
 } catch (error) {
   console.error((error as Error).message);
   process.exitCode = 1;

@@ -24,13 +24,13 @@ export interface Invitation {
  * The app does not send the message itself (App Plan: version 1 leaves out
  * automatic WhatsApp sending); it opens WhatsApp for the person to press send.
  */
-export async function createInvitation(
+export function createInvitation(
   tx: Tx,
   user: { id: string; name: string; phone: string },
   createdBy: string | null,
   appUrl: string,
-): Promise<Invitation> {
-  const unused = await tx
+): Invitation {
+  const unused = tx
     .select({ id: accessTokens.id })
     .from(accessTokens)
     .where(
@@ -40,12 +40,13 @@ export async function createInvitation(
         isNull(accessTokens.usedAt),
         isNull(accessTokens.revokedAt),
       ),
-    );
+    )
+    .all();
   if (unused.length > 0) {
-    await revokeTokens(tx, { ids: unused.map((row) => row.id) }, createdBy);
+    revokeTokens(tx, { ids: unused.map((row) => row.id) }, createdBy);
   }
 
-  const { token, expiresAt } = await issueToken(tx, {
+  const { token, expiresAt } = issueToken(tx, {
     userId: user.id,
     kind: "invitation",
     lifetimeMs: INVITATION_LIFETIME_MS,

@@ -8,15 +8,16 @@
 
 [Unit]
 Description=Junta de Agua Zoilabe nightly backup
-After=postgresql.service
 
 [Service]
 Type=oneshot
 User=zoilabe
 Group=zoilabe
 WorkingDirectory=/opt/zoilabe/backend
-# The admin login's URL, the encryption key and the Spaces key live in this
-# file, readable only by root; the API's own .env does not carry them.
+# The API's settings (DATABASE_PATH), then the encryption key and the Spaces
+# key, which live in .env.backup, readable only by root; the API's own .env
+# does not carry them.
+EnvironmentFile=/opt/zoilabe/backend/.env
 EnvironmentFile=/opt/zoilabe/backend/.env.backup
 ExecStart=/opt/node22/bin/node dist/scripts/backup.js
 
@@ -24,4 +25,6 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-ReadWritePaths=/opt/zoilabe/backend/backups
+# data: it reads the live file and files "last backup" there.
+ReadWritePaths=/opt/zoilabe/backend/backups /opt/zoilabe/backend/data
+UMask=0077

@@ -15,6 +15,7 @@ import { z } from "zod";
 import { actorOf } from "../auth/plugin.js";
 import { newId } from "../auth/session.js";
 import type { DbOrTx, Tx } from "../db/client.js";
+import { inTransaction, searchText } from "../db/client.js";
 import { householdFees, householdOwners, households, people, sectors, users } from "../db/schema.js";
 import { recordAudit } from "../lib/audit.js";
 import {
@@ -32,13 +33,6 @@ import { differentFeeStart, lastPaidMonth } from "../lib/fees.js";
 import { HttpError, parse } from "../lib/http.js";
 import { baseMonthlyFee, currentSetting } from "../lib/settings.js";
 import { businessToday, formatCalendarDate } from "../lib/time.js";
-
-/**
- * Puts household registrations in single file, so two entries saved at the
- * same moment cannot take the same code and a retried submission finds the
- * first one. Held until the transaction ends.
- */
-const HOUSEHOLD_CODE_LOCK_KEY = 7_311_003;
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Escriba la fecha completa.");
 const fullName = z
@@ -147,13 +141,9 @@ function requireUuid(id: string, error: HttpError): void {
   }
 }
 
-/** Lowercase without accents, so "perez" finds "Pérez". Same rule as `searchable()` below. */
-function normalize(value: string): string {
-  return value.toLocaleLowerCase("es-HN").normalize("NFD").replace(/[̀-ͯ]/g, "");
-}
-
+/** A column as the search compares it: `searchText`'s rule, run inside SQLite (src/db/client.ts). */
 function searchable(column: SQLWrapper): SQL {
-  return sql`translate(lower(${column}), 'áéíóúüñ', 'aeiouun')`;
+  return sql`search_text(${column})`;
 }
 
 /** The person registered for a household now: the ownership row with no end date. */
@@ -172,18 +162,19 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
   const deactivate = { preHandler: app.requirePermission("census:deactivate") };
 
   /** A person's households, newest code last: for the duplicate check and the file. */
-  const householdsOf = async (db: DbOrTx, personId: string) =>
+  const householdsOf = (db: DbOrTx, personId: string) =>
     db
       .select({ id: households.id, code: households.code, status: households.status, sectorName: sectors.name })
       .from(householdOwners)
       .innerJoin(households, eq(households.id, householdOwners.householdId))
       .innerJoin(sectors, eq(sectors.id, households.sectorId))
       .where(and(eq(householdOwners.personId, personId), isNull(householdOwners.endsOn)))
-      .orderBy(asc(households.code));
+      .orderBy(asc(households.code))
+      .all();
 
-  const lockHousehold = async (tx: Tx, id: string) => {
+  const lockHousehold = (tx: Tx, id: string) => {
     requireUuid(id, NOT_FOUND);
-    const [household] = await tx.select().from(households).where(eq(households.id, id)).for("update");
+    const household = tx.select().from(households).where(eq(households.id, id)).get();
     if (!household) {
       throw NOT_FOUND;
     }
@@ -203,8 +194,8 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
 
     return {
       sectors: sectorRows,
-      genders: (await currentSetting<string[]>(app.db, "genders", day)) ?? [],
-      baseFeeCentavos: await baseMonthlyFee(app.db, day),
+      genders: currentSetting<string[]>(app.db, "genders", day) ?? [],
+      baseFeeCentavos: baseMonthlyFee(app.db, day),
       canSetDifferentFee: canSetFeeAtRegistration(request),
       today: day,
     };
@@ -221,7 +212,7 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
     if (!person) {
       return { person: null };
     }
-    return { person: { ...person, households: await householdsOf(app.db, person.id) } };
+    return { person: { ...person, households: householdsOf(app.db, person.id) } };
   });
 
   app.post("/census/households", edit, async (request, reply) => {
@@ -236,36 +227,39 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
       throw new HttpError(403, "forbidden", "Su cargo no puede fijar un monto diferente. Elija el precio base.");
     }
 
-    const result = await app.db.transaction(async (tx) => {
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(${HOUSEHOLD_CODE_LOCK_KEY})`);
-
+    // One transaction at a time (`inTransaction`), so two entries saved at the
+    // same moment cannot take the same code, and a retried submission finds
+    // the first one.
+    const result = inTransaction(app.db, (tx) => {
       // Sent again after weak signal: it is already saved, so answer as the first time did.
-      const [already] = await tx
+      const already = tx
         .select({ id: households.id, code: households.code })
         .from(households)
-        .where(eq(households.submissionId, body.submissionId));
+        .where(eq(households.submissionId, body.submissionId))
+        .get();
       if (already) {
         return { household: already, created: false };
       }
 
-      const [sector] = await tx
+      const sector = tx
         .select()
         .from(sectors)
-        .where(and(eq(sectors.id, body.household.sectorId), eq(sectors.active, true)));
+        .where(and(eq(sectors.id, body.household.sectorId), eq(sectors.active, true)))
+        .get();
       if (!sector) {
         throw new HttpError(400, "invalid_request", "Ese sector ya no está en la lista. Elija otro.");
       }
 
-      const genders = (await currentSetting<string[]>(tx, "genders", day)) ?? [];
+      const genders = currentSetting<string[]>(tx, "genders", day) ?? [];
       if (body.person.gender && !genders.includes(body.person.gender)) {
         throw new HttpError(400, "invalid_request", "Elija un género de la lista.");
       }
 
       // One person, one row: an ID already registered opens that person's file instead.
-      const [existing] = await tx.select().from(people).where(eq(people.idNumber, body.person.idNumber));
+      const existing = tx.select().from(people).where(eq(people.idNumber, body.person.idNumber)).get();
       if (existing && !body.addToExistingPerson) {
         throw new HttpError(409, "person_exists", `Esta identidad ya está registrada a nombre de ${existing.fullName}.`, {
-          person: { id: existing.id, fullName: existing.fullName, households: await householdsOf(tx, existing.id) },
+          person: { id: existing.id, fullName: existing.fullName, households: householdsOf(tx, existing.id) },
         });
       }
 
@@ -287,12 +281,13 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
           createdAt: new Date(),
           createdBy: actor.userId,
         };
-        await tx.insert(people).values(person);
+        tx.insert(people).values(person).run();
       }
 
-      const [last] = await tx
-        .select({ max: sql<number | null>`max(substring(${households.code} from 3)::int)` })
-        .from(households);
+      const last = tx
+        .select({ max: sql<number | null>`max(CAST(substr(${households.code}, 3) AS INTEGER))` })
+        .from(households)
+        .get();
       const code = householdCode((last?.max ?? 0) + 1);
 
       // The day the registrar stood at the house: the paper form's date when typed from paper.
@@ -312,20 +307,20 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
         lastVerifiedOn: startsOn,
         createdBy: actor.userId,
       };
-      await tx.insert(households).values(household);
-      await tx.insert(householdOwners).values({
+      tx.insert(households).values(household).run();
+      tx.insert(householdOwners).values({
         id: newId(),
         householdId: household.id,
         personId: person.id,
         relation: body.household.relation,
         startsOn,
         createdBy: actor.userId,
-      });
+      }).run();
 
       const paperNote = body.paper
         ? ` desde la hoja de papel${body.paper.formNumber ? ` nº ${body.paper.formNumber}` : ""} del ${formatCalendarDate(body.paper.date)}`
         : "";
-      await recordAudit(tx, actor, {
+      recordAudit(tx, actor, {
         area: "census",
         action: "household.registered",
         summary: `${actor.name} (${actor.role}) registró la vivienda ${code} de ${person.fullName}${paperNote}`,
@@ -354,17 +349,17 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
 
       if (body.fee.kind === "different") {
         // From the month after the house's last payment; a new house has none, so this month.
-        const feeStartsOn = differentFeeStart(await lastPaidMonth(tx, household.id), day);
-        await tx.insert(householdFees).values({
+        const feeStartsOn = differentFeeStart(lastPaidMonth(tx, household.id), day);
+        tx.insert(householdFees).values({
           id: newId(),
           householdId: household.id,
           monthlyAmountCentavos: body.fee.monthlyAmountCentavos,
           reason: body.fee.reason,
           startsOn: feeStartsOn,
           createdBy: actor.userId,
-        });
+        }).run();
         // App Plan: "every such choice shows in the history log", under Settings.
-        await recordAudit(tx, actor, {
+        recordAudit(tx, actor, {
           area: "settings",
           action: "household_fee.set",
           summary: `${actor.name} (${actor.role}) fijó un monto diferente de ${formatLempiras(body.fee.monthlyAmountCentavos)} al mes para la vivienda ${code}`,
@@ -400,12 +395,13 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
     if (query.sectorId) conditions.push(eq(households.sectorId, query.sectorId));
     if (query.status) conditions.push(eq(households.status, query.status));
     if (query.q) {
-      const words = `%${normalize(query.q).replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+      const words = `%${searchText(query.q).replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
       const digits = query.q.replace(/\D/g, "");
+      // SQLite's LIKE has no escape character unless one is named.
       const matches: SQL[] = [
-        sql`${searchable(people.fullName)} LIKE ${words}`,
-        sql`${searchable(households.references)} LIKE ${words}`,
-        sql`lower(${households.code}) LIKE ${words}`,
+        sql`${searchable(people.fullName)} LIKE ${words} ESCAPE '\\'`,
+        sql`${searchable(households.references)} LIKE ${words} ESCAPE '\\'`,
+        sql`lower(${households.code}) LIKE ${words} ESCAPE '\\'`,
       ];
       // Searching by ID number or phone would tell someone who may not see them whether they match.
       if (sensitive && digits.length >= 4) {
@@ -503,8 +499,8 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
         },
         fee: different
           ? { kind: "different" as const, ...different }
-          : { kind: "base" as const, baseFeeCentavos: await baseMonthlyFee(app.db, today()) },
-        otherHouseholds: (await householdsOf(app.db, owner.personId)).filter((h) => h.id !== household.id),
+          : { kind: "base" as const, baseFeeCentavos: baseMonthlyFee(app.db, today()) },
+        otherHouseholds: householdsOf(app.db, owner.personId).filter((h) => h.id !== household.id),
       },
       sensitiveVisible: sensitive,
     };
@@ -517,12 +513,13 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
       throw new HttpError(400, "invalid_request", "La fecha de la hoja no puede ser después de hoy.");
     }
 
-    await app.db.transaction(async (tx) => {
-      const household = await lockHousehold(tx, request.params.id);
-      const [owner] = await tx
+    inTransaction(app.db, (tx) => {
+      const household = lockHousehold(tx, request.params.id);
+      const owner = tx
         .select()
         .from(householdOwners)
-        .where(and(eq(householdOwners.householdId, household.id), isNull(householdOwners.endsOn)));
+        .where(and(eq(householdOwners.householdId, household.id), isNull(householdOwners.endsOn)))
+        .get();
 
       const before: Record<string, unknown> = {};
       const after: Record<string, unknown> = {};
@@ -533,14 +530,15 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
       };
 
       if (body.sectorId !== undefined && body.sectorId !== household.sectorId) {
-        const [sector] = await tx
+        const sector = tx
           .select()
           .from(sectors)
-          .where(and(eq(sectors.id, body.sectorId), eq(sectors.active, true)));
+          .where(and(eq(sectors.id, body.sectorId), eq(sectors.active, true)))
+          .get();
         if (!sector) {
           throw new HttpError(400, "invalid_request", "Ese sector ya no está en la lista. Elija otro.");
         }
-        const [old] = await tx.select({ name: sectors.name }).from(sectors).where(eq(sectors.id, household.sectorId));
+        const old = tx.select({ name: sectors.name }).from(sectors).where(eq(sectors.id, household.sectorId)).get();
         changes.sectorId = sector.id;
         note("sector", old?.name ?? null, sector.name);
       }
@@ -578,13 +576,13 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
       }
 
       if (Object.keys(changes).length > 0) {
-        await tx.update(households).set(changes).where(eq(households.id, household.id));
+        tx.update(households).set(changes).where(eq(households.id, household.id)).run();
       }
       if (relationChanged) {
-        await tx.update(householdOwners).set({ relation: body.relation! }).where(eq(householdOwners.id, owner!.id));
+        tx.update(householdOwners).set({ relation: body.relation! }).where(eq(householdOwners.id, owner!.id)).run();
       }
 
-      await recordAudit(tx, actor, {
+      recordAudit(tx, actor, {
         area: "census",
         action: "household.edited",
         summary: `${actor.name} (${actor.role}) corrigió la vivienda ${household.code}: ${describeFields(Object.keys(after))}`,
@@ -607,9 +605,9 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
       throw new HttpError(403, "forbidden", "Su cargo no puede ver ni cambiar la identidad o el teléfono.");
     }
 
-    await app.db.transaction(async (tx) => {
+    inTransaction(app.db, (tx) => {
       requireUuid(request.params.id, PERSON_NOT_FOUND);
-      const [person] = await tx.select().from(people).where(eq(people.id, request.params.id)).for("update");
+      const person = tx.select().from(people).where(eq(people.id, request.params.id)).get();
       if (!person) {
         throw PERSON_NOT_FOUND;
       }
@@ -624,7 +622,7 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
         changes.fullName = after.fullName = name;
       }
       if (body.idNumber !== undefined && body.idNumber !== person.idNumber) {
-        const [taken] = await tx.select({ id: people.id }).from(people).where(eq(people.idNumber, body.idNumber));
+        const taken = tx.select({ id: people.id }).from(people).where(eq(people.idNumber, body.idNumber)).get();
         if (taken) {
           throw new HttpError(409, "id_taken", "Esa identidad ya es de otra persona registrada.");
         }
@@ -648,7 +646,7 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
         }
       }
       if (body.gender !== undefined && body.gender !== person.gender) {
-        const genders = (await currentSetting<string[]>(tx, "genders", today())) ?? [];
+        const genders = currentSetting<string[]>(tx, "genders", today()) ?? [];
         if (body.gender !== null && !genders.includes(body.gender)) {
           throw new HttpError(400, "invalid_request", "Elija un género de la lista.");
         }
@@ -660,8 +658,8 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
         return;
       }
 
-      await tx.update(people).set(changes).where(eq(people.id, person.id));
-      await recordAudit(tx, actor, {
+      tx.update(people).set(changes).where(eq(people.id, person.id)).run();
+      recordAudit(tx, actor, {
         area: "census",
         action: "person.edited",
         summary: `${actor.name} (${actor.role}) corrigió los datos de ${changes.fullName ?? person.fullName}: ${describeFields(Object.keys(after))}`,
@@ -680,17 +678,18 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
     const body = parse(deactivateBody, request.body);
     const actor = actorOf(request);
 
-    await app.db.transaction(async (tx) => {
-      const household = await lockHousehold(tx, request.params.id);
+    inTransaction(app.db, (tx) => {
+      const household = lockHousehold(tx, request.params.id);
       if (household.status === "inactive") {
         throw new HttpError(409, "not_allowed", "Esa vivienda ya está inactiva.");
       }
 
-      await tx
+      tx
         .update(households)
         .set({ status: "inactive", inactiveReason: body.reason })
-        .where(eq(households.id, household.id));
-      await recordAudit(tx, actor, {
+        .where(eq(households.id, household.id))
+        .run();
+      recordAudit(tx, actor, {
         area: "census",
         action: "household.deactivated",
         summary: `${actor.name} (${actor.role}) desactivó la vivienda ${household.code}: ${INACTIVE_REASONS[body.reason]}`,
@@ -709,14 +708,14 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
     const body = parse(z.object({ note }).default({}), request.body ?? {});
     const actor = actorOf(request);
 
-    await app.db.transaction(async (tx) => {
-      const household = await lockHousehold(tx, request.params.id);
+    inTransaction(app.db, (tx) => {
+      const household = lockHousehold(tx, request.params.id);
       if (household.status === "active") {
         throw new HttpError(409, "not_allowed", "Esa vivienda ya está activa.");
       }
 
-      await tx.update(households).set({ status: "active", inactiveReason: null }).where(eq(households.id, household.id));
-      await recordAudit(tx, actor, {
+      tx.update(households).set({ status: "active", inactiveReason: null }).where(eq(households.id, household.id)).run();
+      recordAudit(tx, actor, {
         area: "census",
         action: "household.reactivated",
         summary: `${actor.name} (${actor.role}) reactivó la vivienda ${household.code}`,

@@ -81,7 +81,7 @@ export function expiredBackups(names: readonly string[], keep: number): string[]
   return [...names].sort().reverse().slice(keep);
 }
 
-/** zoilabe-2026-10-23T08-15-00Z.dump.enc — safe in a filename, and sorts by time. */
+/** zoilabe-2026-10-23T08-15-00Z.db.enc — safe in a filename, and sorts by time. */
 export function backupName(now: Date = new Date()): string {
-  return `zoilabe-${now.toISOString().replace(/:/g, "-").replace(/\.\d+Z$/, "Z")}.dump.enc`;
+  return `zoilabe-${now.toISOString().replace(/:/g, "-").replace(/\.\d+Z$/, "Z")}.db.enc`;
 }

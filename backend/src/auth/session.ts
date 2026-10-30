@@ -13,7 +13,7 @@
  */
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
-import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull } from "drizzle-orm";
 
 import type { DbOrTx } from "../db/client.js";
 import { accessTokens, rolePermissions, roles, users } from "../db/schema.js";
@@ -59,7 +59,7 @@ export interface SessionUser {
 }
 
 /** Issue a token of the given kind and return it; the database keeps only its hash. */
-export async function issueToken(
+export function issueToken(
   db: DbOrTx,
   values: {
     userId: string;
@@ -69,32 +69,34 @@ export async function issueToken(
     label?: string | null;
     createdBy?: string | null;
   },
-): Promise<{ id: string; token: string; expiresAt: Date }> {
+): { id: string; token: string; expiresAt: Date } {
   const id = newId();
   const token = newToken();
   const expiresAt = new Date(Date.now() + values.lifetimeMs);
 
-  await db.insert(accessTokens).values({
-    id,
-    userId: values.userId,
-    kind: values.kind,
-    tokenHash: tokenHash(token),
-    deviceId: values.deviceId ?? null,
-    label: values.label ?? null,
-    expiresAt,
-    createdBy: values.createdBy ?? null,
-  });
+  db.insert(accessTokens)
+    .values({
+      id,
+      userId: values.userId,
+      kind: values.kind,
+      tokenHash: tokenHash(token),
+      deviceId: values.deviceId ?? null,
+      label: values.label ?? null,
+      expiresAt,
+      createdBy: values.createdBy ?? null,
+    })
+    .run();
 
   return { id, token, expiresAt };
 }
 
 /** A live token of one kind, by its value, or null. */
-export async function findLiveToken(
+export function findLiveToken(
   db: DbOrTx,
   token: string,
   kind: "invitation" | "device" | "session",
 ) {
-  const [row] = await db
+  const row = db
     .select()
     .from(accessTokens)
     .where(
@@ -102,10 +104,11 @@ export async function findLiveToken(
         eq(accessTokens.tokenHash, tokenHash(token)),
         eq(accessTokens.kind, kind),
         isNull(accessTokens.revokedAt),
-        gt(accessTokens.expiresAt, sql`now()`),
+        gt(accessTokens.expiresAt, new Date()),
       ),
     )
-    .limit(1);
+    .limit(1)
+    .get();
 
   return row ?? null;
 }
@@ -116,13 +119,13 @@ export async function findLiveToken(
  * Read from the database on every request, so a role change, a suspension, a
  * lock or a removed phone takes effect on that person's very next click.
  */
-export async function getSessionUser(db: DbOrTx, token: string): Promise<SessionUser | null> {
-  const session = await findLiveToken(db, token, "session");
+export function getSessionUser(db: DbOrTx, token: string): SessionUser | null {
+  const session = findLiveToken(db, token, "session");
   if (!session?.deviceId) {
     return null;
   }
 
-  const [row] = await db
+  const row = db
     .select({
       id: users.id,
       name: users.name,
@@ -137,7 +140,8 @@ export async function getSessionUser(db: DbOrTx, token: string): Promise<Session
     .innerJoin(roles, eq(roles.code, users.roleCode))
     .innerJoin(accessTokens, eq(accessTokens.id, session.deviceId))
     .where(eq(users.id, session.userId))
-    .limit(1);
+    .limit(1)
+    .get();
 
   if (
     !row ||
@@ -149,10 +153,11 @@ export async function getSessionUser(db: DbOrTx, token: string): Promise<Session
     return null;
   }
 
-  const granted = await db
+  const granted = db
     .select({ permission: rolePermissions.permission })
     .from(rolePermissions)
-    .where(and(eq(rolePermissions.roleCode, row.roleCode), eq(rolePermissions.granted, true)));
+    .where(and(eq(rolePermissions.roleCode, row.roleCode), eq(rolePermissions.granted, true)))
+    .all();
 
   return {
     id: row.id,
@@ -167,19 +172,19 @@ export async function getSessionUser(db: DbOrTx, token: string): Promise<Session
 }
 
 /** End tokens now: every session of a device, or every device and session of a user. */
-export async function revokeTokens(
+export function revokeTokens(
   db: DbOrTx,
   where: { ids?: string[]; deviceId?: string; userId?: string; kinds?: Array<"invitation" | "device" | "session"> },
   revokedBy: string | null,
-): Promise<void> {
+): void {
   const conditions = [isNull(accessTokens.revokedAt)];
   if (where.ids) conditions.push(inArray(accessTokens.id, where.ids));
   if (where.deviceId) conditions.push(eq(accessTokens.deviceId, where.deviceId));
   if (where.userId) conditions.push(eq(accessTokens.userId, where.userId));
   if (where.kinds) conditions.push(inArray(accessTokens.kind, where.kinds));
 
-  await db
-    .update(accessTokens)
+  db.update(accessTokens)
     .set({ revokedAt: new Date(), revokedBy })
-    .where(and(...conditions));
+    .where(and(...conditions))
+    .run();
 }

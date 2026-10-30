@@ -36,27 +36,43 @@ The rules that must never be broken:
 
 ## Database
 
-PostgreSQL, with two logins:
+SQLite, one file (`backend/data/zoilabe.db`, or `DATABASE_PATH`), opened with
+`better-sqlite3` through Drizzle, as in Lindero. Decided 29 October 2026:
+the droplet already runs two SQLite apps, and a PostgreSQL server would be
+one more thing to run and back up there.
 
-- `zoilabe_admin` owns the tables and runs migrations. The app never uses it.
-- `zoilabe_app` is what the running app connects as. It can only `INSERT`
-  and `SELECT` on `audit_log` and `transactions`, so even a bug cannot change
-  history.
+- **Nothing is deleted, and history never changes, in the file itself.**
+  `applyGuards` (`backend/src/db/guards.ts`) gives every table a trigger that
+  refuses DELETE, and `audit_log` and `transactions` one that refuses UPDATE.
+  It runs after every migration and on every start, so a new table is
+  guarded without a line there. `createDb` switches on `recursive_triggers`,
+  so `INSERT OR REPLACE` and `UPDATE OR REPLACE` (which delete the row in
+  their way) are refused too; never switch it off. No code may drop a
+  trigger; a migration that must change rows of those two tables is a
+  decision for the owner first.
+- **Every write runs in `inTransaction`** (`backend/src/db/client.ts`): a
+  synchronous IMMEDIATE transaction, so inside it every query ends in
+  `.get()`, `.all()` or `.run()`, never `await`. That is what keeps the
+  history log chain and household codes in single file, with no locks of our
+  own. Slow work (hashing a PIN, reading a file) happens before it starts.
+- **Instants are ISO-8601 UTC text, read back as `Date`** (the `instant`
+  column type in `schema.ts`); calendar dates are `"YYYY-MM-DD"` text; JSON is
+  text. Compare instants with a `Date` (`gt(col, new Date())`), never `now()`.
+- **Text comparisons that must understand Spanish** happen in JavaScript or
+  through `search_text()`. SQLite's `lower()` and `LIKE` only know A to Z.
+- **Who can open the file** is the operating system's job: the `zoilabe` user
+  alone (docs/deployment-shared-droplet.md, separation checklist).
 
 Every schema change is a new migration under `backend/drizzle/`, generated
 with `npm run db:generate --workspace @zoilabe/backend` from
-`backend/src/db/schema.ts`. Grants live in `applyGrants`
-(`backend/src/db/roles.ts`) and are re-applied by `npm run db:migrate`. Never
-edit a migration that is already on `main`.
+`backend/src/db/schema.ts`. The API applies pending migrations when it
+starts (`runMigrations`, `backend/src/db/migrations.ts`). Never edit a
+migration that is already on `main`. (The switch to SQLite replaced the two
+PostgreSQL migrations with a new `0000_init.sql` once, before any real data
+existed.)
 
-Writes that must happen in single file take a PostgreSQL advisory lock
-inside their transaction, each with its own fixed key: `7_311_002` for the
-history log chain (`src/lib/audit.ts`), `7_311_003` for household codes
-(`src/routes/census.ts`). A new one takes the next number.
-
-Locally, `npm run db:local -- start` runs a private PostgreSQL server in
-`backend/.pgdata` on port 54329, so no `sudo` is needed. Tests create and drop
-their own throwaway databases on it.
+Locally there is nothing to install or start: `npm run db:migrate` creates
+the file. Tests make their own database in memory.
 
 ## Fixing things, one at a time
 
@@ -77,8 +93,7 @@ their own throwaway databases on it.
 
 ## Checks before pushing
 
-`npm run typecheck` and `npm test` from the repository root. Tests need a
-local PostgreSQL (see README). The **Tests** workflow
+`npm run typecheck` and `npm test` from the repository root. The **Tests** workflow
 (`.github/workflows/tests.yml`) runs them, plus a build, on every pull
 request; do not merge one whose check is red.
 

@@ -7,7 +7,7 @@
 
 [Unit]
 Description=Junta de Agua Zoilabe API
-After=network-online.target postgresql.service
+After=network-online.target
 Wants=network-online.target
 StartLimitIntervalSec=60
 StartLimitBurst=4
@@ -31,6 +31,10 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
+# The one folder it writes: the database file and its WAL companions. Files
+# it creates are readable by the zoilabe user alone.
+ReadWritePaths=/opt/zoilabe/backend/data
+UMask=0077
 
 [Install]
 WantedBy=multi-user.target

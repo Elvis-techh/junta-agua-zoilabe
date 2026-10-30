@@ -1,16 +1,12 @@
 /**
- * Every test file gets a brand-new database of its own on the development
- * server, made the way production's is made (two logins, migrations, grants,
- * seed), and dropped at the end. Nothing a test does can leak into another
- * file or into your local data.
- *
- * Needs DATABASE_SUPERUSER_URL, DATABASE_ADMIN_URL and DATABASE_URL (from
- * backend/.env locally, from the workflow in CI). Only their logins and
- * server are used; the database name is replaced by a throwaway one.
+ * Every test gets a brand-new database of its own, in memory, made the way
+ * production's is made (the same migrations and guards, then the seed), and
+ * gone when it closes. Nothing a test does can leak into another test or
+ * into your local data, and no server or setting is needed to run them.
  */
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 
+import type Database from "better-sqlite3";
 import type { FastifyInstance } from "fastify";
 
 import { buildApp } from "../src/app.js";
@@ -26,64 +22,41 @@ import type { AppConfig } from "../src/config/env.js";
 import { loadConfig } from "../src/config/env.js";
 import { createDb } from "../src/db/client.js";
 import type { Db } from "../src/db/client.js";
-import { requireEnv } from "../src/db/env.js";
 import { runMigrations } from "../src/db/migrations.js";
-import { dropDatabase, ensureDatabase } from "../src/db/roles.js";
 import { users } from "../src/db/schema.js";
 import { seedDatabase } from "../src/db/seeding.js";
 import { hashPin } from "../src/lib/pin.js";
 import type { RoleCode } from "../src/lib/permissions.js";
 import { HONDURAS_TIME_ZONE } from "../src/lib/time.js";
 
-function withDatabase(url: string, database: string): string {
-  const parsed = new URL(url);
-  parsed.pathname = `/${database}`;
-  return parsed.toString();
-}
-
 export interface TestDatabase {
-  /** Connected as the app login, like the running API. */
   db: Db;
-  /** Connected as the admin login, for setting up cases and for tampering on purpose. */
-  adminDb: Db;
-  appUrl: string;
-  adminUrl: string;
+  /** The raw connection, for what only someone outside the app could do: drop a guard on purpose. */
+  sqlite: Database.Database;
   close: () => Promise<void>;
 }
 
 export async function createTestDatabase(): Promise<TestDatabase> {
-  const superuserUrl = requireEnv("DATABASE_SUPERUSER_URL");
-  const name = `zoilabe_test_${randomBytes(6).toString("hex")}`;
-  const adminUrl = withDatabase(requireEnv("DATABASE_ADMIN_URL"), name);
-  const appUrl = withDatabase(requireEnv("DATABASE_URL"), name);
-
-  await ensureDatabase(superuserUrl, adminUrl, appUrl);
-  await runMigrations(adminUrl, appUrl);
-
-  const admin = createDb(adminUrl, 2);
-  await seedDatabase(admin.db, HONDURAS_TIME_ZONE);
-  const app = createDb(appUrl, 5);
+  const { db, sqlite } = createDb(":memory:");
+  runMigrations(db, sqlite);
+  seedDatabase(db, HONDURAS_TIME_ZONE);
 
   return {
-    db: app.db,
-    adminDb: admin.db,
-    appUrl,
-    adminUrl,
+    db,
+    sqlite,
     close: async () => {
-      await app.pool.end();
-      await admin.pool.end();
-      await dropDatabase(superuserUrl, name);
+      sqlite.close();
     },
   };
 }
 
 /**
- * Assert that a query is refused by PostgreSQL with a message matching
- * `pattern`. Drizzle wraps the database's own error, so the message that
- * matters is on `cause`.
+ * Assert that a statement is refused by the database with a message matching
+ * `pattern`. Drizzle may wrap SQLite's own error, so the message that matters
+ * can be on `cause`.
  */
-export async function rejectsWithDbError(promise: Promise<unknown>, pattern: RegExp): Promise<void> {
-  await assert.rejects(promise, (error: unknown) => {
+export async function rejectsWithDbError(statement: PromiseLike<unknown>, pattern: RegExp): Promise<void> {
+  await assert.rejects(Promise.resolve(statement), (error: unknown) => {
     const cause = (error as { cause?: { message?: string } }).cause;
     const message = cause?.message ?? (error as Error).message;
     assert.match(message, pattern);
@@ -102,7 +75,7 @@ export interface TestApp extends TestDatabase {
 export async function buildTestApp(overrides: Partial<AppConfig> = {}): Promise<TestApp> {
   const t = await createTestDatabase();
   const config: AppConfig = {
-    ...loadConfig({ NODE_ENV: "test", DATABASE_URL: t.appUrl, APP_URL: "https://agua.example.hn" }),
+    ...loadConfig({ NODE_ENV: "test", APP_URL: "https://agua.example.hn" }),
     ...overrides,
   };
   const app = await buildApp(config, t.db);
@@ -137,7 +110,7 @@ export async function signedInUser(
   name = `Prueba ${roleCode}`,
 ): Promise<{ id: string; cookie: string; deviceCookie: string; sessionId: string }> {
   const id = newId();
-  await t.adminDb.insert(users).values({
+  await t.db.insert(users).values({
     id,
     name,
     phone: nextPhone(),
@@ -146,8 +119,8 @@ export async function signedInUser(
     pinHash: await hashPin(TEST_PIN),
   });
 
-  const device = await issueToken(t.db, { userId: id, kind: "device", lifetimeMs: DEVICE_IDLE_LIMIT_MS });
-  const session = await issueToken(t.db, {
+  const device = issueToken(t.db, { userId: id, kind: "device", lifetimeMs: DEVICE_IDLE_LIMIT_MS });
+  const session = issueToken(t.db, {
     userId: id,
     kind: "session",
     lifetimeMs: SESSION_LIFETIME_MS,

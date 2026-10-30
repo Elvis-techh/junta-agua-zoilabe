@@ -13,7 +13,7 @@ import { and, eq, inArray } from "drizzle-orm";
 
 import { newId } from "../auth/session.js";
 import { loadConfig } from "../config/env.js";
-import { createDb } from "../db/client.js";
+import { createDb, inTransaction } from "../db/client.js";
 import { users } from "../db/schema.js";
 import { SYSTEM_ACTOR, recordAudit } from "../lib/audit.js";
 import { createInvitation } from "../lib/invitations.js";
@@ -31,21 +31,22 @@ if (name.length < 3 || !/^[0-9]{8}$/.test(phone)) {
 }
 
 const config = loadConfig();
-const { db, pool } = createDb(config.databaseUrl, 1);
+const { db, sqlite } = createDb(config.databasePath);
 
 try {
-  const invitation = await db.transaction(async (tx) => {
-    const existing = await tx
+  const invitation = inTransaction(db, (tx) => {
+    const existing = tx
       .select({ id: users.id })
       .from(users)
-      .where(and(eq(users.roleCode, "administrador"), inArray(users.status, ["invited", "active"])));
+      .where(and(eq(users.roleCode, "administrador"), inArray(users.status, ["invited", "active"])))
+      .all();
     if (existing.length > 0) {
       throw new Error("An administrator account already exists. Create other accounts from Usuarios.");
     }
 
     const user = { id: newId(), name, phone, roleCode: "administrador", status: "invited" as const };
-    await tx.insert(users).values(user);
-    await recordAudit(tx, SYSTEM_ACTOR, {
+    tx.insert(users).values(user).run();
+    recordAudit(tx, SYSTEM_ACTOR, {
       area: "users",
       action: "user.created",
       summary: `Se creó la cuenta del primer administrador, ${name}`,
@@ -63,5 +64,5 @@ try {
   console.error((error as Error).message);
   process.exitCode = 1;
 } finally {
-  await pool.end();
+  sqlite.close();
 }

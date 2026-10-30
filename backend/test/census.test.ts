@@ -195,7 +195,7 @@ describe("census", () => {
 
     // And the database itself refuses a person with neither.
     await rejectsWithDbError(
-      t.adminDb.update(people).set({ phoneMissing: null }).where(eq(people.id, personId)),
+      t.db.update(people).set({ phoneMissing: null }).where(eq(people.id, personId)),
       /people_phone_or_reason/,
     );
   });
@@ -330,7 +330,7 @@ describe("census", () => {
     const full = await call(vocal.cookie, "GET", `/api/census/households/${id}`);
     assert.match(full.json().household.owner.idNumber, /^\d{13}$/);
 
-    await t.adminDb
+    await t.db
       .update(rolePermissions)
       .set({ granted: false })
       .where(and(eq(rolePermissions.roleCode, "primer_vocal"), eq(rolePermissions.permission, "census:view_sensitive")));
@@ -345,7 +345,7 @@ describe("census", () => {
     const search = await call(vocal.cookie, "GET", `/api/census/households?q=${person!.idNumber}`);
     assert.equal(search.json().households.length, 0);
 
-    await t.adminDb
+    await t.db
       .update(rolePermissions)
       .set({ granted: true })
       .where(and(eq(rolePermissions.roleCode, "primer_vocal"), eq(rolePermissions.permission, "census:view_sensitive")));
@@ -362,7 +362,7 @@ describe("census", () => {
 
     assert.match((await detail()).json().entry.after.person.idNumber, /^\d{13}$/);
 
-    await t.adminDb
+    await t.db
       .update(rolePermissions)
       .set({ granted: false })
       .where(and(eq(rolePermissions.roleCode, "fiscal"), eq(rolePermissions.permission, "census:view_sensitive")));
@@ -435,8 +435,8 @@ describe("census", () => {
     const file = await call(secretary.cookie, "GET", `/api/census/households/${id}`);
     assert.equal(file.json().household.status, "active");
 
-    // And the database itself refuses a delete from the app's login.
-    await rejectsWithDbError(t.db.delete(households).where(eq(households.id, id)), /permission denied/);
+    // And the database itself refuses a delete.
+    await rejectsWithDbError(t.db.delete(households).where(eq(households.id, id)), /nothing is deleted: households/);
   });
 
   it("shows the base fee from Configuración once the board sets one", async () => {
@@ -445,7 +445,7 @@ describe("census", () => {
     assert.equal(before.json().canSetDifferentFee, true);
     assert.deepEqual(before.json().genders, ["Mujer", "Hombre"]);
 
-    await t.adminDb.insert(feeRates).values({ kind: "base_monthly", amountCentavos: 7000, startsOn: "2026-01-01" });
+    await t.db.insert(feeRates).values({ kind: "base_monthly", amountCentavos: 7000, startsOn: "2026-01-01" });
     const afterFee = await call(secretary.cookie, "GET", "/api/census/options");
     assert.equal(afterFee.json().baseFeeCentavos, 7000);
 

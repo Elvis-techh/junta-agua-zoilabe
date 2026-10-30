@@ -1,6 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 
 import type { Db } from "../db/client.js";
+import { inTransaction } from "../db/client.js";
 import { users } from "../db/schema.js";
 import type { Actor } from "../lib/audit.js";
 import { recordAudit } from "../lib/audit.js";
@@ -32,28 +33,30 @@ export async function checkPin(
   }
 
   if (user.pinHash && (await verifyPin(pin, user.pinHash))) {
-    await db
-      .update(users)
+    db.update(users)
       .set({ failedPinCount: 0 })
-      .where(eq(users.id, user.id));
+      .where(eq(users.id, user.id))
+      .run();
     return { ok: true };
   }
 
-  return db.transaction(async (tx) => {
+  return inTransaction(db, (tx) => {
     // Counted in the database, not read-then-written, so two wrong PINs at
     // the same moment both count.
-    const [row] = await tx
+    const now = new Date().toISOString();
+    const row = tx
       .update(users)
       .set({
         failedPinCount: sql`${users.failedPinCount} + 1`,
-        lockedAt: sql`CASE WHEN ${users.failedPinCount} + 1 >= ${MAX_WRONG_PINS} THEN now() ELSE ${users.lockedAt} END`,
+        lockedAt: sql`CASE WHEN ${users.failedPinCount} + 1 >= ${MAX_WRONG_PINS} THEN ${now} ELSE ${users.lockedAt} END`,
       })
       .where(eq(users.id, user.id))
-      .returning({ failedPinCount: users.failedPinCount, lockedAt: users.lockedAt });
+      .returning({ failedPinCount: users.failedPinCount, lockedAt: users.lockedAt })
+      .get();
 
     const failed = row?.failedPinCount ?? MAX_WRONG_PINS;
 
-    await recordAudit(tx, actor, {
+    recordAudit(tx, actor, {
       area: "security",
       action: "security.pin_failed",
       summary: `PIN equivocado para ${user.name} (intento ${failed} de ${MAX_WRONG_PINS})`,
@@ -62,7 +65,7 @@ export async function checkPin(
     });
 
     if (row?.lockedAt) {
-      await recordAudit(tx, actor, {
+      recordAudit(tx, actor, {
         area: "security",
         action: "security.account_locked",
         summary: `La cuenta de ${user.name} se bloqueó después de ${MAX_WRONG_PINS} PIN equivocados`,

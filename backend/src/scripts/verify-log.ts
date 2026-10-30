@@ -6,22 +6,24 @@
  * del sistema". Exits with 1 when the chain is broken, so the timer's failure
  * shows in `systemctl --failed` too.
  */
+import { loadConfig } from "../config/env.js";
 import { createDb } from "../db/client.js";
-import { requireEnv } from "../db/env.js";
 import { settings } from "../db/schema.js";
 import { verifyChain } from "../lib/audit.js";
 import { HONDURAS_TIME_ZONE, businessToday } from "../lib/time.js";
 
-const { db, pool } = createDb(requireEnv("DATABASE_URL"), 1);
+const { db, sqlite } = createDb(loadConfig().databasePath);
 
 try {
-  const result = await verifyChain(db);
+  const result = verifyChain(db);
 
-  await db.insert(settings).values({
-    key: "system.log_chain_check",
-    value: { ...result, checkedAt: new Date().toISOString() },
-    effectiveFrom: businessToday(HONDURAS_TIME_ZONE),
-  });
+  db.insert(settings)
+    .values({
+      key: "system.log_chain_check",
+      value: { ...result, checkedAt: new Date().toISOString() },
+      effectiveFrom: businessToday(HONDURAS_TIME_ZONE),
+    })
+    .run();
 
   if (result.ok) {
     console.log(`History log intact: ${result.checked} entries checked.`);
@@ -30,5 +32,5 @@ try {
     process.exitCode = 1;
   }
 } finally {
-  await pool.end();
+  sqlite.close();
 }

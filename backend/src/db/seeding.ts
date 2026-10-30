@@ -1,8 +1,9 @@
-import { sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { DEFAULT_MATRIX, PERMISSION_CODES, ROLES } from "../lib/permissions.js";
 import { businessToday } from "../lib/time.js";
 import type { Db } from "./client.js";
+import { inTransaction } from "./client.js";
 import { categories, rolePermissions, roles, settings } from "./schema.js";
 
 /**
@@ -33,14 +34,15 @@ const DEFAULT_GENDERS = ["Mujer", "Hombre"];
  * the Permisos tab changed is never put back to its default. Fees are not
  * seeded — the board sets them in Configuración.
  */
-export async function seedDatabase(db: Db, timeZone: string): Promise<void> {
-  await db.transaction(async (tx) => {
-    await tx
+export function seedDatabase(db: Db, timeZone: string): void {
+  inTransaction(db, (tx) => {
+    tx
       .insert(roles)
       .values(ROLES.map((role, index) => ({ code: role.code, name: role.name, sortOrder: index })))
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .run();
 
-    await tx
+    tx
       .insert(rolePermissions)
       .values(
         ROLES.flatMap((role) =>
@@ -51,19 +53,23 @@ export async function seedDatabase(db: Db, timeZone: string): Promise<void> {
           })),
         ),
       )
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .run();
 
-    await tx
+    tx
       .insert(categories)
       .values([
         ...DEFAULT_CATEGORIES.income.map((name) => ({ kind: "income" as const, name })),
         ...DEFAULT_CATEGORIES.expense.map((name) => ({ kind: "expense" as const, name })),
       ])
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .run();
 
-    const profile = await tx.execute(sql`SELECT 1 FROM settings WHERE key = 'village_profile'`);
-    if (profile.rowCount === 0) {
-      await tx.insert(settings).values({
+    const hasSetting = (key: string) =>
+      tx.select({ id: settings.id }).from(settings).where(eq(settings.key, key)).limit(1).get() !== undefined;
+
+    if (!hasSetting("village_profile")) {
+      tx.insert(settings).values({
         key: "village_profile",
         value: {
           village: "Aldea Zoilabe",
@@ -73,17 +79,16 @@ export async function seedDatabase(db: Db, timeZone: string): Promise<void> {
           registrationNumber: null,
         },
         effectiveFrom: businessToday(timeZone),
-      });
+      }).run();
     }
 
     // The census's gender choices (App Plan: "List kept in Configuration").
-    const genders = await tx.execute(sql`SELECT 1 FROM settings WHERE key = 'genders'`);
-    if (genders.rowCount === 0) {
-      await tx.insert(settings).values({
+    if (!hasSetting("genders")) {
+      tx.insert(settings).values({
         key: "genders",
         value: DEFAULT_GENDERS,
         effectiveFrom: businessToday(timeZone),
-      });
+      }).run();
     }
   });
 }

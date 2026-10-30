@@ -7,7 +7,7 @@ coverage/
 .DS_Store
 *.log
 
-# Database dumps and local backups — never commit real data
+# Local backups — never commit real data
 backend/backups/
 *.dump
 *.sql.gz
@@ -18,5 +18,9 @@ backend/backups/
 test-results/
 playwright-report/
 
-# The private development database server (npm run db:local)
-backend/.pgdata/
+# The database file and its WAL companions — never commit real data
+backend/data/
+*.db
+*.db-wal
+*.db-shm
+*.db.enc

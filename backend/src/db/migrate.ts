@@ -1,5 +1,12 @@
-import { requireEnv } from "./env.js";
+import { loadConfig } from "../config/env.js";
+import { createDb } from "./client.js";
 import { runMigrations } from "./migrations.js";
 
-await runMigrations(requireEnv("DATABASE_ADMIN_URL"), requireEnv("DATABASE_URL"));
-console.log("Migrations applied and grants refreshed.");
+const config = loadConfig();
+const { db, sqlite } = createDb(config.databasePath);
+try {
+  runMigrations(db, sqlite);
+} finally {
+  sqlite.close();
+}
+console.log(`Migrations applied and guards in place: ${config.databasePath}`);

@@ -4,7 +4,6 @@
 
 [Unit]
 Description=Junta de Agua Zoilabe history log check
-After=postgresql.service
 
 [Service]
 Type=oneshot
@@ -18,3 +17,6 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
+# It files the result of the check in the database.
+ReadWritePaths=/opt/zoilabe/backend/data
+UMask=0077
