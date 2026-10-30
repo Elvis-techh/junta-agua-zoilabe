@@ -62,6 +62,10 @@ one more thing to run and back up there.
   through `search_text()`. SQLite's `lower()` and `LIKE` only know A to Z.
 - **Who can open the file** is the operating system's job: the `zoilabe` user
   alone (docs/deployment-shared-droplet.md, separation checklist).
+- **Keep a move to PostgreSQL possible.** `docs/postgres-readiness.md` lists
+  every SQLite-only piece and every place that relies on one write at a
+  time. A change that adds either (a raw SQL function, a number handed out
+  in order, a read-then-write) adds its row there in the same pull request.
 
 Every schema change is a new migration under `backend/drizzle/`, generated
 with `npm run db:generate --workspace @zoilabe/backend` from
