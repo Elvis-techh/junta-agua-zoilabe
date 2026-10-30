@@ -45,8 +45,11 @@ one more thing to run and back up there.
   `applyGuards` (`backend/src/db/guards.ts`) gives every table a trigger that
   refuses DELETE, and `audit_log` and `transactions` one that refuses UPDATE.
   It runs after every migration and on every start, so a new table is
-  guarded without a line there. No code may drop a trigger; a migration that
-  must change rows of those two tables is a decision for the owner first.
+  guarded without a line there. `createDb` switches on `recursive_triggers`,
+  so `INSERT OR REPLACE` and `UPDATE OR REPLACE` (which delete the row in
+  their way) are refused too; never switch it off. No code may drop a
+  trigger; a migration that must change rows of those two tables is a
+  decision for the owner first.
 - **Every write runs in `inTransaction`** (`backend/src/db/client.ts`): a
   synchronous IMMEDIATE transaction, so inside it every query ends in
   `.get()`, `.all()` or `.run()`, never `await`. That is what keeps the

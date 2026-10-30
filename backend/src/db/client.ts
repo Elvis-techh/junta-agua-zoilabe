@@ -27,6 +27,10 @@ export function searchText(value: string): string {
  *  - busy_timeout: a second process writing at the same moment (the nightly
  *    log check, `user:first-admin`) waits up to 5 s instead of failing.
  *  - synchronous NORMAL: flushes at each commit. Safe under WAL, and faster.
+ *  - recursive_triggers: without it, `INSERT OR REPLACE` and `UPDATE OR
+ *    REPLACE` delete the row in their way without firing its DELETE trigger,
+ *    so they would get past the guards (src/db/guards.ts) and could rewrite a
+ *    money entry. With it, the guard refuses them like any other delete.
  *
  * `search_text()` is the census search's rule (`searchText`), made available
  * to SQL. SQLite's own `lower()` only knows A to Z.
@@ -42,6 +46,7 @@ export function createDb(databasePath: string) {
   sqlite.pragma("foreign_keys = ON");
   sqlite.pragma("busy_timeout = 5000");
   sqlite.pragma("synchronous = NORMAL");
+  sqlite.pragma("recursive_triggers = ON");
   sqlite.function("search_text", { deterministic: true }, (value: unknown) =>
     typeof value === "string" ? searchText(value) : value,
   );

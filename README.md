@@ -120,7 +120,8 @@ starting the API.
 The file refuses, by itself, to delete any row of any table, and to change
 any row of the history log (`audit_log`) or of the money entries
 (`transactions`): triggers that `src/db/guards.ts` puts back after every
-migration. Taking one away would take a deliberate `DROP TRIGGER` with
+migration. That includes the delete hidden inside SQLite's `INSERT OR
+REPLACE`. Taking one away would take a deliberate `DROP TRIGGER` with
 other tools, and the history log's hash chain (`npm run db:verify-log`)
 catches any entry changed that way.
 

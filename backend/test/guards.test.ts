@@ -6,7 +6,7 @@ import { eq, sql } from "drizzle-orm";
 import { newId } from "../src/auth/session.js";
 import { APPEND_ONLY_TABLES, appTables } from "../src/db/guards.js";
 import { runMigrations } from "../src/db/migrations.js";
-import { categories, months, rolePermissions, roles, settings, transactions, users } from "../src/db/schema.js";
+import { categories, months, rolePermissions, roles, sectors, settings, transactions, users } from "../src/db/schema.js";
 import type { TestDatabase } from "./helpers.js";
 import { createTestDatabase, nextPhone, rejectsWithDbError } from "./helpers.js";
 
@@ -94,6 +94,41 @@ describe("what the database itself refuses", () => {
       .select({ sum: sql<number>`sum(${transactions.amountCentavos})` })
       .from(transactions);
     assert.equal(total?.sum, 0);
+  });
+
+  it("refuses REPLACE, which deletes the row in its way instead of changing it", async () => {
+    const treasurer = newId();
+    await t.db.insert(users).values({ id: treasurer, name: "Tesorero", phone: nextPhone(), roleCode: "tesorero", status: "active" });
+    const [category] = await t.db.select().from(categories).where(eq(categories.name, "Cuota mensual"));
+    const [month] = await t.db.insert(months).values({ month: "2026-12-01", status: "open" }).returning();
+
+    const id = newId();
+    const entry = {
+      id,
+      kind: "income" as const,
+      categoryId: category!.id,
+      monthId: month!.id,
+      occurredOn: "2026-12-05",
+      amountCentavos: 7000,
+      paymentMethod: "cash" as const,
+      createdBy: treasurer,
+    };
+    await t.db.insert(transactions).values(entry);
+
+    const replace = t.sqlite.prepare(
+      `INSERT OR REPLACE INTO transactions (id, kind, category_id, month_id, occurred_on, amount_centavos, created_by)
+       VALUES (?, 'income', ?, ?, '2026-12-05', 70, ?)`,
+    );
+    assert.throws(() => replace.run(id, category!.id, month!.id, treasurer), /nothing is deleted: transactions/);
+    const [kept] = await t.db.select().from(transactions).where(eq(transactions.id, id));
+    assert.equal(kept?.amountCentavos, 7000);
+
+    const [first] = await t.db.insert(sectors).values({ name: "Reemplazo A" }).returning();
+    await t.db.insert(sectors).values({ name: "Reemplazo B" });
+    assert.throws(
+      () => t.sqlite.prepare(`UPDATE OR REPLACE sectors SET name = 'Reemplazo B' WHERE id = ?`).run(first!.id),
+      /nothing is deleted: sectors/,
+    );
   });
 
   it("puts a guard back on the next start if a table lost it", () => {

@@ -15,7 +15,7 @@ npm run db:restore -- --from-spaces latest --into data/restored.db
 npm run db:restore -- --file backups/zoilabe-2026-10-23T08-45-00Z.db.enc --into data/restored.db
 ```
 
-On the server use
+On the server, as root (only root can read `.env.backup`), use
 `node --env-file=.env --env-file=.env.backup dist/scripts/restore.js …`.
 
 It ends with the row counts and the history log check:
@@ -48,11 +48,14 @@ works without the original machine.
 1. Stop the API: `systemctl stop zoilabe-api`. Phones keep census entries
    queued and send them when it is back (Phase 1).
 2. Restore into `data/restored.db` as above and read the counts.
-3. Swap the files, as the `zoilabe` user. The live file's `-wal` and `-shm`
-   companions go aside with it:
+3. Swap the files. The restore ran as root, so first give the restored file
+   to the `zoilabe` user: the API runs as `zoilabe` and could only read a
+   file root owns, and every save would fail. The live file's `-wal` and
+   `-shm` companions go aside with it:
 
    ```bash
    cd /opt/zoilabe/backend/data
+   chown zoilabe: restored.db && chmod 600 restored.db
    mkdir broken-2026-10-23
    mv zoilabe.db zoilabe.db-wal zoilabe.db-shm broken-2026-10-23/ 2>/dev/null
    mv restored.db zoilabe.db
