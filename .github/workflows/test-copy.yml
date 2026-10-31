@@ -1,0 +1,117 @@
+# Build a branch and put it on the test copy: a second copy of the app on the
+# droplet, at its own address and with made-up data only (App Plan, decisions
+# of 29 and 30 October 2026), so a change can be tried from a phone before it
+# is merged.
+#
+# It runs by itself on every push to a pull request and to main, so the test
+# copy always has the latest change. To put another branch back on it:
+# Actions → Test copy → Run workflow → pick the branch.
+#
+# The droplet never builds (that takes memory from Báscula Central). This
+# publishes the built app to the `test-build` branch, and the droplet picks it
+# up within two minutes (deploy/test-copy/). Setup: docs/test-copy.md.
+
+name: Test copy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One at a time, so each run sees its own build go live before the next one
+# replaces it. A run that is still waiting to start gives way to a newer one.
+concurrency: test-copy
+
+permissions:
+  contents: write # to publish the build to the test-build branch
+
+jobs:
+  test-copy:
+    # A pull request from someone else's copy of the repository gets no write access.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      BRANCH: ${{ github.head_ref || github.ref_name }}
+      COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The branch as it stands, not GitHub's trial merge with main.
+          ref: ${{ env.COMMIT }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
+
+      - name: Build
+        env:
+          # Turns on the "Copia de prueba" strip (frontend/src/testCopy.ts).
+          VITE_TEST_COPY_BRANCH: ${{ env.BRANCH }}
+          VITE_TEST_COPY_COMMIT: ${{ env.COMMIT }}
+        run: npm run build
+
+      # Everything the droplet needs to run it, and nothing it would have to
+      # build: the package files are there so it can install the runtime
+      # dependencies, which are compiled for the machine they run on.
+      - name: Publish to test-build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          OUT=$(mktemp -d)
+          mkdir -p "$OUT/backend" "$OUT/frontend"
+          cp package.json package-lock.json "$OUT/"
+          cp backend/package.json "$OUT/backend/"
+          cp -r backend/dist backend/drizzle "$OUT/backend/"
+          cp frontend/package.json "$OUT/frontend/"
+          cp -r frontend/dist "$OUT/frontend/dist"
+          # What the droplet serves at /version.json; the last step reads it back.
+          jq -n --arg branch "$BRANCH" --arg commit "$COMMIT" '{branch: $branch, commit: $commit}' \
+            > "$OUT/frontend/dist/version.json"
+          cat > "$OUT/README.md" <<EOF
+          # test-build
+
+          The test copy's build, made by the Test copy workflow. Replaced on
+          every run; do not edit it by hand.
+
+          Branch: $BRANCH
+          Commit: $COMMIT
+          EOF
+          cd "$OUT"
+          git init -q -b test-build
+          git add -A -f
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Test copy: $BRANCH at ${COMMIT:0:7}"
+          git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" test-build
+
+      # TEST_COPY_URL is set once the droplet side exists (docs/test-copy.md):
+      # Settings → Secrets and variables → Actions → Variables.
+      - name: Wait for the test copy to run it
+        env:
+          URL: ${{ vars.TEST_COPY_URL }}
+        run: |
+          if [ -z "$URL" ]; then
+            echo "::notice::Published to test-build. No TEST_COPY_URL variable yet, so the test copy is not set up and there is nothing to wait for."
+            exit 0
+          fi
+          URL=${URL%/}
+          # The droplet looks every two minutes; a changed package list adds an install.
+          for _ in $(seq 1 60); do
+            LIVE=$(curl -fsS --max-time 10 "$URL/version.json" | jq -r .commit 2>/dev/null || true)
+            if [ "$LIVE" = "$COMMIT" ] && curl -fsS --max-time 10 "$URL/api/health" >/dev/null; then
+              echo "### On the test copy: [$URL]($URL)" >> "$GITHUB_STEP_SUMMARY"
+              echo "Running \`$BRANCH\` at \`${COMMIT:0:7}\`." >> "$GITHUB_STEP_SUMMARY"
+              echo "::notice::$URL is running $BRANCH at ${COMMIT:0:7}."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::After 10 minutes the test copy is still not running this build. On the droplet: journalctl -u zoilabe-test-update -n 50"
+          exit 1

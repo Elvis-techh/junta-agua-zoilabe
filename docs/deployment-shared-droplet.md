@@ -27,6 +27,12 @@ one SQLite file inside the app's own folder, opened by the app itself. The
 API is a third Node process beside Lindero's, with a 128 MB heap, so the three
 apps still fit in 1 GB of memory plus the 2 GB of swap.
 
+The test copy ([test-copy.md](test-copy.md)) is a fourth process beside
+them: user `zoilabe-test`, folder `/opt/zoilabe-test`, port 3003, its own
+subdomain, made-up data, no backups, and capped at 180 MB of memory. It can
+be set up before the real app, and turned off at any time without touching
+it.
+
 ## Separation checklist — check every line before the first deployment
 
 The App Plan's "Still open" item. Each line says how to prove it.
