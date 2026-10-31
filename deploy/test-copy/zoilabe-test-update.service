@@ -1,0 +1,20 @@
+# Runs deploy/test-copy/autodeploy.sh once; started by zoilabe-test-update.timer.
+# Install: docs/test-copy.md, step 6.
+
+[Unit]
+Description=Junta de Agua test copy: put a new build from test-build in place, if there is one
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/zoilabe-test/source/deploy/test-copy/autodeploy.sh
+
+# Yields to everything else on the machine, the scale API first, as Lindero's
+# deploy does: MemoryHigh slows an install down under pressure rather than
+# killing it halfway, and the weights put it behind the other apps.
+Nice=10
+CPUWeight=20
+IOWeight=20
+MemoryHigh=200M
+TimeoutStartSec=15min
