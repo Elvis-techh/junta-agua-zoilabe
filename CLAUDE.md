@@ -101,5 +101,12 @@ the file. Tests make their own database in memory.
 (`.github/workflows/tests.yml`) runs them, plus a build, on every pull
 request; do not merge one whose check is red.
 
+The **Test copy** workflow (`.github/workflows/test-copy.yml`) puts every
+pull request on the droplet's test copy (docs/test-copy.md), where the
+owner tries it from a phone, so each pull request's description says what
+to try there. Only made-up data goes on the test copy. The droplet runs the
+scripts in `deploy/test-copy/` as root, from `main` only, and never builds;
+keep it that way.
+
 Do not run a code formatter over whole files. Edit by hand, in the
 surrounding style.

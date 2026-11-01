@@ -1,0 +1,69 @@
+# Nginx site for the test copy (docs/test-copy.md), on its own subdomain beside
+# the real app, Lindero and Báscula Central. <TEST_SUBDOMAIN> is replaced when
+# it is copied in. The same shape as deploy/nginx-zoilabe.conf.example, with
+# the test copy's folder and port (3003), and two additions: /version.json,
+# which the Test copy workflow reads to see its build go live, and a header
+# that keeps search engines out. After editing: `nginx -t`, then
+# `systemctl reload nginx`; never restart it, the scale stations depend on it.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name <TEST_SUBDOMAIN>;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name <TEST_SUBDOMAIN>;
+
+    ssl_certificate     /etc/letsencrypt/live/<TEST_SUBDOMAIN>/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/<TEST_SUBDOMAIN>/privkey.pem;
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Robots-Tag "noindex, nofollow" always;
+
+    root /opt/zoilabe-test/app/frontend/dist;
+    index index.html;
+
+    # The service worker must never be cached, or a phone keeps the old app.
+    location = /sw.js {
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+
+    location = /version.json {
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:3003;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 1m;
+    }
+
+    # Every other path is a screen of the app.
+    location / {
+        try_files $uri /index.html;
+    }
+}

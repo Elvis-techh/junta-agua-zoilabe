@@ -1,0 +1,41 @@
+# The test copy's API (docs/test-copy.md): the same program as zoilabe-api,
+# with its own user, folder, database file and port, and made-up data only.
+# install-build.sh keeps the installed copy of this file up to date.
+#
+# Logs: journalctl -u zoilabe-test-api -n 100
+
+[Unit]
+Description=Junta de Agua Zoilabe, test copy
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=4
+
+[Service]
+Type=simple
+User=zoilabe-test
+Group=zoilabe-test
+WorkingDirectory=/opt/zoilabe-test/app/backend
+EnvironmentFile=/opt/zoilabe-test/env
+ExecStart=/opt/node22/bin/node dist/server.js
+# Smaller than the real app's, and the first to give way: the scale stations
+# depend on this droplet every working day, and nobody depends on the test copy.
+Environment=NODE_OPTIONS=--max-old-space-size=96
+MemoryHigh=140M
+MemoryMax=180M
+CPUWeight=20
+IOWeight=20
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+# The one folder it writes: its own database file and the WAL companions.
+ReadWritePaths=/opt/zoilabe-test/data
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

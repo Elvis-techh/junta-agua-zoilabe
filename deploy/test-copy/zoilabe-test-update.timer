@@ -1,0 +1,16 @@
+# Checks GitHub for a new test copy build every two minutes. A check with
+# nothing new is one small `git fetch`.
+
+[Unit]
+Description=Junta de Agua test copy: check for a new build every two minutes
+
+[Timer]
+# OnActiveSec: a first check one minute after the timer is turned on, so a
+# timer enabled long after boot does not wait for an OnBootSec moment that
+# has already passed (Lindero's timer explains it).
+OnActiveSec=1min
+OnBootSec=2min
+OnUnitActiveSec=2min
+
+[Install]
+WantedBy=timers.target

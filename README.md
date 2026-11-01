@@ -37,13 +37,18 @@ changing how money, permissions or the history log work.
   "The database" below). If the apps outgrow it,
   [docs/postgres-readiness.md](docs/postgres-readiness.md) maps the move
   back; a trial copy of the data into PostgreSQL passed every check.
+- **Test copy: built, waiting for the droplet.** GitHub builds every pull
+  request for it and shows the version on a "Copia de prueba" strip; the
+  droplet half is set up once, by hand, from
+  [docs/test-copy.md](docs/test-copy.md).
 
 See the phase table at the end of the app plan.
 
 Phases 1 to 3 are built and tested on a computer before anything changes on
 the droplet. The parts of Phase 0 that need the droplet (the subdomain, the
 data-separation check, backups to the storage bucket, a restore on a test
-server) wait for that one deployment.
+server) wait for that one deployment. The test copy is the one exception
+(App Plan, 29 October 2026): made-up data, kept apart from the real app.
 
 ## Local development
 
@@ -137,25 +142,28 @@ Moving to PostgreSQL one day: [docs/postgres-readiness.md](docs/postgres-readine
 says when it would be worth it, what changes, and how to move the data
 with checks.
 
-### Testing on a phone
+### Testing on a phone: the test copy
 
-The phone must be on the same Wi-Fi as the computer.
+Every push to a pull request, and every merge to `main`, goes to the **test
+copy**: a second copy of the app on the droplet, at its own address, with
+made-up data only. It stays on when the computer is off. On the pull
+request page, wait for the **Test copy** check to turn green (three to five
+minutes), then open the test copy's address on the phone. A purple
+"Copia de prueba" strip names the version it runs; it matches the pull
+request's branch and commit. Never type real families into it.
 
-1. Find the computer's address on the Wi-Fi: `hostname -I` (the first
-   number, e.g. `192.168.1.37`).
-2. In `backend/.env`, set `APP_URL=http://192.168.1.37:5173`, so invitation
-   links point at the computer instead of `localhost`.
-3. Restart `npm run dev`, create an invitation, and open it on the phone.
+How it works, how to put another branch on it, how to start it over with
+empty data, and the one-time droplet setup: [docs/test-copy.md](docs/test-copy.md).
+Until that setup is done, the check only builds (it stays green) and there
+is no address to open.
 
-Screens, sign-in and the offline queue (signal lost while the app is open)
-work this way. Three things need the secure (https) address that only the
-droplet gives: opening the app from scratch with no signal, installing it
-properly on the home screen, and the GPS button.
-
-Away from that Wi-Fi there is no way to try a change yet. The App Plan's
-answer is a test copy on the droplet, at its own address with made-up data,
-which stays on when the computer is off; it is not built yet. Tailscale was
-tried and dropped (30 October 2026): it works only while the computer is on.
+On the same Wi-Fi as the computer, the local app can be opened from a phone
+too: set `APP_URL=http://<the computer's address>:5173` in `backend/.env`
+(`hostname -I`, the first number), restart `npm run dev`, and open an
+invitation on the phone. Installing on the home screen, opening with no
+signal and the GPS button need the https address only the test copy has.
+Tailscale was tried and dropped (30 October 2026): it works only while the
+computer is on.
 
 ## Checks before pushing
 
@@ -166,3 +174,7 @@ npm test
 
 The tests need no database server or settings: each one makes its own
 database in memory and throws it away.
+
+On GitHub, every pull request runs two checks: **Tests** (the same two
+commands, plus a build) and **Test copy** (the tests again, then the build
+on the test copy). Do not merge while either is red.

@@ -17,6 +17,8 @@
   --warn-bg: #fff1d6;
   --danger: #a12424;
   --danger-bg: #fde6e6;
+  --test: #5b2a86;
+  --test-bg: #f1e6fb;
   --radius: 14px;
   --tap: 56px;
   font-size: 18px;
@@ -457,6 +459,23 @@ textarea:focus-visible {
 
 .offline-banner span {
   flex: 1;
+}
+
+/* The test copy only (src/testCopy.ts): a color no real screen uses. */
+.test-copy-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: var(--test-bg);
+  color: var(--test);
+  border-bottom: 3px dashed var(--test);
+}
+
+.test-copy-banner small {
+  display: block;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
 }
 
 @media (min-width: 700px) {
