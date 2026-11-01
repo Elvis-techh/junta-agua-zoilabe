@@ -152,6 +152,11 @@ work this way. Three things need the secure (https) address that only the
 droplet gives: opening the app from scratch with no signal, installing it
 properly on the home screen, and the GPS button.
 
+Away from that Wi-Fi there is no way to try a change yet. The App Plan's
+answer is a test copy on the droplet, at its own address with made-up data,
+which stays on when the computer is off; it is not built yet. Tailscale was
+tried and dropped (30 October 2026): it works only while the computer is on.
+
 ## Checks before pushing
 
 ```bash
