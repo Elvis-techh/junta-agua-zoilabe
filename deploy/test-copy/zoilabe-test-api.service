@@ -23,6 +23,7 @@ ExecStart=/opt/node22/bin/node dist/server.js
 Environment=NODE_OPTIONS=--max-old-space-size=96
 MemoryHigh=140M
 MemoryMax=180M
+OOMScoreAdjust=500
 CPUWeight=20
 IOWeight=20
 Restart=on-failure

@@ -38,8 +38,9 @@ changing how money, permissions or the history log work.
   [docs/postgres-readiness.md](docs/postgres-readiness.md) maps the move
   back; a trial copy of the data into PostgreSQL passed every check.
 - **Test copy: built, waiting for the droplet.** GitHub builds every pull
-  request for it and shows the version on a "Copia de prueba" strip; the
-  droplet half is set up once, by hand, from
+  request for it and shows the version on a "Copia de prueba" strip. Its
+  address will be <https://prueba-agua.basculacentral.com> (the DNS record is
+  in place); the droplet half is set up once, by hand, from
   [docs/test-copy.md](docs/test-copy.md).
 
 See the phase table at the end of the app plan.

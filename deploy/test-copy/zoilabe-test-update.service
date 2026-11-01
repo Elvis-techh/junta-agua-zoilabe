@@ -1,5 +1,5 @@
 # Runs deploy/test-copy/autodeploy.sh once; started by zoilabe-test-update.timer.
-# Install: docs/test-copy.md, step 6.
+# Install: docs/test-copy.md, step 5.
 
 [Unit]
 Description=Junta de Agua test copy: put a new build from test-build in place, if there is one
@@ -17,4 +17,5 @@ Nice=10
 CPUWeight=20
 IOWeight=20
 MemoryHigh=200M
+OOMScoreAdjust=500
 TimeoutStartSec=15min

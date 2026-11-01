@@ -23,6 +23,15 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
+# One deploy at a time on this droplet, the same lock as Lindero's
+# update-from-build.sh: a deploy that reinstalls packages briefly takes about
+# 200 MB, and two at once would push the machine into swap beside the scale stations.
+exec 9>/run/lock/droplet-deploy.lock
+if ! flock -w 600 9; then
+  echo "!! Another deploy has been running on this droplet for 10 minutes; not deploying." >&2
+  exit 1
+fi
+
 as_test() { sudo -u zoilabe-test -H env "PATH=$NODE_BIN:$PATH" "$@"; }
 
 cd "$ROOT/source"
@@ -30,6 +39,9 @@ cd "$ROOT/source"
 echo "==> Unpacking the build"
 BUILD=$(mktemp -d)
 trap 'rm -rf "$BUILD"' EXIT
+# mktemp makes it 700, and `rsync -a` below hands a folder's permissions on to
+# $APP: Nginx could then read nothing inside it, while the API still answers.
+chmod 755 "$BUILD"
 git archive refs/remotes/origin/test-build | tar -x -C "$BUILD"
 grep -E '^(Branch|Commit):' "$BUILD/README.md" | sed 's/^/    /'
 
