@@ -26,8 +26,10 @@ changing how money, permissions or the history log work.
   list, household file, offline queue, inactive status, and Configuración →
   Sectores. Its "done when" test (the secretary types in 10 paper forms from
   a phone without help) has not been run yet.
-- **Phase 2 (Finances): next.** Setting the base fee in Configuración comes
-  with it; until then the census shows "Precio base" without an amount.
+- **Phase 2 (Finances): next.** Its pieces, in build order, are ticked off
+  under "What comes next" in the [app plan](docs/app-plan.md), starting with
+  the fees in Configuración; until then the census shows "Precio base" without
+  an amount.
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
   so its amount starts with the month it is registered in.
