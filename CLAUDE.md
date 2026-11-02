@@ -106,12 +106,15 @@ pull request on the droplet's test copy (docs/test-copy.md), where the
 owner tries it from a phone, so each pull request's description says what
 to try there. Only made-up data goes on the test copy. The droplet runs the
 scripts in `deploy/test-copy/` as root, from `main` only, and never builds;
-keep it that way.
+keep it that way. The owner's steps for trying each change and starting each
+phase are in that page; work the same way.
 
 Claude's only way onto the droplet is the locked key: `ssh lindero-ops status`
 or `nginx` (Lindero's `docs/claude-ops-key.md`) read the health of Lindero and
 Báscula Central and Lindero's nginx site, and nothing else. It cannot see the
-test copy or change anything for this app, so droplet steps are the owner's,
+test copy's files or change anything for this app (from outside,
+`curl https://prueba-agua.basculacentral.com/version.json` shows which build
+runs), so droplet steps are the owner's,
 pasted into the console, and must be safe to paste: the droplet has nginx 1.24,
 and a site `nginx -t` refuses must never stay in `sites-enabled`, because nginx
 then does not start after the next restart, and every app's site is down.

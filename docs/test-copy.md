@@ -7,8 +7,9 @@ computer is off, and it has a real https address, so the things that need
 one work there too: installing on the home screen, opening with no signal,
 and the GPS button.
 
-A purple strip on every screen says **Copia de prueba** and which version it
-runs. Never type a real family into it.
+It has been running at <https://prueba-agua.basculacentral.com> since
+1 November 2026. A purple strip on every screen says **Copia de prueba** and
+which version it runs. Never type a real family into it.
 
 ## How a change gets there
 
@@ -25,26 +26,77 @@ Central's scale stations need (Lindero's deploy works the same way). The
 scripts it runs come from `main`, never from the branch being tried, so a
 pull request cannot change what runs on the droplet until it is merged.
 
-## Trying a change from a phone
+## Every change, step by step
 
-1. Open the pull request on GitHub and wait for the **Test copy** check to
-   turn green, about three to five minutes after the push. Its details name
-   the address and the version.
-2. Open the test copy's address, <https://prueba-agua.basculacentral.com>.
-   The strip shows the branch and the first seven characters of the commit;
-   they match the pull request's.
-3. If it still shows the old version, close the app (or the tab) and open it
-   again: a new version is picked up on the next open.
-4. Try the change with made-up names, numbers and amounts.
+Until the real app is on the droplet, merging puts a change on `main` and on
+the test copy and nowhere else, so no family is affected by a mistake here.
 
-After a merge, the test copy switches to `main` by itself. To put another
-branch back on it: **Actions → Test copy → Run workflow**, pick the branch,
-**Run workflow**.
+1. **Ask for one change, on its own branch.** A branch is a separate working
+   copy of the code, so an unfinished change cannot disturb anything. Claude
+   runs `npm run typecheck` and `npm test`, then opens a pull request whose
+   description says what to try.
+2. **Wait for the checks.** On the pull request page, **Tests** and **Test
+   copy** turn green, about three to five minutes after the push. A green
+   **Test copy** means the droplet is already running this version, and its
+   details name the address.
+3. **Check you have the right version.** Open
+   <https://prueba-agua.basculacentral.com>. The strip says
+   `Versión <branch> · <seven characters>`, which match the pull request's
+   branch and latest commit. If it still shows the old version, close the app
+   (or the tab) and open it again: a new version is picked up on the next open.
+4. **Try it as the person who will use it.** Follow the description's "what to
+   try", with made-up names, numbers and amounts. Sign in with that person's
+   role, not only as the administrator. If the change decides who may see
+   something, also try a role that may not see it. If it is for work in the
+   field, try it with no signal too.
+5. **Not right?** Tell Claude what you expected and what you saw. The fix goes
+   on the same branch and the same pull request, and the test copy updates by
+   itself. Back to step 2.
+6. **Right?** With both checks green, press **Merge pull request**. The test
+   copy switches to `main` by itself, and within a few minutes the strip says
+   `main`.
+7. **Broke after merging?** Press **Revert** on the merged pull request, then
+   merge the pull request it makes. That undoes the change and keeps the record
+   of it; `main`'s history is never rewritten.
 
-A red **Test copy** check means the tests failed (nothing was sent to the
-droplet) or the droplet did not take the build within ten minutes. The
-check's log says which; for the second, the droplet's side is in
-`journalctl -u zoilabe-test-update -n 50`.
+Three things to know:
+
+- **It holds one version at a time, and the last push wins.** With two pull
+  requests open, look at the strip before testing. To put a branch back on it:
+  **Actions → Test copy → Run workflow**, pick the branch, **Run workflow**.
+- **A red check means do not merge.** A red **Test copy** means the tests failed
+  (nothing was sent to the droplet) or the droplet did not take the build
+  within ten minutes. Give Claude the pull request's number: it can read
+  GitHub's log. For the second case the droplet's side is
+  `journalctl -u zoilabe-test-update -n 50 --no-pager`, which holds no secrets
+  and can be pasted to Claude.
+- **A branch that changes the database leaves its mark.** The file keeps that
+  branch's tables after the test copy goes back to `main`. If a later version
+  will not start, or old test data gets in the way,
+  [start over](#starting-over-with-an-empty-test-copy).
+
+## Starting a new phase
+
+The phases, and what "done" means for each, are in the table at the end of the
+[App Plan](app-plan.md).
+
+1. **Start from a clean place.** Every pull request of the last phase is merged
+   or closed, and the strip says `main`.
+2. **The board decides first.** Read the phase in the plan. Anything still open
+   about money, or about who may see what, goes to the board before it is
+   built: Claude lays out the options and the trade-off, and waits.
+3. **Build it in small pieces.** Each piece is one pull request through the
+   steps above, never the whole phase at once, so a piece that goes wrong can
+   be reverted alone.
+4. **Give the test copy what the phase needs.** Accounts for the roles involved,
+   made from **Usuarios**, and made-up data.
+5. **Finish with the phase's "done when" test,** done by the person it names,
+   without help. The test copy takes only made-up data, so use made-up paper
+   forms and receipts. A test that needs real data or the real address (Phase
+   2's month beside the real receipt book, Phase 3's guest at the real address)
+   cannot run here: ask the board how to run it before the phase ends.
+6. **Mark it done.** A pull request updates `README.md`'s Status. The phase
+   table changes in the board's plan, and its snapshot here is then refreshed.
 
 ## What it is not
 
@@ -58,6 +110,8 @@ check's log says which; for the second, the droplet's side is in
   [deployment-shared-droplet.md](deployment-shared-droplet.md).
 
 ## Setting it up, once
+
+Done on 1 November 2026. These steps stay here for setting it up again.
 
 From the droplet's console (DigitalOcean → the droplet → **Console**, or SSH
 from the computer). Every command is safe to copy as it is. Paste one block
