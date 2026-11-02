@@ -26,10 +26,14 @@ changing how money, permissions or the history log work.
   list, household file, offline queue, inactive status, and Configuración →
   Sectores. Its "done when" test (the secretary types in 10 paper forms from
   a phone without help) has not been run yet.
-- **Phase 2 (Finances): next.** Its pieces, in build order, are ticked off
-  under "What comes next" in the [app plan](docs/app-plan.md), starting with
-  the fees in Configuración; until then the census shows "Precio base" without
-  an amount.
+- **Phase 2 (Finances): started.** Its pieces, in build order, are ticked off
+  under "What comes next" in the [app plan](docs/app-plan.md).
+  - **Fees in Configuración: built.** The base monthly fee, the late fee
+    (mora) and the reconnection fee, each from the month it starts. The
+    census shows the base price's amount once one is set. See "Trying the
+    fees" below.
+  - Next: monthly fee payments.
+
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
   so its amount starts with the month it is registered in.
@@ -87,6 +91,27 @@ npm run user:first-admin -- --name "Nombre Apellido" --phone 99998888
 It prints an invitation link. Open it, choose a 6-digit PIN, and you are in.
 Every other account is created from Usuarios. The command refuses to run
 once an administrator exists.
+
+### Trying the fees
+
+As the administrator or the president, open **Configuración** → **Cuotas**.
+
+1. Tap **Poner monto** on "Cuota mensual base", type `70` and pick a month.
+   The first amount of each fee may start in a past month, so what houses
+   already owe from the paper book can be counted.
+2. Tap **Seguir**, read the summary, and tap **Sí, guardar**. The card shows
+   L 70.00 "en uso", and **Registrar familia** now says "Precio base:
+   L 70.00 al mes".
+3. Tap **Cambiar monto**. The month picker starts at next month: a change
+   never reaches a month that has already started, because that month is
+   being charged and may already be paid. The new amount shows as "todavía
+   no empieza" until its month comes.
+4. Nothing here can be edited or deleted. A mistake is fixed with another
+   change that starts in a later month. Each change is in **Historial**,
+   with the amount it replaced.
+
+The server refuses these changes from any other role, whatever the screen
+shows.
 
 ### Trying the census
 

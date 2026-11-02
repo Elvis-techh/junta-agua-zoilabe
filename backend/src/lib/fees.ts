@@ -46,3 +46,17 @@ export function lastPaidMonth(db: DbOrTx, householdId: string): string | null {
   `);
   return row?.month ?? null;
 }
+
+/**
+ * The earliest month a new rate of a fee may start, or null when any month may.
+ *
+ * App Plan (decisions of 29 October 2026): a fee change "starts from its date
+ * and never rewrites months already charged or paid". This month is already
+ * being charged and may be paid, so a change starts next month at the
+ * earliest. The very first amount of each fee is the exception: until it
+ * exists, no month has been charged with it, and it may start in the past so
+ * that what houses already owe from the paper book can be counted.
+ */
+export function earliestFeeStart(hasRate: boolean, today: string): string | null {
+  return hasRate ? monthAfter(today) : null;
+}

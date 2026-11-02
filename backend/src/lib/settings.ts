@@ -18,14 +18,23 @@ export function currentSetting<T>(db: DbOrTx, key: string, day: string): T | nul
   return row ? (row.value as T) : null;
 }
 
-/** The base monthly fee in force on `day`, or null while the board has not set one. */
-export function baseMonthlyFee(db: DbOrTx, day: string): number | null {
+export type FeeKind = (typeof feeRates.$inferSelect)["kind"];
+
+export const FEE_KINDS = ["base_monthly", "late_fee", "reconnection"] as const satisfies readonly FeeKind[];
+
+/** The amount of a fee in force on `day`, in centavos, or null while the board has not set one. */
+export function feeOn(db: DbOrTx, kind: FeeKind, day: string): number | null {
   const row = db
     .select({ amount: feeRates.amountCentavos })
     .from(feeRates)
-    .where(and(eq(feeRates.kind, "base_monthly"), lte(feeRates.startsOn, day)))
+    .where(and(eq(feeRates.kind, kind), lte(feeRates.startsOn, day)))
     .orderBy(desc(feeRates.startsOn))
     .limit(1)
     .get();
   return row?.amount ?? null;
+}
+
+/** The base monthly fee in force on `day`, or null while the board has not set one. */
+export function baseMonthlyFee(db: DbOrTx, day: string): number | null {
+  return feeOn(db, "base_monthly", day);
 }

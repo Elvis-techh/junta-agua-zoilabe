@@ -11,6 +11,7 @@ import { HttpError } from "./lib/http.js";
 import { auditRoutes } from "./routes/audit.js";
 import { authRoutes } from "./routes/auth.js";
 import { censusRoutes } from "./routes/census.js";
+import { feeRoutes } from "./routes/fees.js";
 import { healthRoutes } from "./routes/health.js";
 import { permissionRoutes } from "./routes/permissions.js";
 import { sectorRoutes } from "./routes/sectors.js";
@@ -74,6 +75,7 @@ export async function buildApp(config: AppConfig, db: Db) {
       await api.register(auditRoutes);
       await api.register(censusRoutes, { timeZone: config.timeZone });
       await api.register(sectorRoutes);
+      await api.register(feeRoutes, { timeZone: config.timeZone });
     },
     { prefix: "/api" },
   );
