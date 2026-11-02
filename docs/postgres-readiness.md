@@ -76,8 +76,8 @@ c6aa10c:<path>`), the last `main` before the switch.
 
 | # | Area | SQLite today | PostgreSQL | Size |
 |---|---|---|---|---|
-| 1 | Queries | 72 synchronous `.get()` `.all()` `.run()` in `src/` | every one `await`ed; every helper and handler `async` again | L |
-| 2 | One write at a time | `inTransaction` (23 call sites): synchronous IMMEDIATE, nothing else runs inside it | async transactions run side by side: the locks in the list below come back | M, and the riskiest |
+| 1 | Queries | 74 synchronous `.get()` `.all()` `.run()` in `src/` | every one `await`ed; every helper and handler `async` again | L |
+| 2 | One write at a time | `inTransaction` (24 call sites): synchronous IMMEDIATE, nothing else runs inside it | async transactions run side by side: the locks in the list below come back | M, and the riskiest |
 | 3 | Nothing deleted, history unchanged | triggers (`src/db/guards.ts`), `recursive_triggers` on | two logins and their grants (history: `backend/src/db/roles.ts`). Triggers can stay as a second layer | M |
 | 4 | Accent-blind search | `search_text()`, a JavaScript function on the connection | history: `translate(lower(x), 'áéíóúüñ', 'aeiouun')`, or the `unaccent` extension | S |
 | 5 | Raw SQL | 16 fragments, list below | translations below | S |
@@ -103,6 +103,7 @@ history version had:
 | Sector edit (`PATCH /settings/sectors/:id`) | the same, on a sector | `FOR UPDATE` |
 | Invitation accept (`POST /auth/invitation/accept`) | one link used twice at once | `FOR UPDATE` |
 | Fee change (`POST /settings/fees`) | two first amounts of the same fee both start in the past, or a log entry names the wrong amount it replaced | `LOCK TABLE fee_rates IN SHARE ROW EXCLUSIVE MODE` |
+| Fee correction (`PATCH /settings/fees/:id`) | a payment is recorded between the "nothing paid yet" check and the correction, which then rewrites a paid month | `FOR UPDATE` on the rate, and the payment route takes the same lock |
 
 The wrong-PIN counter needs nothing: it counts inside the `UPDATE` itself.
 **New code that relies on one write at a time adds its row here**: Phase 2's
@@ -119,7 +120,7 @@ the tests may not notice.
 |---|---|
 | `strftime('%Y-%m-%dT%H:%M:%fZ', 'now')` (`schema.ts`, every `created_at`) | `now()` (`.defaultNow()`) |
 | `max(CAST(substr(code, 3) AS INTEGER))` (household code) | `max(substring(code from 3)::int)` |
-| `json_each(t.months_covered)` (`lastPaidMonth`, `src/lib/fees.ts`) | `unnest(t.months_covered)` |
+| `json_each(t.months_covered)` (`lastPaidMonth` and `paidFrom`, `src/lib/fees.ts`) | `unnest(t.months_covered)` |
 | `NOT GLOB '*[^0-9]*'` (phone and ID checks) | `~ '^[0-9]{8}$'`, `~ '^[0-9]{13}$'` |
 | `IS NOT 'transfer'` (transfer needs a bank reference) | `IS DISTINCT FROM 'transfer'` |
 | `substr(month, 9, 2) = '01'` (months start on day 1) | `extract(day from month) = 1` |

@@ -3,24 +3,25 @@ import { after, before, describe, it } from "node:test";
 
 import { and, eq } from "drizzle-orm";
 
-import { auditLog, feeRates } from "../src/db/schema.js";
-import { earliestFeeStart, firstOfMonth, monthAfter } from "../src/lib/fees.js";
+import { newId } from "../src/auth/session.js";
+import { auditLog, categories, feeRates, months, transactions } from "../src/db/schema.js";
+import { earliestFeeStart, firstOfMonth, monthAfter, paidFrom } from "../src/lib/fees.js";
 import { feeOn } from "../src/lib/settings.js";
 import { HONDURAS_TIME_ZONE, businessToday } from "../src/lib/time.js";
 import type { TestApp } from "./helpers.js";
-import { buildTestApp, rejectsWithDbError, signedInUser } from "./helpers.js";
+import { TEST_PIN, buildTestApp, rejectsWithDbError, signedInUser } from "./helpers.js";
 
 describe("the earliest month a fee may start", () => {
-  it("is any month for the first amount, and next month after that", () => {
+  it("is any month for the first amount, and this month after that", () => {
     assert.equal(earliestFeeStart(false, "2026-11-02"), null);
-    assert.equal(earliestFeeStart(true, "2026-11-02"), "2026-12-01");
-    assert.equal(earliestFeeStart(true, "2026-12-31"), "2027-01-01");
+    assert.equal(earliestFeeStart(true, "2026-11-02"), "2026-11-01");
+    assert.equal(earliestFeeStart(true, "2026-12-31"), "2026-12-01");
   });
 });
 
 describe("Configuración → Cuotas", () => {
   let t: TestApp;
-  let president: { cookie: string };
+  let president: { id: string; cookie: string };
   let treasurer: { cookie: string };
   let secretary: { cookie: string };
   const today = businessToday(HONDURAS_TIME_ZONE);
@@ -40,6 +41,21 @@ describe("Configuración → Cuotas", () => {
 
   const call = (cookie: string, method: "GET" | "POST", payload?: object) =>
     t.app.inject({ method, url: "/api/settings/fees", headers: { cookie }, ...(payload ? { payload } : {}) });
+  const correct = (cookie: string, id: number, payload: object) =>
+    t.app.inject({ method: "PATCH", url: `/api/settings/fees/${id}`, headers: { cookie }, payload });
+  const confirmPin = async (cookie: string) => {
+    const confirmed = await t.app.inject({
+      method: "POST",
+      url: "/api/auth/confirm-pin",
+      headers: { cookie },
+      payload: { pin: TEST_PIN },
+    });
+    assert.equal(confirmed.statusCode, 200);
+  };
+  const baseRates = async () => {
+    const list = await call(president.cookie, "GET");
+    return list.json().fees.find((fee: { kind: string }) => fee.kind === "base_monthly");
+  };
 
   it("is kept to Configuración's roles: the server refuses anyone else", async () => {
     for (const user of [treasurer, secretary]) {
@@ -60,10 +76,18 @@ describe("Configuración → Cuotas", () => {
     }
   });
 
-  it("refuses amounts that are not whole centavos above zero, and starts that are not a month", async () => {
+  it("asks for the PIN again before saving", async () => {
+    const sent = await call(president.cookie, "POST", { kind: "base_monthly", amountCentavos: 7000, startsOn: lastYear });
+    assert.equal(sent.statusCode, 403);
+    assert.equal(sent.json().error, "pin_required");
+    assert.equal((await t.db.select().from(feeRates)).length, 0);
+    await confirmPin(president.cookie);
+  });
+
+  it("refuses amounts that are not whole centavos of zero or more, and starts that are not a month", async () => {
     const bad = [
       { kind: "base_monthly", amountCentavos: 70.5, startsOn: lastYear },
-      { kind: "base_monthly", amountCentavos: 0, startsOn: lastYear },
+      { kind: "base_monthly", amountCentavos: -100, startsOn: lastYear },
       { kind: "base_monthly", amountCentavos: 7000, startsOn: `${today.slice(0, 7)}-15` },
       { kind: "base_monthly", amountCentavos: 7000, startsOn: "2026-13-01" },
       { kind: "water", amountCentavos: 7000, startsOn: lastYear },
@@ -92,45 +116,98 @@ describe("Configuración → Cuotas", () => {
     assert.equal(options.json().baseFeeCentavos, 7000);
   });
 
-  it("never rewrites a month that has started: a change starts next month at the earliest", async () => {
-    for (const startsOn of [lastYear, thisMonth]) {
-      const sent = await call(president.cookie, "POST", { kind: "base_monthly", amountCentavos: 8000, startsOn });
-      assert.equal(sent.statusCode, 409);
-      assert.equal(sent.json().error, "starts_too_early");
-      assert.equal(sent.json().earliestStart, nextMonth);
-    }
+  it("never rewrites a past month: a change starts this month at the earliest", async () => {
+    const sent = await call(president.cookie, "POST", { kind: "base_monthly", amountCentavos: 8000, startsOn: lastYear });
+    assert.equal(sent.statusCode, 409);
+    assert.equal(sent.json().error, "starts_too_early");
+    assert.equal(sent.json().earliestStart, thisMonth);
     assert.equal(feeOn(t.db, "base_monthly", today), 7000);
-    // Another fee's first amount is still free to start in the past.
-    const lateFee = await call(president.cookie, "POST", { kind: "late_fee", amountCentavos: 2000, startsOn: lastYear });
+    // Another fee's first amount is still free to start in the past, and may be zero.
+    const lateFee = await call(president.cookie, "POST", { kind: "late_fee", amountCentavos: 0, startsOn: lastYear });
     assert.equal(lateFee.statusCode, 201);
+    assert.equal(feeOn(t.db, "late_fee", today), 0);
+  });
+
+  it("lets a change start this month", async () => {
+    const sent = await call(president.cookie, "POST", { kind: "base_monthly", amountCentavos: 7500, startsOn: thisMonth });
+    assert.equal(sent.statusCode, 201);
+    assert.equal(feeOn(t.db, "base_monthly", today), 7500);
   });
 
   it("adds a later amount from its month on, keeping the old one for the months before", async () => {
     const sent = await call(president.cookie, "POST", { kind: "base_monthly", amountCentavos: 8000, startsOn: nextMonth });
     assert.equal(sent.statusCode, 201);
-    assert.equal(feeOn(t.db, "base_monthly", today), 7000);
+    assert.equal(feeOn(t.db, "base_monthly", today), 7500);
     assert.equal(feeOn(t.db, "base_monthly", nextMonth), 8000);
 
     const [entry] = await t.db
       .select()
       .from(auditLog)
       .where(and(eq(auditLog.action, "fee_rate.created"), eq(auditLog.entityId, String(sent.json().rate.id))));
-    assert.match(entry!.summary, /en L 80\.00 desde .+ \(antes L 70\.00\)$/);
-    assert.deepEqual(entry!.before, { amountCentavos: 7000, startsOn: lastYear });
+    assert.match(entry!.summary, /en L 80\.00 desde .+ \(antes L 75\.00\)$/);
+    assert.deepEqual(entry!.before, { amountCentavos: 7500, startsOn: thisMonth });
 
     const again = await call(president.cookie, "POST", { kind: "base_monthly", amountCentavos: 9000, startsOn: nextMonth });
     assert.equal(again.statusCode, 409);
     assert.equal(again.json().error, "month_taken");
 
-    const list = await call(president.cookie, "GET");
-    const base = list.json().fees.find((fee: { kind: string }) => fee.kind === "base_monthly");
+    const base = await baseRates();
     assert.deepEqual(
       base.rates.map((rate: { amountCentavos: number; startsOn: string }) => [rate.amountCentavos, rate.startsOn]),
-      [[8000, nextMonth], [7000, lastYear]],
+      [[8000, nextMonth], [7500, thisMonth], [7000, lastYear]],
     );
     assert.equal(base.currentId, base.rates[1].id);
     assert.equal(base.rates[0].createdByName, "Ana Presidenta");
-    assert.equal(base.earliestStart, nextMonth);
+    assert.equal(base.earliestStart, thisMonth);
+  });
+
+  it("corrects an amount typed wrong, with a reason, and logs both", async () => {
+    const first = (await baseRates()).rates[2];
+    assert.equal(first.correctable, true);
+
+    const noReason = await correct(president.cookie, first.id, { amountCentavos: 6000 });
+    assert.equal(noReason.statusCode, 400);
+    assert.equal((await correct(treasurer.cookie, first.id, { amountCentavos: 6000, reason: "Error al escribir" })).statusCode, 403);
+
+    const sent = await correct(president.cookie, first.id, { amountCentavos: 6000, reason: "Error al escribir: era L 60" });
+    assert.equal(sent.statusCode, 200);
+    assert.equal(feeOn(t.db, "base_monthly", lastYear), 6000);
+
+    const [entry] = await t.db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.action, "fee_rate.corrected"), eq(auditLog.entityId, String(first.id))));
+    assert.equal(entry!.reason, "Error al escribir: era L 60");
+    assert.match(entry!.summary, /corrigió la cuota mensual base desde enero de \d{4}: L 70\.00 → L 60\.00$/);
+    assert.deepEqual(entry!.before, { amountCentavos: 7000 });
+  });
+
+  it("does not correct an amount once a payment has been made at it", async () => {
+    const [month] = await t.db.insert(months).values({ month: thisMonth, status: "open" }).returning();
+    const [category] = await t.db.select().from(categories).where(eq(categories.name, "Cuota mensual"));
+    const paymentId = newId();
+    await t.db.insert(transactions).values({
+      id: paymentId,
+      kind: "income",
+      categoryId: category!.id,
+      monthId: month!.id,
+      occurredOn: today,
+      amountCentavos: 7500,
+      monthsCovered: [thisMonth],
+      paymentMethod: "cash",
+      createdBy: president.id,
+    });
+    assert.equal(paidFrom(t.db, thisMonth), true);
+    assert.equal(paidFrom(t.db, nextMonth), false);
+
+    const base = await baseRates();
+    const [upcoming, current, first] = base.rates;
+    assert.deepEqual([upcoming.correctable, current.correctable, first.correctable], [true, false, false]);
+
+    const sent = await correct(president.cookie, current.id, { amountCentavos: 7000, reason: "Error al escribir" });
+    assert.equal(sent.statusCode, 409);
+    assert.equal(sent.json().error, "already_paid");
+    assert.equal(feeOn(t.db, "base_monthly", today), 7500);
   });
 
   it("is never deleted, even from outside the app", async () => {

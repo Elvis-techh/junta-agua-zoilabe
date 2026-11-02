@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api } from "../api.ts";
 import { formatLempiras, parseLempiras } from "../census.ts";
+import { ConfirmPin } from "../components/ConfirmPin.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import { Icon } from "../icons.tsx";
 
@@ -13,6 +14,8 @@ interface Rate {
   startsOn: string;
   createdAt: string;
   createdByName: string | null;
+  /** False once a payment has been made at this amount. */
+  correctable: boolean;
 }
 
 interface Fee {
@@ -46,14 +49,19 @@ function formatMonth(firstDay: string): string {
   );
 }
 
+/** A new amount for a fee, or a correction of one already saved. */
+type Editing = { fee: Fee; rate: null } | { fee: Fee; rate: Rate };
+
 /**
  * Configuración → Cuotas. A new amount never replaces an old one: it is added
- * from the month it starts, so every month keeps the price it was charged at.
+ * from the month it starts, so past months keep the price they were charged
+ * at. An amount typed wrong can be corrected, with a reason, until a payment
+ * has been made at it.
  */
 export function FeesSection() {
   const [fees, setFees] = useState<Fee[] | null>(null);
   const [today, setToday] = useState("");
-  const [changing, setChanging] = useState<Fee | null>(null);
+  const [editing, setEditing] = useState<Editing | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -74,7 +82,7 @@ export function FeesSection() {
     <section className="stack">
       <h2>Cuotas</h2>
       <p className="muted">
-        La junta decide los montos. Un cambio empieza el mes que se elija y no cambia los meses que ya empezaron.
+        La junta decide los montos. Un cambio empieza el mes que se elija y no cambia los meses pasados.
       </p>
 
       {message && <p className={`message ${message.kind}`}>{message.text}</p>}
@@ -102,13 +110,20 @@ export function FeesSection() {
                       {formatLempiras(rate.amountCentavos)} desde {formatMonth(rate.startsOn)}
                       {rate.startsOn > today ? " — todavía no empieza" : rate.id === fee.currentId ? " — en uso" : ""}
                       {rate.createdByName && <span className="muted"> · {rate.createdByName}</span>}
+                      {rate.correctable && (
+                        <div style={{ marginTop: 4 }}>
+                          <button className="btn" onClick={() => setEditing({ fee, rate })}>
+                            <Icon name="edit" /> Corregir
+                          </button>
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
               )}
 
               <div className="row">
-                <button className="btn" onClick={() => setChanging(fee)}>
+                <button className="btn" onClick={() => setEditing({ fee, rate: null })}>
                   <Icon name="edit" /> {fee.rates.length === 0 ? "Poner monto" : "Cambiar monto"}
                 </button>
               </div>
@@ -117,13 +132,13 @@ export function FeesSection() {
         })}
       </div>
 
-      {changing && (
-        <ChangeFee
-          fee={changing}
+      {editing && (
+        <FeeDialog
+          editing={editing}
           today={today}
-          onClose={() => setChanging(null)}
+          onClose={() => setEditing(null)}
           onSaved={async (text) => {
-            setChanging(null);
+            setEditing(null);
             setMessage({ kind: "ok", text });
             await load();
           }}
@@ -133,38 +148,42 @@ export function FeesSection() {
   );
 }
 
-function ChangeFee({
-  fee,
+function FeeDialog({
+  editing,
   today,
   onClose,
   onSaved,
 }: {
-  fee: Fee;
+  editing: Editing;
   today: string;
   onClose: () => void;
   onSaved: (message: string) => Promise<void>;
 }) {
+  const { fee, rate } = editing;
   const title = FEES[fee.kind].title;
   const [amountText, setAmountText] = useState("");
   // `<input type="month">` works with "YYYY-MM".
   const [month, setMonth] = useState((fee.earliestStart ?? today).slice(0, 7));
-  const [confirming, setConfirming] = useState(false);
+  const [reason, setReason] = useState("");
+  const [step, setStep] = useState<"form" | "confirm" | "pin">("form");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const amountCentavos = parseLempiras(amountText);
-  const startsOn = /^\d{4}-\d{2}$/.test(month) ? `${month}-01` : null;
+  const startsOn = rate ? rate.startsOn : /^\d{4}-\d{2}$/.test(month) ? `${month}-01` : null;
 
   const check = () => {
-    if (amountCentavos === null || amountCentavos <= 0) {
-      setError("Escriba el monto en lempiras, por ejemplo 70 o 70.50.");
+    if (amountCentavos === null) {
+      setError("Escriba el monto en lempiras, por ejemplo 70 o 70.50. Si no se cobra, escriba 0.");
     } else if (!startsOn) {
       setError("Elija el mes en que empieza.");
-    } else if (fee.earliestStart && startsOn < fee.earliestStart) {
+    } else if (!rate && fee.earliestStart && startsOn < fee.earliestStart) {
       setError(`Un cambio empieza en ${formatMonth(fee.earliestStart)} o después.`);
+    } else if (rate && reason.trim().length < 5) {
+      setError("Escriba por qué se corrige.");
     } else {
       setError(null);
-      setConfirming(true);
+      setStep("confirm");
     }
   };
 
@@ -172,51 +191,87 @@ function ChangeFee({
     setSaving(true);
     setError(null);
     try {
-      await api("POST", "/settings/fees", { kind: fee.kind, amountCentavos, startsOn });
-      await onSaved(`${title}: ${formatLempiras(amountCentavos!)} desde ${formatMonth(startsOn!)}.`);
+      if (rate) {
+        await api("PATCH", `/settings/fees/${rate.id}`, { amountCentavos, reason: reason.trim() });
+        await onSaved(`${title} desde ${formatMonth(startsOn!)} corregida: ${formatLempiras(amountCentavos!)}.`);
+      } else {
+        await api("POST", "/settings/fees", { kind: fee.kind, amountCentavos, startsOn });
+        await onSaved(`${title}: ${formatLempiras(amountCentavos!)} desde ${formatMonth(startsOn!)}.`);
+      }
     } catch (err) {
       setError((err as Error).message);
-      setConfirming(false);
+      setStep("form");
       setSaving(false);
     }
   };
 
+  if (step === "pin") {
+    return (
+      <ConfirmPin
+        onClose={() => setStep("confirm")}
+        onConfirmed={() => {
+          setStep("confirm");
+          void save();
+        }}
+      />
+    );
+  }
+
   return (
-    <Dialog title={title} onClose={onClose}>
-      {confirming ? (
+    <Dialog title={rate ? `Corregir ${title.toLowerCase()}` : title} onClose={onClose}>
+      {step === "confirm" ? (
         <>
-          <p>
-            {title} será <strong>{formatLempiras(amountCentavos!)}</strong> desde{" "}
-            <strong>{formatMonth(startsOn!)}</strong>.
-          </p>
-          <p className="muted">
-            Queda en el historial y no se puede borrar. Si hay un error, se corrige con otro cambio que empiece en un mes
-            siguiente.
-          </p>
+          {rate ? (
+            <p>
+              {title} desde <strong>{formatMonth(startsOn!)}</strong> pasa de {formatLempiras(rate.amountCentavos)} a{" "}
+              <strong>{formatLempiras(amountCentavos!)}</strong>.
+            </p>
+          ) : (
+            <p>
+              {title} será <strong>{formatLempiras(amountCentavos!)}</strong> desde{" "}
+              <strong>{formatMonth(startsOn!)}</strong>.
+            </p>
+          )}
+          <p className="muted">Queda en el historial y no se puede borrar. Para guardar se pide su PIN.</p>
           <div className="row">
-            <button className="btn go" disabled={saving} onClick={() => void save()}>
+            <button className="btn go" disabled={saving} onClick={() => setStep("pin")}>
               <Icon name="check" /> Sí, guardar
             </button>
-            <button className="btn" disabled={saving} onClick={() => setConfirming(false)}>
+            <button className="btn" disabled={saving} onClick={() => setStep("form")}>
               <Icon name="back" /> Volver
             </button>
           </div>
         </>
       ) : (
         <>
+          {rate && (
+            <p>
+              Ahora: {formatLempiras(rate.amountCentavos)} desde {formatMonth(rate.startsOn)}. Se corrige solo si se
+              escribió mal; si la junta cambió el monto, use «Cambiar monto».
+            </p>
+          )}
           <label>
-            Monto, en lempiras
+            {rate ? "Monto correcto, en lempiras" : "Monto, en lempiras"}
             <input inputMode="decimal" value={amountText} onChange={(e) => setAmountText(e.target.value)} placeholder="Ejemplo: 70" autoFocus />
           </label>
-          <label>
-            Desde el mes
-            <input type="month" value={month} min={fee.earliestStart?.slice(0, 7)} onChange={(e) => setMonth(e.target.value)} />
-          </label>
-          <p className="muted">
-            {fee.earliestStart
-              ? `Los meses que ya empezaron se quedan con el monto que tenían, así que el cambio empieza en ${formatMonth(fee.earliestStart)} o después.`
-              : "Es el primer monto. Puede empezar en un mes pasado, para contar lo que las viviendas ya deben según el cuaderno de recibos."}
-          </p>
+          {rate ? (
+            <label>
+              Por qué se corrige
+              <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ejemplo: se escribió 7 en vez de 70" />
+            </label>
+          ) : (
+            <>
+              <label>
+                Desde el mes
+                <input type="month" value={month} min={fee.earliestStart?.slice(0, 7)} onChange={(e) => setMonth(e.target.value)} />
+              </label>
+              <p className="muted">
+                {fee.earliestStart
+                  ? `Los meses pasados se quedan con el monto que tenían, así que el cambio empieza en ${formatMonth(fee.earliestStart)} o después.`
+                  : "Es el primer monto. Puede empezar en un mes pasado, para contar lo que las viviendas ya deben según el cuaderno de recibos."}
+              </p>
+            </>
+          )}
           {error && <p className="message error">{error}</p>}
           <div className="row">
             <button className="btn primary" onClick={check}>
