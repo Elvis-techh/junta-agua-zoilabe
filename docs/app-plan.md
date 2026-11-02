@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 93, taken 2026-10-30.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 97, taken 2026-11-01.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -388,15 +388,50 @@ Five phases take the app from foundation to handover, and each ends with a test 
 
 **Local first**
 
-Phases 1 to 3 are built and tested on the builder's computer before anything changes on the droplet (decided 2026-10-24). Each change merges to `main` only once its tests pass, so the droplet work at the end is one deployment, not five. Checks that need a phone, such as Phase 1's ten paper forms, run on the droplet's test copy once it is built, and until then against the computer from the same Wi-Fi.
+Phases 1 to 3 are built and tested on the builder's computer before anything changes on the droplet (decided 2026-10-24). Each change merges to `main` only once its tests pass, so the droplet work at the end is one deployment, not five. Checks that need a phone, such as Phase 1's ten paper forms, run on the droplet's test copy (running since 1 November 2026, with made-up data only).
 
 | Phase | Status | Built and tested locally | Waits for the droplet |
 |---|---|---|---|
 | 0. Foundation | Merged | Invitation and PIN login, roles and permissions, history log, backup and restore scripts (merged in PR #1 on 2026-10-24) | Subdomain, the data-separation check, backups to the storage bucket, a restore on a test server |
-| 1. Census | Merged | Everything, including paper entry mode and the offline queue (merged in PRs #3 to #5 on 2026-10-25). Its "done when" test, the secretary typing in ten paper forms from a phone, has not been run yet | Nothing |
+| 1. Census | Merged | Everything, including paper entry mode and the offline queue (merged in PRs #3 to #5 on 2026-10-25). Its "done when" test, the secretary typing in ten paper forms from a phone, has not been run yet; the test copy is ready for it, using made-up forms | Nothing |
 | 2. Finances | Next | Everything; receipt photos stay on the computer until the bucket is connected | Receipt photos in the storage bucket |
 | 3. Close, reports and guests | Not started | Everything, including print layouts and guest invitations | A guest signing in from a municipal phone at the real address |
 | 4. Handover | Not started | A first draft of the runbook | The restore test, board-owned accounts, training and installing on every director's phone |
+
+**Done so far (as of 1 November 2026)**
+
+Phases 0 and 1 are merged and the test copy is running. Phase 2's groundwork is in place, but the app cannot record money yet.
+
+- [x] Test copy running at [prueba-agua.basculacentral.com](https://prueba-agua.basculacentral.com) with made-up data only, set up on 1 November 2026 (PRs #11 to #13). Every pull request now goes there for a phone check. Its own separation check passed; the real app's is still open below.
+- [x] Database moved to SQLite (PR #8).
+- [x] Phase 2's tables are in the database: fee rates, transactions, categories, months and receipt files. Transactions can only be added, never changed or deleted.
+- [x] Finance permissions are set for each role: view, record and reverse.
+- [x] Income and expense categories from Module 2 are loaded.
+- [x] A house's different amount and its reason are entered at registration, and start with the month after its last payment (PRs #3 and #4).
+- [x] Board rules for Phase 2 are written down: the decisions of 25 and 29 October below.
+
+**What comes next**
+
+Phase 2 can start now with fees in Configuración. Only the piece marked below waits for a board answer.
+
+Needs people, not code:
+
+- [ ] Phase 1's "done when" test: the secretary types in ten made-up paper forms on the test copy, without help.
+- [ ] The board decides how the treasurer enters what each house already owes (see Still open).
+- [ ] The board decides how to run Phase 2's "done when" test (see Still open).
+
+Phase 2 pieces in suggested build order. Each is one pull request, tried on the test copy before it is merged:
+
+- [ ] Fees in Configuración: base monthly fee, late fee (mora) and reconnection fee, each with a start date. The census then shows the base price's amount.
+- [ ] Monthly fee payments: household, the months the treasurer selects, amount, payment method and paper receipt number, with a reference for a bank transfer. This includes partial payments and paying ahead. A repeated receipt number is flagged, not blocked.
+- [ ] Corrections: a reversal entry that points to the original and needs a written reason.
+- [ ] What each house already owes, entered before its first payment. Waits for the board's answer.
+- [ ] Other income: late fee, reconnection fee, connection fee, donation and other.
+- [ ] Month-end late fees and the arrears list: active, connected households with unpaid months and the late fee owed for each.
+- [ ] Expenses: category, supplier, amount and receipt photo. Photos stay on the computer until the bucket is connected.
+- [ ] Opening balance, entered once. The phase table does not name it, but Phase 2's test compares balances.
+- [ ] Household statements.
+- [ ] Digital receipts on request, with "Compartir por WhatsApp".
 
 **Decisions made on 23 October 2026**
 
@@ -436,4 +471,5 @@ Phases 1 to 3 are built and tested on the builder's computer before anything cha
 
 - [ ] Check the data separation on the droplet (own database file and system user, storage key and backup for each app) before the first deployment. This has not been done yet and will be updated later.
 - [ ] How the treasurer enters what each house already owes: month by month (so each unpaid month can carry its own late fee), or one total per house.
+- [ ] How to run Phase 2's "done when" test: it compares a real month with the real paper receipt book, but the test copy takes only made-up data. The options are a made-up receipt book on the test copy, or a real month after the real app is deployed.
 
