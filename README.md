@@ -37,10 +37,10 @@ changing how money, permissions or the history log work.
   "The database" below). If the apps outgrow it,
   [docs/postgres-readiness.md](docs/postgres-readiness.md) maps the move
   back; a trial copy of the data into PostgreSQL passed every check.
-- **Test copy: built, waiting for the droplet.** GitHub builds every pull
-  request for it and shows the version on a "Copia de prueba" strip. Its
-  address will be <https://prueba-agua.basculacentral.com> (the DNS record is
-  in place); the droplet half is set up once, by hand, from
+- **Test copy: running** at <https://prueba-agua.basculacentral.com> since
+  1 November 2026, with made-up data only. GitHub puts every pull request on
+  it and shows the version on a "Copia de prueba" strip. The steps for testing
+  each change and starting each phase are in
   [docs/test-copy.md](docs/test-copy.md).
 
 See the phase table at the end of the app plan.
@@ -149,14 +149,13 @@ Every push to a pull request, and every merge to `main`, goes to the **test
 copy**: a second copy of the app on the droplet, at its own address, with
 made-up data only. It stays on when the computer is off. On the pull
 request page, wait for the **Test copy** check to turn green (three to five
-minutes), then open the test copy's address on the phone. A purple
-"Copia de prueba" strip names the version it runs; it matches the pull
+minutes), then open <https://prueba-agua.basculacentral.com> on the phone. A
+purple "Copia de prueba" strip names the version it runs; it matches the pull
 request's branch and commit. Never type real families into it.
 
-How it works, how to put another branch on it, how to start it over with
-empty data, and the one-time droplet setup: [docs/test-copy.md](docs/test-copy.md).
-Until that setup is done, the check only builds (it stays green) and there
-is no address to open.
+The steps for testing each change and starting each phase, how it works, how
+to put another branch on it, how to start it over with empty data, and how it
+was set up: [docs/test-copy.md](docs/test-copy.md).
 
 On the same Wi-Fi as the computer, the local app can be opened from a phone
 too: set `APP_URL=http://<the computer's address>:5173` in `backend/.env`
