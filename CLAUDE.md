@@ -108,5 +108,13 @@ to try there. Only made-up data goes on the test copy. The droplet runs the
 scripts in `deploy/test-copy/` as root, from `main` only, and never builds;
 keep it that way.
 
+Claude's only way onto the droplet is the locked key: `ssh lindero-ops status`
+or `nginx` (Lindero's `docs/claude-ops-key.md`) read the health of Lindero and
+Báscula Central and Lindero's nginx site, and nothing else. It cannot see the
+test copy or change anything for this app, so droplet steps are the owner's,
+pasted into the console, and must be safe to paste: the droplet has nginx 1.24,
+and a site `nginx -t` refuses must never stay in `sites-enabled`, because nginx
+then does not start after the next restart, and every app's site is down.
+
 Do not run a code formatter over whole files. Edit by hand, in the
 surrounding style.

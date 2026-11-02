@@ -30,8 +30,9 @@ pull request cannot change what runs on the droplet until it is merged.
 1. Open the pull request on GitHub and wait for the **Test copy** check to
    turn green, about three to five minutes after the push. Its details name
    the address and the version.
-2. Open the test copy's address. The strip shows the branch and the first
-   seven characters of the commit; they match the pull request's.
+2. Open the test copy's address, <https://prueba-agua.basculacentral.com>.
+   The strip shows the branch and the first seven characters of the commit;
+   they match the pull request's.
 3. If it still shows the old version, close the app (or the tab) and open it
    again: a new version is picked up on the next open.
 4. Try the change with made-up names, numbers and amounts.
@@ -59,8 +60,9 @@ check's log says which; for the second, the droplet's side is in
 ## Setting it up, once
 
 From the droplet's console (DigitalOcean → the droplet → **Console**, or SSH
-from the computer), after the pull request that adds this page is merged.
-Every command is safe to copy as it is, except the address in step 1.
+from the computer). Every command is safe to copy as it is. Paste one block
+at a time and read what it printed before the next: pasted together, the
+later commands would still run after one that failed.
 
 **0. Check there is room.**
 
@@ -70,13 +72,12 @@ ss -tlnp | grep 3003             # nothing: the port is free
 /opt/node22/bin/node -v          # v22.something (Lindero installed it)
 ```
 
-**1. Choose the address and point it at the droplet.** For example
-`prueba-agua.basculacentral.com`. In Cloudflare's DNS for that domain, add an
-`A` record with that name and the droplet's IP, set to **DNS only** (the grey
-cloud), like Lindero's. Then, in the console:
+**1. The address.** `prueba-agua.basculacentral.com`. Cloudflare's DNS for
+that domain has an `A` record with that name and the droplet's IP, set to
+**DNS only** (the grey cloud), like Lindero's. In the console:
 
 ```bash
-SUB=prueba-agua.basculacentral.com     # the address you chose
+SUB=prueba-agua.basculacentral.com
 ```
 
 The next steps use `$SUB`; if the console is closed in between, set it again.
@@ -98,20 +99,42 @@ sed "s/<TEST_SUBDOMAIN>/$SUB/" /opt/zoilabe-test/source/deploy/test-copy/env.exa
 sudo chown root:zoilabe-test /opt/zoilabe-test/env && sudo chmod 640 /opt/zoilabe-test/env
 ```
 
-**4. Nginx and the certificate.** First the plain-http half alone, which the
-certificate check needs; then the whole site. If `nginx -t` reports an error,
-stop there: the sites already running keep running, and nothing is reloaded.
+**4. Nginx and the certificate.** Three blocks. First the plain-http half of
+the site alone, which the certificate check needs:
 
 ```bash
 EXAMPLE=/opt/zoilabe-test/source/deploy/test-copy/nginx-zoilabe-test.conf.example
 sed -n '1,/^}/p' $EXAMPLE | sed "s/<TEST_SUBDOMAIN>/$SUB/g" | sudo tee /etc/nginx/sites-available/zoilabe-test >/dev/null
-sudo ln -s /etc/nginx/sites-available/zoilabe-test /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-sudo certbot certonly --webroot -w /var/www/certbot -d $SUB
-
-sed "s/<TEST_SUBDOMAIN>/$SUB/g" $EXAMPLE | sudo tee /etc/nginx/sites-available/zoilabe-test >/dev/null
-sudo nginx -t && sudo systemctl reload nginx
+sudo ln -sf /etc/nginx/sites-available/zoilabe-test /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx || sudo rm /etc/nginx/sites-enabled/zoilabe-test
 ```
+
+It must print `test is successful`. If it prints `emerg` or `test failed`,
+stop there. The last command has already taken the test copy's site out again,
+and the sites already running were not touched. That last command matters: a
+file nginx refuses does no harm until the droplet next restarts, and then
+nginx does not start at all, which takes Lindero and Báscula Central down with
+it. To try again later, start step 4 from the top.
+
+Then the certificate. The reload is what makes nginx use each renewed
+certificate, and the dry run proves renewal will work. It has to: browsers that
+have seen this site refuse it outright once its certificate lapses.
+
+```bash
+sudo certbot certonly --webroot -w /var/www/certbot -d $SUB --deploy-hook "systemctl reload nginx"
+sudo certbot renew --dry-run --cert-name $SUB    # "all simulated renewals succeeded"
+```
+
+Then the whole site, only if both of those worked:
+
+```bash
+EXAMPLE=/opt/zoilabe-test/source/deploy/test-copy/nginx-zoilabe-test.conf.example
+sed "s/<TEST_SUBDOMAIN>/$SUB/g" $EXAMPLE | sudo tee /etc/nginx/sites-available/zoilabe-test >/dev/null
+sudo nginx -t && sudo systemctl reload nginx || sudo rm /etc/nginx/sites-enabled/zoilabe-test
+```
+
+Again it must print `test is successful`. The address shows an error page until
+the first build arrives in the next step; that is expected.
 
 **5. The first build, and checking for new ones every two minutes.**
 
@@ -123,8 +146,12 @@ sudo systemctl start zoilabe-test-update       # the first build now, instead of
 journalctl -u zoilabe-test-update -n 50 --no-pager
 ```
 
-The last lines should end with `==> Up: {"status":"ok",…}`. Then
-`curl -s https://$SUB/api/health` answers the same from outside.
+The last lines should end with `==> Up: {"status":"ok",…}`. Then from outside:
+
+```bash
+curl -s https://$SUB/api/health      # {"status":"ok",…}, the API answers
+curl -s https://$SUB/version.json    # {"branch":"main","commit":"…"}, nginx can read the app
+```
 
 **6. An administrator on the test copy.** It prints an invitation link: send
 it to your phone (by WhatsApp, for example) and open it there.
@@ -138,18 +165,26 @@ The phone number can be made up. Other test accounts (a secretary, a
 treasurer) are made from **Usuarios** on the test copy, as on the real app.
 
 **7. Tell GitHub the address**, so the **Test copy** check waits for each
-build to go live. On GitHub: the repository → **Settings → Secrets and
-variables → Actions → Variables → New repository variable**. Name
-`TEST_COPY_URL`, value `https://` and the address, e.g.
-`https://prueba-agua.basculacentral.com`. It is not a secret.
+build to go live. Only once step 6 worked: from this moment a droplet that
+does not answer turns every check red. On GitHub: the repository → **Settings
+→ Secrets and variables → Actions → Variables → New repository variable**.
+Name `TEST_COPY_URL`, value `https://prueba-agua.basculacentral.com`. It is not
+a secret, so it goes under **Variables**, not **Secrets**.
 
-**8. Check the separation.**
+Then try the whole road once: **Actions → Test copy → Run workflow**, branch
+`main`, **Run workflow**. It turns green in about five minutes, and its details
+name the address.
+
+**8. Check the separation, and that the other two apps did not notice.**
 
 ```bash
 ss -tlnp | grep 3003                                                  # 127.0.0.1:3003 only
 sudo -u zoilabe-test cat /opt/lindero/backend/data/lindero.db > /dev/null   # Permission denied
 sudo -u zoilabe-test ls /root/weight_software                         # Permission denied
 systemctl show zoilabe-test-api -p MemoryCurrent                      # well under 180 MB
+curl -s -o /dev/null -w 'Lindero %{http_code}\n' https://lindero.basculacentral.com/api/health   # 200
+curl -s -o /dev/null -w 'Bascula %{http_code}\n' https://api.basculacentral.com/api/health       # 200
+free -m                                                               # "available" still above 150
 ```
 
 Once the real app is on the droplet, also

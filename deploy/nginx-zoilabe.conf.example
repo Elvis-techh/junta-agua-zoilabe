@@ -21,9 +21,10 @@ server {
 }
 
 server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
+    # On these lines, not `http2 on;`: that needs nginx 1.25.1, and the droplet
+    # has 1.24 (Ubuntu 24.04). Lindero's live site does the same.
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name <SUBDOMAIN>;
 
     ssl_certificate     /etc/letsencrypt/live/<SUBDOMAIN>/fullchain.pem;

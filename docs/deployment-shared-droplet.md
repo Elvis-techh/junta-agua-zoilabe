@@ -113,8 +113,11 @@ every start. The last line prints the administrator's invitation link.
 
 Install `deploy/zoilabe-api.service`, `deploy/zoilabe-backup.*` and
 `deploy/zoilabe-verify-log.*` into `/etc/systemd/system/`, then enable the
-service and both timers. Nginx: `deploy/nginx-zoilabe.conf.example`. Then work
-through the checklist above, line by line.
+service and both timers. Nginx: `deploy/nginx-zoilabe.conf.example`. If
+`nginx -t` refuses the new site, take it out of `sites-enabled` before anything
+else: nginx does not start after the next restart with a refused file there,
+and Lindero and Báscula Central go down with it. Then work through the
+checklist above, line by line.
 
 ### 6. Verify all three
 
