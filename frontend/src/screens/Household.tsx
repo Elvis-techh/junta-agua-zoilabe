@@ -4,6 +4,7 @@ import type { Me } from "../api.ts";
 import { api } from "../api.ts";
 import type { CensusOptions, HouseholdFile, InactiveReason, PhoneMissing, Relation, WaterConnection } from "../census.ts";
 import { INACTIVE_REASONS, PHONE_MISSING, RELATIONS, WATER_CONNECTIONS, formatIdNumber, formatLempiras, whatsappLink } from "../census.ts";
+import { DateField } from "../components/CalendarField.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
@@ -284,7 +285,7 @@ function EditHousehold({ file, onClose, onSaved }: { file: HouseholdFile; onClos
       </label>
       <label>
         Fecha de la hoja de papel
-        <input type="date" value={paperDate} max={options?.today} onChange={(e) => setPaperDate(e.target.value)} />
+        <DateField value={paperDate} max={options?.today} onChange={setPaperDate} clearable />
       </label>
       <label>
         Número de la hoja

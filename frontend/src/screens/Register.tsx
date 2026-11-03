@@ -14,6 +14,7 @@ import {
   parseLempiras,
   whatsappLink,
 } from "../census.ts";
+import { DateField } from "../components/CalendarField.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
 import type { QueuedEntry, SentEntry } from "../queue.ts";
@@ -278,7 +279,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
           <p className="muted">Se guardan junto al registro, para poder compararlo con la hoja.</p>
           <label>
             Fecha escrita en la hoja
-            <input type="date" value={paperDate} max={options.today} onChange={(e) => setPaperDate(e.target.value)} />
+            <DateField value={paperDate} max={options.today} onChange={setPaperDate} />
           </label>
           <label>
             Número de la hoja (si tiene)

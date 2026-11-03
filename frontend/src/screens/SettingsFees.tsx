@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api } from "../api.ts";
 import { formatLempiras, parseLempiras } from "../census.ts";
+import { MonthField } from "../components/CalendarField.tsx";
 import { ConfirmPin } from "../components/ConfirmPin.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import { Icon } from "../icons.tsx";
@@ -162,7 +163,7 @@ function FeeDialog({
   const { fee, rate } = editing;
   const title = FEES[fee.kind].title;
   const [amountText, setAmountText] = useState("");
-  // `<input type="month">` works with "YYYY-MM".
+  // The month field works with "YYYY-MM".
   const [month, setMonth] = useState((fee.earliestStart ?? today).slice(0, 7));
   const [reason, setReason] = useState("");
   const [step, setStep] = useState<"form" | "confirm" | "pin">("form");
@@ -263,7 +264,7 @@ function FeeDialog({
             <>
               <label>
                 Desde el mes
-                <input type="month" value={month} min={fee.earliestStart?.slice(0, 7)} onChange={(e) => setMonth(e.target.value)} />
+                <MonthField value={month} min={fee.earliestStart?.slice(0, 7)} onChange={setMonth} />
               </label>
               <p className="muted">
                 {fee.earliestStart

@@ -99,6 +99,8 @@ once an administrator exists.
 
 As the administrator or the president, open **Configuración** → **Cuotas**.
 Saving any amount asks for the PIN again.
+On a computer, month and date fields open the app's own calendar, in Spanish;
+a phone keeps its own picker.
 
 1. Tap **Poner monto** on "Cuota mensual base", type `70` and pick a month.
    The first amount of each fee may start in a past month, so what houses
