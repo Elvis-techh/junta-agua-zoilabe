@@ -18,6 +18,8 @@ const KEYBOARD_MIN_PX = 120;
 /** A little overhang, like a button's shadow, does not count as hidden. */
 const HIDDEN_MIN_PX = 4;
 
+const FOCUS_LEFT_WAIT_MS = 250;
+
 const NO_KEYBOARD_INPUTS = new Set(["button", "checkbox", "color", "date", "file", "month", "radio", "range", "reset", "submit"]);
 
 /** The keyboard is open when someone is typing and the screen is clearly shorter than it has been. */
@@ -109,6 +111,8 @@ export function watchScreen(): void {
   viewport?.addEventListener("scroll", update);
   window.addEventListener("resize", update);
   document.addEventListener("focusin", update);
-  document.addEventListener("focusout", update);
+  // A little later: pressing a pinned button takes the focus off the field, and
+  // moving the button at that moment would lose the press.
+  document.addEventListener("focusout", () => window.setTimeout(update, FOCUS_LEFT_WAIT_MS));
   update();
 }
