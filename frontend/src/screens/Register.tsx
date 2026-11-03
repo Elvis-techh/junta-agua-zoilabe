@@ -14,8 +14,8 @@ import {
   parseLempiras,
   whatsappLink,
 } from "../census.ts";
-import { DateField } from "../components/CalendarField.tsx";
 import type { Go } from "../components/Shell.tsx";
+import { DateField } from "../components/CalendarField.tsx";
 import { Icon } from "../icons.tsx";
 import type { QueuedEntry, SentEntry } from "../queue.ts";
 import { censusQueue, recall, remember, sendRegistration } from "../queue.ts";

@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api } from "../api.ts";
 import { formatLempiras, parseLempiras } from "../census.ts";
-import { MonthField } from "../components/CalendarField.tsx";
 import { ConfirmPin } from "../components/ConfirmPin.tsx";
 import { Dialog } from "../components/Dialog.tsx";
+import { MonthField } from "../components/CalendarField.tsx";
 import { Icon } from "../icons.tsx";
 
 type FeeKind = "base_monthly" | "late_fee" | "reconnection";
