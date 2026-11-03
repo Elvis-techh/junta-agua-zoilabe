@@ -1,10 +1,16 @@
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 
 import { Icon } from "../icons.tsx";
+import { lockScroll } from "../scrollLock.ts";
 
-/** A panel over the screen, from the bottom on a phone. Escape or "Cerrar" closes it. */
+/**
+ * A panel over the screen, from the bottom on a phone. Escape or "Cerrar"
+ * closes it. The screen behind it stays still while it is open.
+ */
 export function Dialog({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  useLayoutEffect(() => lockScroll(window), []);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();

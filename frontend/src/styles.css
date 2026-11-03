@@ -29,6 +29,11 @@
   box-sizing: border-box;
 }
 
+/* Keeps the screen from jumping sideways on a computer when a dialog hides the scrollbar. */
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -345,6 +350,7 @@ pre.detail {
   align-items: flex-end;
   justify-content: center;
   z-index: 10;
+  overscroll-behavior: contain;
 }
 
 .dialog {
@@ -353,6 +359,7 @@ pre.detail {
   max-width: 560px;
   max-height: 90dvh;
   overflow-y: auto;
+  overscroll-behavior: contain;
   border-radius: 20px 20px 0 0;
   padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
 }

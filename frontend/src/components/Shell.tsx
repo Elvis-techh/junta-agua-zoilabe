@@ -63,7 +63,8 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
       window.history.pushState(null, "", next);
     }
     setRoute(next);
-    window.scrollTo(0, 0);
+    // After the screen changes: a dialog closing puts the old position back first.
+    requestAnimationFrame(() => window.scrollTo(0, 0));
   };
 
   const signOut = async () => {
