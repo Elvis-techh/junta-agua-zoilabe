@@ -107,12 +107,15 @@ Saving any amount asks for the PIN again.
 2. Tap **Seguir**, read the summary, tap **Sí, guardar** and type the PIN.
    The card shows L 70.00 "en uso", and **Registrar familia** now says
    "Precio base: L 70.00 al mes".
-3. Tap **Cambiar monto**. The month picker starts at this month: a change
+3. Tap **Cambiar detalles**. The month picker starts at this month: a change
    may start now or later, never in a past month. An amount for a later
-   month shows as "todavía no empieza" until its month comes.
-4. An amount typed wrong is fixed with **Corregir**, which asks for the
-   right amount and the reason. Once a payment has been made at an amount,
-   the button is gone: correcting it would change a month already paid.
+   month shows as "Todavía no empieza" until its month comes, then takes over
+   by itself on that month's first day, Honduras time. A month that already
+   has an amount is refused before the PIN is asked for.
+4. Each saved amount sits in its own box. An amount typed wrong is fixed with
+   the **Corregir** in its box, which asks for the right amount and the
+   reason. Once a payment has been made at an amount, the button is gone:
+   correcting it would change a month already paid.
 5. Nothing here is deleted. Every change and correction is in
    **Historial**, with the amount it replaced and the reason.
 
