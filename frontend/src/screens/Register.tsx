@@ -14,6 +14,7 @@ import {
   parseLempiras,
   whatsappLink,
 } from "../census.ts";
+import { AmountInput } from "../components/AmountInput.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
 import type { QueuedEntry, SentEntry } from "../queue.ts";
@@ -511,7 +512,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
                 <div className="card stack">
                   <label>
                     Monto al mes, en lempiras
-                    <input value={amountText} onChange={(e) => setAmountText(e.target.value)} inputMode="decimal" placeholder="Ejemplo: 35" />
+                    <AmountInput value={amountText} onChange={setAmountText} placeholder="Ejemplo: 35" />
                   </label>
                   <label>
                     Razón, en palabras de la junta
