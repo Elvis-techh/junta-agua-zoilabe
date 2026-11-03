@@ -110,9 +110,11 @@ export function watchScreen(): void {
   viewport?.addEventListener("resize", update);
   viewport?.addEventListener("scroll", update);
   window.addEventListener("resize", update);
-  document.addEventListener("focusin", update);
-  // A little later: pressing a pinned button takes the focus off the field, and
-  // moving the button at that moment would lose the press.
-  document.addEventListener("focusout", () => window.setTimeout(update, FOCUS_LEFT_WAIT_MS));
+  // A little later unless typing starts: pressing a pinned button moves the
+  // focus from the field to the button, and moving the button at that moment
+  // would lose the press.
+  const soon = () => window.setTimeout(update, FOCUS_LEFT_WAIT_MS);
+  document.addEventListener("focusin", (event) => (isTyping(event.target as Element) ? update() : soon()));
+  document.addEventListener("focusout", soon);
   update();
 }
