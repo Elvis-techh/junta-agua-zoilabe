@@ -26,10 +26,17 @@ changing how money, permissions or the history log work.
   list, household file, offline queue, inactive status, and Configuración →
   Sectores. Its "done when" test (the secretary types in 10 paper forms from
   a phone without help) has not been run yet.
-- **Phase 2 (Finances): next.** Its pieces, in build order, are ticked off
-  under "What comes next" in the [app plan](docs/app-plan.md), starting with
-  the fees in Configuración; until then the census shows "Precio base" without
-  an amount.
+- **Phase 2 (Finances): started.** Its pieces, in build order, are ticked off
+  under "What comes next" in the [app plan](docs/app-plan.md).
+  - **Fees in Configuración: built.** The base monthly fee, the late fee
+    (mora) and the reconnection fee, each from the month it starts. The
+    census shows the base price's amount once one is set. See "Trying the
+    fees" below. Owner decisions of 2 November 2026: a change may start in
+    the current month; an amount typed wrong may be corrected with a reason
+    until a payment is made at it; an amount may be zero; saving asks for
+    the PIN.
+  - Next: monthly fee payments.
+
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
   so its amount starts with the month it is registered in.
@@ -87,6 +94,30 @@ npm run user:first-admin -- --name "Nombre Apellido" --phone 99998888
 It prints an invitation link. Open it, choose a 6-digit PIN, and you are in.
 Every other account is created from Usuarios. The command refuses to run
 once an administrator exists.
+
+### Trying the fees
+
+As the administrator or the president, open **Configuración** → **Cuotas**.
+Saving any amount asks for the PIN again.
+
+1. Tap **Poner monto** on "Cuota mensual base", type `70` and pick a month.
+   The first amount of each fee may start in a past month, so what houses
+   already owe from the paper book can be counted. `0` is allowed, for a
+   fee the board does not charge.
+2. Tap **Seguir**, read the summary, tap **Sí, guardar** and type the PIN.
+   The card shows L 70.00 "en uso", and **Registrar familia** now says
+   "Precio base: L 70.00 al mes".
+3. Tap **Cambiar monto**. The month picker starts at this month: a change
+   may start now or later, never in a past month. An amount for a later
+   month shows as "todavía no empieza" until its month comes.
+4. An amount typed wrong is fixed with **Corregir**, which asks for the
+   right amount and the reason. Once a payment has been made at an amount,
+   the button is gone: correcting it would change a month already paid.
+5. Nothing here is deleted. Every change and correction is in
+   **Historial**, with the amount it replaced and the reason.
+
+The server refuses these changes from any other role, and without the PIN,
+whatever the screen shows.
 
 ### Trying the census
 

@@ -46,3 +46,39 @@ export function lastPaidMonth(db: DbOrTx, householdId: string): string | null {
   `);
   return row?.month ?? null;
 }
+
+/**
+ * The earliest month a new rate of a fee may start, or null when any month may.
+ *
+ * The owner decided on 2026-11-02 that a change may start in the current
+ * month. Months before it keep the price they were charged at (App Plan, 29
+ * October 2026: a change "never rewrites months already charged or paid").
+ * The very first amount of each fee is the exception: until it exists, no
+ * month has been charged with it, and it may start in the past so that what
+ * houses already owe from the paper book can be counted.
+ */
+export function earliestFeeStart(hasRate: boolean, today: string): string | null {
+  return hasRate ? firstOfMonth(today) : null;
+}
+
+/**
+ * Whether a payment recorded in the app covers `month` or a later one.
+ *
+ * A fee amount may be corrected (owner, 2026-11-02) only while no payment has
+ * been made at it: once one has, correcting it would rewrite a month already
+ * paid. A reversed payment and the reversal itself do not count. This is
+ * stricter than it must be (any payment from that month on, at any price),
+ * which errs on the side of never rewriting a paid month.
+ */
+export function paidFrom(db: DbOrTx, month: string): boolean {
+  const row = db.get<{ found: number }>(sql`
+    SELECT 1 AS found
+    FROM transactions t, json_each(t.months_covered) AS covered
+    WHERE covered.value >= ${month}
+      AND t.kind = 'income'
+      AND t.reverses_id IS NULL
+      AND NOT EXISTS (SELECT 1 FROM transactions r WHERE r.reverses_id = t.id)
+    LIMIT 1
+  `);
+  return row !== undefined;
+}
