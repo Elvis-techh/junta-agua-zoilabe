@@ -15,6 +15,7 @@ import { RegisterScreen } from "../screens/Register.tsx";
 import { SettingsScreen } from "../screens/Settings.tsx";
 import { UsersScreen } from "../screens/Users.tsx";
 import { Dialog } from "./Dialog.tsx";
+import { MoreBelow } from "./MoreBelow.tsx";
 
 /** How often waiting census entries are tried again while the app is open. */
 const RETRY_MS = 30_000;
@@ -123,6 +124,8 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
       )}
 
       {screen()}
+
+      <MoreBelow />
 
       <nav className="bottombar" aria-label="Secciones">
         {bar.map((tab) => (

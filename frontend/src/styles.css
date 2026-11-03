@@ -152,6 +152,12 @@ select:focus-visible {
   gap: 14px;
 }
 
+/* The gap is the space between them: a heading's own margin would double it. */
+.stack > h1,
+.stack > p {
+  margin-bottom: 0;
+}
+
 .row {
   display: flex;
   flex-wrap: wrap;
@@ -361,6 +367,168 @@ pre.detail {
   }
 }
 
+/* ---- Nothing hidden on a phone (src/viewport.ts) ------------------------ */
+
+/* A dialog fits the part of the screen that can be seen, above the keyboard too. */
+.overlay {
+  inset: auto 0 auto 0;
+  top: var(--screen-top, 0);
+  height: var(--screen-height, 100dvh);
+}
+
+.dialog {
+  /* Its bottom padding, which what is pinned to its bottom edge has to reach past. */
+  --dialog-padding: calc(20px + env(safe-area-inset-bottom));
+  max-height: 90%;
+}
+
+/* While typing, the screen goes to the question and the button that answers it. */
+.keyboard-open .topbar,
+.keyboard-open .bottombar,
+.keyboard-open .test-copy-banner {
+  display: none;
+}
+
+.keyboard-open .screen {
+  padding-top: 8px;
+  padding-bottom: 16px;
+}
+
+.keyboard-open .stack {
+  gap: 10px;
+}
+
+.keyboard-open .dialog {
+  max-height: 100%;
+  border-radius: 0;
+  padding-top: 10px;
+}
+
+html.keyboard-open,
+.keyboard-open .dialog {
+  scroll-padding-bottom: calc(var(--tap) * 2 + 24px);
+}
+
+/*
+ * On the last field, the button that goes on stays just above the keyboard,
+ * whatever else is on the screen. Before that the next field is what matters,
+ * and a button that cannot be pressed yet has no business covering anything.
+ */
+.keyboard-last-field .screen > .btn.go:not(:disabled),
+.keyboard-last-field .screen .card > .btn.go:not(:disabled),
+.keyboard-last-field .screen > .row:has(> .btn.go:not(:disabled), > .btn.primary:not(:disabled)) {
+  position: sticky;
+  bottom: calc(var(--keyboard, 0px) + 8px);
+  z-index: 3;
+}
+
+.keyboard-last-field .dialog > .btn.go:not(:disabled),
+.keyboard-last-field .dialog > .btn.primary:not(:disabled),
+.keyboard-last-field .dialog > .row:has(> .btn.go:not(:disabled), > .btn.primary:not(:disabled)) {
+  position: sticky;
+  bottom: calc(8px - var(--dialog-padding));
+  z-index: 3;
+}
+
+/* A row of buttons covers what scrolls behind it. */
+.keyboard-last-field .screen > .row:has(> .btn.go:not(:disabled), > .btn.primary:not(:disabled)),
+.keyboard-last-field .dialog > .row:has(> .btn.go:not(:disabled), > .btn.primary:not(:disabled)) {
+  padding: 8px 0;
+  background: var(--surface);
+}
+
+/* ...and above "Hay más abajo" when that is showing too. */
+.keyboard-last-field:has(.more-below) .screen > .btn.go:not(:disabled),
+.keyboard-last-field:has(.more-below) .screen .card > .btn.go:not(:disabled),
+.keyboard-last-field:has(.more-below) .screen > .row:has(> .btn.go:not(:disabled), > .btn.primary:not(:disabled)) {
+  bottom: calc(var(--keyboard, 0px) + var(--tap) + 8px);
+}
+
+.keyboard-last-field:has(.more-below) .dialog > .btn.go:not(:disabled),
+.keyboard-last-field:has(.more-below) .dialog > .btn.primary:not(:disabled),
+.keyboard-last-field:has(.more-below) .dialog > .row:has(> .btn.go:not(:disabled), > .btn.primary:not(:disabled)) {
+  bottom: calc(var(--tap) + 8px - var(--dialog-padding));
+}
+
+/*
+ * "Hay más abajo" (MoreBelow.tsx): a band along the bottom edge of what can be
+ * seen, so it never sits on top of the field or the button in the middle.
+ */
+.more-below {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 16px;
+  border: 0;
+  background: var(--text);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.more-below svg {
+  animation: more-below-nudge 1.4s ease-in-out infinite;
+}
+
+@keyframes more-below-nudge {
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .more-below svg {
+    animation: none;
+  }
+}
+
+.keyboard-open .more-below {
+  bottom: var(--keyboard, 0px);
+}
+
+/* On a computer there is room for a smaller one, out of the way of wide tables. */
+@media (min-width: 700px) {
+  .more-below {
+    left: 50%;
+    right: auto;
+    bottom: calc(64px + 10px);
+    width: auto;
+    padding: 0 22px;
+    border-radius: 999px;
+    transform: translateX(-50%);
+    box-shadow: 0 6px 18px rgb(20 33 43 / 0.35);
+  }
+}
+
+/* In a dialog it rides along the dialog's bottom edge, and takes no room there. */
+.more-below-slot {
+  position: sticky;
+  bottom: calc(0px - var(--dialog-padding));
+  z-index: 4;
+  height: 0;
+  margin-top: -14px;
+}
+
+.more-below.in-dialog {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  width: 100%;
+  border-radius: var(--radius);
+  transform: translateY(-100%);
+  box-shadow: none;
+}
+
 /* ---- Census ---------------------------------------------------------- */
 
 textarea {
@@ -396,6 +564,11 @@ textarea:focus-visible {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+
+.choice-grid .btn {
+  padding: 0 8px;
+  line-height: 1.2;
 }
 
 .big-code {
@@ -466,7 +639,9 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 16px;
+  padding: 4px 16px;
+  font-size: 0.85rem;
+  line-height: 1.25;
   background: var(--test-bg);
   color: var(--test);
   border-bottom: 3px dashed var(--test);
@@ -474,7 +649,7 @@ textarea:focus-visible {
 
 .test-copy-banner small {
   display: block;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   overflow-wrap: anywhere;
 }
 

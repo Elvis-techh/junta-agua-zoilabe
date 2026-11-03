@@ -19,6 +19,7 @@ import { Icon } from "../icons.tsx";
 import type { QueuedEntry, SentEntry } from "../queue.ts";
 import { censusQueue, recall, remember, sendRegistration } from "../queue.ts";
 import { formatDate } from "../time.ts";
+import { isTouchScreen } from "../viewport.ts";
 
 /** How a registration starts: from scratch, the next paper form, or another house of someone registered. */
 export interface RegisterPreset {
@@ -372,7 +373,8 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
             inputMode="numeric"
             pattern="[0-9]*"
             placeholder="8 números"
-            autoFocus
+            // On a phone, not by itself: the keyboard would cover the answers below.
+            autoFocus={!isTouchScreen()}
             autoComplete="off"
           />
           {errorLine}
@@ -390,19 +392,21 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
             Siguiente
           </button>
           <p className="muted">Si la familia no tiene teléfono, o no quiere darlo:</p>
-          {(Object.keys(PHONE_MISSING) as PhoneMissing[]).map((code) => (
-            <button
-              key={code}
-              className={`btn block choice ${phoneMissing === code ? "primary" : ""}`}
-              onClick={() => {
-                setPhone("");
-                setPhoneMissing(code);
-                next();
-              }}
-            >
-              {PHONE_MISSING[code]}
-            </button>
-          ))}
+          <div className="choice-grid">
+            {(Object.keys(PHONE_MISSING) as PhoneMissing[]).map((code) => (
+              <button
+                key={code}
+                className={`btn choice ${phoneMissing === code ? "primary" : ""}`}
+                onClick={() => {
+                  setPhone("");
+                  setPhoneMissing(code);
+                  next();
+                }}
+              >
+                {PHONE_MISSING[code]}
+              </button>
+            ))}
+          </div>
         </main>
       );
 

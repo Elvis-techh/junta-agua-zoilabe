@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useEffect } from "react";
 
 import { Icon } from "../icons.tsx";
+import { MoreBelow } from "./MoreBelow.tsx";
 
 /** A panel over the screen, from the bottom on a phone. Escape or "Cerrar" closes it. */
 export function Dialog({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
@@ -16,13 +17,14 @@ export function Dialog({ title, onClose, children }: { title: string; onClose: (
   return (
     <div className="overlay" onClick={onClose}>
       <div className="dialog stack" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
-        <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-          <h1 style={{ margin: 0 }}>{title}</h1>
-          <button className="btn" onClick={onClose} aria-label="Cerrar">
+        <div className="row" style={{ alignItems: "center", justifyContent: "space-between", flexWrap: "nowrap" }}>
+          <h1 style={{ margin: 0, minWidth: 0 }}>{title}</h1>
+          <button className="btn" style={{ flex: "none" }} onClick={onClose} aria-label="Cerrar">
             <Icon name="x" /> Cerrar
           </button>
         </div>
         {children}
+        <MoreBelow inDialog />
       </div>
     </div>
   );
