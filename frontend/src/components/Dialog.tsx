@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 
-import { Icon } from "../icons.tsx";
 import { MoreBelow } from "./MoreBelow.tsx";
+import { Icon } from "../icons.tsx";
 
 /** A panel over the screen, from the bottom on a phone. Escape or "Cerrar" closes it. */
 export function Dialog({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
