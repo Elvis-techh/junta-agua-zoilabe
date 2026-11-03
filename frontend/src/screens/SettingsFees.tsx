@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api } from "../api.ts";
 import { formatLempiras, parseLempiras } from "../census.ts";
+import { AmountInput } from "../components/AmountInput.tsx";
 import { ConfirmPin } from "../components/ConfirmPin.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import { Icon } from "../icons.tsx";
@@ -252,7 +253,7 @@ function FeeDialog({
           )}
           <label>
             {rate ? "Monto correcto, en lempiras" : "Monto, en lempiras"}
-            <input inputMode="decimal" value={amountText} onChange={(e) => setAmountText(e.target.value)} placeholder="Ejemplo: 70" autoFocus />
+            <AmountInput value={amountText} onChange={setAmountText} placeholder="Ejemplo: 70" autoFocus />
           </label>
           {rate ? (
             <label>

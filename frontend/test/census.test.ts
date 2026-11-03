@@ -2,7 +2,17 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { Registration } from "../src/census.ts";
-import { capitalizeName, formatIdNumber, formatLempiras, newSubmissionId, parseLempiras, whatsappLink } from "../src/census.ts";
+import {
+  amountCaret,
+  capitalizeName,
+  formatAmountTyping,
+  formatIdNumber,
+  formatLempiras,
+  newSubmissionId,
+  parseLempiras,
+  significantChars,
+  whatsappLink,
+} from "../src/census.ts";
 import type { SendResult, Store } from "../src/queue.ts";
 import { CensusQueue } from "../src/queue.ts";
 
@@ -22,6 +32,57 @@ describe("census helpers", () => {
     assert.equal(parseLempiras("treinta"), null);
     assert.equal(formatLempiras(3550), "L 35.50");
     assert.equal(formatLempiras(123456), "L 1,234.56");
+  });
+
+  it("reads an amount with thousands commas", () => {
+    assert.equal(parseLempiras("1,000"), 100000);
+    assert.equal(parseLempiras("1,250.50"), 125050);
+    assert.equal(parseLempiras("L 12,345.67"), 1234567);
+    assert.equal(parseLempiras("L. 1,000"), 100000);
+    // Not where a thousands comma goes, so not an amount.
+    assert.equal(parseLempiras("1,0000"), null);
+    assert.equal(parseLempiras("12,34,567"), null);
+    assert.equal(parseLempiras("100,000"), null);
+  });
+
+  it("adds the thousands commas to an amount while it is typed", () => {
+    const cases: Array<[string, string]> = [
+      ["", ""],
+      ["7", "7"],
+      ["70", "70"],
+      ["1000", "1,000"],
+      ["1,0000", "10,000"],
+      ["12345", "12,345"],
+      ["123456", "12,345"],
+      ["1250.", "1,250."],
+      ["1250.5", "1,250.5"],
+      ["1250.505", "1,250.50"],
+      ["1.2.3", "1.23"],
+      [".5", "0.5"],
+      ["0", "0"],
+      ["007", "7"],
+      ["0.5", "0.5"],
+      ["L 70", "70"],
+      ["abc", ""],
+    ];
+    for (const [typed, shown] of cases) {
+      assert.equal(formatAmountTyping(typed), shown, typed);
+    }
+  });
+
+  it("reads back to the same centavos whatever the field shows", () => {
+    for (const [typed, centavos] of [["1000", 100000], ["1250.5", 125050], ["99999.99", 9999999], ["0", 0]] as const) {
+      assert.equal(parseLempiras(formatAmountTyping(typed)), centavos, typed);
+    }
+  });
+
+  it("keeps the cursor after the same digit when the commas move", () => {
+    // "1,000" with the cursor at the end, then a 5 typed there.
+    assert.equal(amountCaret(formatAmountTyping("1,0005"), significantChars("1,0005")), "10,005".length);
+    // A 9 typed after the first digit of "1,000".
+    assert.equal(amountCaret(formatAmountTyping("19,000"), significantChars("19")), "19".length);
+    // The comma itself deleted: the number stays, and the cursor moves before the comma.
+    assert.equal(amountCaret(formatAmountTyping("1000"), significantChars("1")), 1);
   });
 
   it("makes version-4 UUIDs without crypto.randomUUID", () => {
