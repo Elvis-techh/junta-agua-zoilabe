@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 97, taken 2026-11-01.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 104, taken 2026-11-03.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -168,7 +168,7 @@ Each account holds a name, WhatsApp number, role, status, who created it and whe
 1. An administrator creates the account and taps "Enviar invitación". The app prepares a WhatsApp message with a personal link, valid for 48 hours and usable once.
 2. The person opens the link on their own phone, chooses a 6-digit PIN and adds the app to the home screen. The phone is remembered.
 3. From then on they open the app and type the PIN. A 6-digit PIN matches the WhatsApp verification codes they already know.
-4. Closing a month, correcting an entry and changing a role ask for the PIN again.
+4. Closing a month, correcting an entry, changing a role and saving or correcting a fee ask for the PIN again.
 5. After 5 wrong PINs the account locks. An administrator unlocks it after confirming the person by phone call.
 6. If a phone is lost, an administrator removes that device in one tap and sends a new invitation.
 
@@ -212,7 +212,7 @@ Each entry records who acted (name and role), when (date and time in Honduras ti
 | Census | Household registered, field edited, record deactivated or reactivated, ownership changed, yearly snapshot created |
 | Finances | Payment or expense recorded, reversal made, month prepared, month approved, opening balance entered |
 | Users | Account created, role changed, suspended, PIN reset, device removed, guest invitation created, used, revoked or expired |
-| Settings | Base fee, late fee or reconnection fee changed, different fee set for a house, category added, permission matrix edited |
+| Settings | Base fee, late fee or reconnection fee changed or corrected, different fee set for a house, category added, permission matrix edited |
 | Security | Login, failed PIN, account locked |
 | Exports | Report printed or exported, with the filters used |
 
@@ -394,13 +394,13 @@ Phases 1 to 3 are built and tested on the builder's computer before anything cha
 |---|---|---|---|
 | 0. Foundation | Merged | Invitation and PIN login, roles and permissions, history log, backup and restore scripts (merged in PR #1 on 2026-10-24) | Subdomain, the data-separation check, backups to the storage bucket, a restore on a test server |
 | 1. Census | Merged | Everything, including paper entry mode and the offline queue (merged in PRs #3 to #5 on 2026-10-25). Its "done when" test, the secretary typing in ten paper forms from a phone, has not been run yet; the test copy is ready for it, using made-up forms | Nothing |
-| 2. Finances | Next | Everything; receipt photos stay on the computer until the bucket is connected | Receipt photos in the storage bucket |
+| 2. Finances | In progress | Everything; receipt photos stay on the computer until the bucket is connected | Receipt photos in the storage bucket |
 | 3. Close, reports and guests | Not started | Everything, including print layouts and guest invitations | A guest signing in from a municipal phone at the real address |
 | 4. Handover | Not started | A first draft of the runbook | The restore test, board-owned accounts, training and installing on every director's phone |
 
-**Done so far (as of 1 November 2026)**
+**Done so far (as of 3 November 2026)**
 
-Phases 0 and 1 are merged and the test copy is running. Phase 2's groundwork is in place, but the app cannot record money yet.
+Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fees can be set in Configuración, but the app cannot record money yet.
 
 - [x] Test copy running at [prueba-agua.basculacentral.com](https://prueba-agua.basculacentral.com) with made-up data only, set up on 1 November 2026 (PRs #11 to #13). Every pull request now goes there for a phone check. Its own separation check passed; the real app's is still open below.
 - [x] Database moved to SQLite (PR #8).
@@ -408,11 +408,12 @@ Phases 0 and 1 are merged and the test copy is running. Phase 2's groundwork is 
 - [x] Finance permissions are set for each role: view, record and reverse.
 - [x] Income and expense categories from Module 2 are loaded.
 - [x] A house's different amount and its reason are entered at registration, and start with the month after its last payment (PRs #3 and #4).
-- [x] Board rules for Phase 2 are written down: the decisions of 25 and 29 October below.
+- [x] Board rules for Phase 2 are written down: the decisions of 25 and 29 October and of 2 and 3 November below.
+- [x] Fees can be set in Configuración, and the census shows the base price's amount (PR #15, merged on 3 November 2026).
 
 **What comes next**
 
-Phase 2 can start now with fees in Configuración. Only the piece marked below waits for a board answer.
+Phase 2 has started, and monthly fee payments come next. Only the piece marked below waits for a board answer.
 
 Needs people, not code:
 
@@ -422,7 +423,7 @@ Needs people, not code:
 
 Phase 2 pieces in suggested build order. Each is one pull request, tried on the test copy before it is merged:
 
-- [ ] Fees in Configuración: base monthly fee, late fee (mora) and reconnection fee, each with a start date. The census then shows the base price's amount.
+- [x] Fees in Configuración: base monthly fee, late fee (mora) and reconnection fee, each with a start date. The census then shows the base price's amount.
 - [ ] Monthly fee payments: household, the months the treasurer selects, amount, payment method and paper receipt number, with a reference for a bank transfer. This includes partial payments and paying ahead. A repeated receipt number is flagged, not blocked.
 - [ ] Corrections: a reversal entry that points to the original and needs a written reason.
 - [ ] What each house already owes, entered before its first payment. Waits for the board's answer.
@@ -466,6 +467,17 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 
 - Tailscale is dropped: it reaches the builder's computer only while that computer is on, so a phone away from it cannot test anything. Phone checks move to the droplet's test copy (29 October), which stays on.
 - Pull request #7 (the Tailscale phone steps) is closed without merging.
+
+**Decisions made on 2 November 2026**
+
+- A change to a fee may start in the current month, not only the next one. Past months keep the price they were charged at.
+- An amount typed wrong can be corrected with a written reason, until a payment recorded in the app covers one of its months.
+- A fee amount can be zero, for a fee the board does not charge.
+- Saving or correcting a fee amount asks for the PIN again.
+
+**Decisions made on 3 November 2026**
+
+- The first amount of each fee may start in a past month, so what houses already owe from the paper book can be counted.
 
 **Still open**
 
