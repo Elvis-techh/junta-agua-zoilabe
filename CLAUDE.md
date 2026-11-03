@@ -95,6 +95,23 @@ the file. Tests make their own database in memory.
 5. **If something broke, revert the pull request** with GitHub's Revert
    button. Never rewrite `main`'s history.
 
+## Screens on a phone
+
+Someone who has only used WhatsApp will not scroll to look for an answer, or
+close the keyboard to look for a button. When a screen is built or changed:
+
+- **The button that goes on** is `.btn.go` or `.btn.primary`, directly inside the
+  `.screen`, `.dialog` or `.card` (or in a `.row` there), so `src/viewport.ts`
+  and `styles.css` can keep it above the keyboard on a form's last field.
+- **"Hay más abajo"** (`MoreBelow`) is already on every screen and dialog, and
+  measures for itself. Do not add another, and do not rely on it to excuse a
+  screen that could simply fit: put short answers side by side first.
+- **Money is typed through `AmountInput`**, months and dates through `MonthField`
+  and `DateField`. A dialog is always `Dialog`, which holds the screen behind it.
+- **Look at it** at phone size with the height cut to about 380 px, which is
+  roughly what a keyboard leaves, and press the buttons by touch. A layout that
+  moves while a button is being pressed loses the press.
+
 ## Checks before pushing
 
 `npm run typecheck` and `npm test` from the repository root. The **Tests** workflow
