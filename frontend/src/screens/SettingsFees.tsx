@@ -7,6 +7,7 @@ import { ConfirmPin } from "../components/ConfirmPin.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import { MonthField } from "../components/CalendarField.tsx";
 import { Icon } from "../icons.tsx";
+import { isTouchScreen } from "../viewport.ts";
 
 type FeeKind = "base_monthly" | "late_fee" | "reconnection";
 
@@ -290,7 +291,7 @@ function FeeDialog({
           )}
           <label>
             {rate ? "Monto correcto, en lempiras" : "Monto, en lempiras"}
-            <AmountInput value={amountText} onChange={setAmountText} placeholder="Ejemplo: 70" autoFocus />
+            <AmountInput value={amountText} onChange={setAmountText} placeholder="Ejemplo: 70" autoFocus={!isTouchScreen()} />
           </label>
           {rate ? (
             <label>

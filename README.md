@@ -196,6 +196,11 @@ minutes), then open <https://prueba-agua.basculacentral.com> on the phone. A
 purple "Copia de prueba" strip names the version it runs; it matches the pull
 request's branch and commit. Never type real families into it.
 
+On a phone, no screen brings up the keyboard by itself: it comes up when the
+person taps a field, so the whole screen can be read first. On a computer the
+first field is ready for typing, as before (`src/viewport.ts`; a test reads
+every screen for this).
+
 While typing on a phone, the top and bottom bars step aside. On a form's last
 field, the button that goes on stays just above the keyboard; before that, the
 next field shows instead. Whenever something is below what can be

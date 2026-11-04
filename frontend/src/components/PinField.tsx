@@ -1,3 +1,5 @@
+import { isTouchScreen } from "../viewport.ts";
+
 /**
  * Six digits on the phone's number keypad, shown as dots. Same feel as the
  * WhatsApp codes the directors already know.
@@ -25,7 +27,7 @@ export function PinField({
         pattern="[0-9]*"
         maxLength={6}
         autoComplete={isNew ? "new-password" : "current-password"}
-        autoFocus={autoFocus}
+        autoFocus={autoFocus && !isTouchScreen()}
         value={value}
         onChange={(event) => onChange(event.target.value.replace(/\D/g, "").slice(0, 6))}
       />
