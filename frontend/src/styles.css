@@ -238,6 +238,16 @@ input.pin {
   gap: 12px;
 }
 
+/* One saved fee amount, boxed with its own "Corregir" (Configuración → Cuotas). */
+.rate-box {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
 .muted {
   color: var(--muted);
 }

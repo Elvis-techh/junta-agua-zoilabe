@@ -8,7 +8,7 @@ import { Icon } from "../icons.tsx";
 
 type FeeKind = "base_monthly" | "late_fee" | "reconnection";
 
-interface Rate {
+export interface Rate {
   id: number;
   amountCentavos: number;
   startsOn: string;
@@ -18,7 +18,7 @@ interface Rate {
   correctable: boolean;
 }
 
-interface Fee {
+export interface Fee {
   kind: FeeKind;
   currentId: number | null;
   /** "YYYY-MM-01", or null when the first amount may start in any month. */
@@ -51,6 +51,87 @@ function formatMonth(firstDay: string): string {
 
 /** A new amount for a fee, or a correction of one already saved. */
 type Editing = { fee: Fee; rate: null } | { fee: Fee; rate: Rate };
+
+/**
+ * What is wrong with the form, said before the PIN is asked for, or null.
+ * The server checks all of it again; a month already taken would otherwise
+ * only show up after the PIN.
+ */
+export function feeFormProblem(
+  { fee, rate }: Editing,
+  form: { amountCentavos: number | null; startsOn: string | null; reason: string },
+): string | null {
+  if (form.amountCentavos === null) {
+    return "Escriba el monto en lempiras, por ejemplo 70 o 70.50. Si no se cobra, escriba 0.";
+  }
+  if (!form.startsOn) {
+    return "Elija el mes en que empieza.";
+  }
+  if (rate) {
+    return form.reason.trim().length < 5 ? "Escriba por qué se corrige." : null;
+  }
+  if (fee.earliestStart && form.startsOn < fee.earliestStart) {
+    return `Un cambio empieza en ${formatMonth(fee.earliestStart)} o después.`;
+  }
+  if (fee.rates.some((existing) => existing.startsOn === form.startsOn)) {
+    return `Ya hay un monto que empieza en ${formatMonth(form.startsOn)}. Si está mal, use «Corregir» en ese monto.`;
+  }
+  return null;
+}
+
+/**
+ * One fee: what is in use, then each saved amount in its own box with its own
+ * "Corregir", and below them the button that changes the fee as a whole, so
+ * the two kinds of change cannot be taken for each other.
+ */
+export function FeeCard({ fee, today, onEdit }: { fee: Fee; today: string; onEdit: (editing: Editing) => void }) {
+  const current = fee.rates.find((rate) => rate.id === fee.currentId) ?? null;
+  return (
+    <div className="card stack" style={{ gap: 12 }}>
+      <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+        <strong>{FEES[fee.kind].title}</strong>
+        {current ? (
+          <span className="status ok">{formatLempiras(current.amountCentavos)}</span>
+        ) : (
+          <span className="status warn">Sin monto</span>
+        )}
+      </div>
+      <div className="muted">{FEES[fee.kind].help}</div>
+
+      {fee.rates.map((rate) => (
+        <div key={rate.id} className="rate-box">
+          <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+            <strong>{formatLempiras(rate.amountCentavos)}</strong>
+            {rate.startsOn > today ? (
+              <span className="status warn">
+                <Icon name="clock" size={18} /> Todavía no empieza
+              </span>
+            ) : rate.id === fee.currentId ? (
+              <span className="status ok">
+                <Icon name="check" size={18} /> En uso
+              </span>
+            ) : null}
+          </div>
+          <div className="row" style={{ gap: "0 12px" }}>
+            <span>Desde {formatMonth(rate.startsOn)}</span>
+            {rate.createdByName && <span className="muted">{rate.createdByName}</span>}
+          </div>
+          {rate.correctable && (
+            <div>
+              <button className="btn" onClick={() => onEdit({ fee, rate })}>
+                <Icon name="edit" /> Corregir
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+
+      <button className="btn primary block" onClick={() => onEdit({ fee, rate: null })}>
+        <Icon name="edit" /> {fee.rates.length === 0 ? "Poner monto" : "Cambiar detalles"}
+      </button>
+    </div>
+  );
+}
 
 /**
  * Configuración → Cuotas. A new amount never replaces an old one: it is added
@@ -89,47 +170,9 @@ export function FeesSection() {
       {!fees && !message && <p className="muted">Cargando…</p>}
 
       <div className="list">
-        {fees?.map((fee) => {
-          const current = fee.rates.find((rate) => rate.id === fee.currentId) ?? null;
-          return (
-            <div key={fee.kind} className="card stack" style={{ gap: 8 }}>
-              <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-                <strong>{FEES[fee.kind].title}</strong>
-                {current ? (
-                  <span className="status ok">{formatLempiras(current.amountCentavos)}</span>
-                ) : (
-                  <span className="status warn">Sin monto</span>
-                )}
-              </div>
-              <div className="muted">{FEES[fee.kind].help}</div>
-
-              {fee.rates.length > 0 && (
-                <ul className="stack" style={{ gap: 4, margin: 0, paddingLeft: 20 }}>
-                  {fee.rates.map((rate) => (
-                    <li key={rate.id}>
-                      {formatLempiras(rate.amountCentavos)} desde {formatMonth(rate.startsOn)}
-                      {rate.startsOn > today ? " — todavía no empieza" : rate.id === fee.currentId ? " — en uso" : ""}
-                      {rate.createdByName && <span className="muted"> · {rate.createdByName}</span>}
-                      {rate.correctable && (
-                        <div style={{ marginTop: 4 }}>
-                          <button className="btn" onClick={() => setEditing({ fee, rate })}>
-                            <Icon name="edit" /> Corregir
-                          </button>
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              <div className="row">
-                <button className="btn" onClick={() => setEditing({ fee, rate: null })}>
-                  <Icon name="edit" /> {fee.rates.length === 0 ? "Poner monto" : "Cambiar monto"}
-                </button>
-              </div>
-            </div>
-          );
-        })}
+        {fees?.map((fee) => (
+          <FeeCard key={fee.kind} fee={fee} today={today} onEdit={setEditing} />
+        ))}
       </div>
 
       {editing && (
@@ -173,16 +216,9 @@ function FeeDialog({
   const startsOn = rate ? rate.startsOn : /^\d{4}-\d{2}$/.test(month) ? `${month}-01` : null;
 
   const check = () => {
-    if (amountCentavos === null) {
-      setError("Escriba el monto en lempiras, por ejemplo 70 o 70.50. Si no se cobra, escriba 0.");
-    } else if (!startsOn) {
-      setError("Elija el mes en que empieza.");
-    } else if (!rate && fee.earliestStart && startsOn < fee.earliestStart) {
-      setError(`Un cambio empieza en ${formatMonth(fee.earliestStart)} o después.`);
-    } else if (rate && reason.trim().length < 5) {
-      setError("Escriba por qué se corrige.");
-    } else {
-      setError(null);
+    const problem = feeFormProblem(editing, { amountCentavos, startsOn, reason });
+    setError(problem);
+    if (!problem) {
       setStep("confirm");
     }
   };
@@ -247,7 +283,7 @@ function FeeDialog({
           {rate && (
             <p>
               Ahora: {formatLempiras(rate.amountCentavos)} desde {formatMonth(rate.startsOn)}. Se corrige solo si se
-              escribió mal; si la junta cambió el monto, use «Cambiar monto».
+              escribió mal; si la junta cambió el monto, use «Cambiar detalles».
             </p>
           )}
           <label>
