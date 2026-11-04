@@ -17,7 +17,9 @@ import {
 import { AmountInput } from "../components/AmountInput.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { DateField } from "../components/CalendarField.tsx";
+import { PhoneField } from "../components/PhoneField.tsx";
 import { Icon } from "../icons.tsx";
+import { EMPTY_PHONE, formatPhone, phoneProblem, wholePhone } from "../phone.ts";
 import type { QueuedEntry, SentEntry } from "../queue.ts";
 import { censusQueue, recall, remember, sendRegistration } from "../queue.ts";
 import { formatDate } from "../time.ts";
@@ -47,7 +49,6 @@ type Step =
   | "saved";
 
 const ID_MESSAGE = "La identidad debe tener 13 números. Revise e intente de nuevo.";
-const PHONE_MESSAGE = "El teléfono debe tener 8 números. Revise e intente de nuevo.";
 
 /**
  * Registrar familia (App Plan, Module 1): one question per screen, a review
@@ -71,7 +72,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
   const [paperFormNumber, setPaperFormNumber] = useState("");
   const [fullName, setFullName] = useState(preset?.existingPerson?.fullName ?? "");
   const [idNumber, setIdNumber] = useState(preset?.existingPerson?.idNumber ?? "");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(EMPTY_PHONE);
   /** Instead of a number: the family has no phone, or prefers not to give it. */
   const [phoneMissing, setPhoneMissing] = useState<PhoneMissing | null>(null);
   const [gender, setGender] = useState("");
@@ -197,7 +198,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
       : {
           fullName: fullName.trim(),
           idNumber,
-          ...(phoneMissing ? { phoneMissing } : { phone }),
+          ...(phoneMissing ? { phoneMissing } : { phone: wholePhone(phone) }),
           ...(gender ? { gender } : {}),
         },
     addToExistingPerson: addToExisting,
@@ -369,22 +370,19 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
       return (
         <main className="screen stack">
           {head("Teléfono o WhatsApp")}
-          <input
+          <PhoneField
             value={phone}
-            onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 8))}
-            inputMode="numeric"
-            pattern="[0-9]*"
-            placeholder="8 números"
+            onChange={setPhone}
             // On a phone, not by itself: the keyboard would cover the answers below.
             autoFocus={!isTouchScreen()}
-            autoComplete="off"
           />
           {errorLine}
           <button
             className="btn go block"
             onClick={() => {
-              if (!/^\d{8}$/.test(phone)) {
-                setError(PHONE_MESSAGE);
+              const problem = phoneProblem(phone);
+              if (problem) {
+                setError(problem);
                 return;
               }
               setPhoneMissing(null);
@@ -400,7 +398,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
                 key={code}
                 className={`btn choice ${phoneMissing === code ? "primary" : ""}`}
                 onClick={() => {
-                  setPhone("");
+                  setPhone({ ...phone, number: "" });
                   setPhoneMissing(code);
                   next();
                 }}
@@ -601,7 +599,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
               <div className="muted">Otra vivienda de una persona ya registrada</div>
             ) : (
               <>
-                <div>Teléfono: {phoneMissing ? PHONE_MISSING[phoneMissing] : phone}</div>
+                <div>Teléfono: {phoneMissing ? PHONE_MISSING[phoneMissing] : formatPhone(wholePhone(phone))}</div>
                 {gender && <div>Género: {gender}</div>}
               </>
             )}

@@ -6,6 +6,9 @@
  * run once an administrator account exists.
  *
  *   npm run user:first-admin -- --name "Nombre Apellido" --phone 99998888
+ *
+ * Digits alone are a Honduran number. Another country's starts with its code:
+ * --phone +15551234567.
  */
 import { parseArgs } from "node:util";
 
@@ -17,18 +20,20 @@ import { createDb, inTransaction } from "../db/client.js";
 import { users } from "../db/schema.js";
 import { SYSTEM_ACTOR, recordAudit } from "../lib/audit.js";
 import { createInvitation } from "../lib/invitations.js";
+import { readPhone } from "../lib/phone.js";
 
 const { values } = parseArgs({
   options: { name: { type: "string" }, phone: { type: "string" } },
 });
 
 const name = values.name?.trim() ?? "";
-const phone = values.phone?.trim() ?? "";
+const read = readPhone(values.phone?.trim() ?? "");
 
-if (name.length < 3 || !/^[0-9]{8}$/.test(phone)) {
+if (name.length < 3 || "problem" in read) {
   console.error('Usage: npm run user:first-admin -- --name "Nombre Apellido" --phone 99998888');
   process.exit(1);
 }
+const { phone } = read;
 
 const config = loadConfig();
 const { db, sqlite } = createDb(config.databasePath);

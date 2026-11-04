@@ -228,6 +228,49 @@ select {
   width: 100%;
 }
 
+/* A label with more than one control inside: tapping its words must open neither. */
+.field {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+/* PhoneField.tsx: the country and the number side by side. */
+.phone-field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+}
+
+.phone-country {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap);
+  padding: 0 12px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 1.1rem;
+  white-space: nowrap;
+}
+
+.phone-country:has(select:focus-visible) {
+  outline: 3px solid #f2a900;
+  outline-offset: 2px;
+}
+
+.phone-country select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
 input.pin {
   font-size: 2rem;
   letter-spacing: 0.6em;

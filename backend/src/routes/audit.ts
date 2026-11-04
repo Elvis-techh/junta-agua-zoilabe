@@ -11,6 +11,7 @@ import { z } from "zod";
 import { auditLog } from "../db/schema.js";
 import { maskDigits } from "../lib/census.js";
 import { HttpError, parse } from "../lib/http.js";
+import { maskPhone } from "../lib/phone.js";
 
 const AREAS = ["census", "finances", "users", "settings", "security", "exports"] as const;
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida.");
@@ -52,7 +53,7 @@ function maskSensitive(value: unknown): unknown {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>).map(([key, item]) => [
         key,
-        SENSITIVE_KEYS.has(key) && typeof item === "string" ? maskDigits(item, key === "phone" ? 2 : 4) : maskSensitive(item),
+        SENSITIVE_KEYS.has(key) && typeof item === "string" ? (key === "phone" ? maskPhone(item) : maskDigits(item, 4)) : maskSensitive(item),
       ]),
     );
   }
