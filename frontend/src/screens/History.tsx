@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { LogEntry } from "../api.ts";
 import { api } from "../api.ts";
+import { DateField } from "../components/CalendarField.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import { formatDateTime } from "../time.ts";
 
@@ -89,11 +90,11 @@ export function HistoryScreen() {
         </label>
         <label style={{ flex: "1 1 160px" }}>
           Desde
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <DateField value={from} onChange={setFrom} clearable />
         </label>
         <label style={{ flex: "1 1 160px" }}>
           Hasta
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          <DateField value={to} onChange={setTo} clearable />
         </label>
       </div>
 
