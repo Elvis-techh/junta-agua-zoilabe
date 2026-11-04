@@ -122,6 +122,9 @@ Saving any amount asks for the PIN again.
 The server refuses these changes from any other role, and without the PIN,
 whatever the screen shows.
 
+While a panel like these is open, the screen behind it stays still, on a
+computer and on a phone, and it is back where it was when the panel closes.
+
 ### Trying the census
 
 1. As the administrator, open **Configuración** and add the village's
