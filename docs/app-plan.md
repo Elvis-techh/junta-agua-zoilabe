@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 104, taken 2026-11-03.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 108, taken 2026-11-04.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -86,7 +86,7 @@ It keeps every column of the Registros sheet template and adds the fields needed
 | Paper date and form number | Date, text | Paper entry only: the date written on the paper form and its number, if it has one |
 | Full name | Text | Required; capitalized automatically |
 | Identity (ID number) | 13 digits | Required; checked against existing people before saving |
-| Phone / WhatsApp | 8 digits | Required for the owner, unless the family has none or prefers not to give it; that reason is kept instead |
+| Phone / WhatsApp | Country code and number | Required for the owner, unless the family has none or prefers not to give it; that reason is kept instead. The country starts on Honduras (+504), and the length is checked for each country |
 | Gender | Choice | List kept in Configuration |
 | Sector | Choice | Required; list kept in Configuration |
 | References | Text | Required; how to find the house |
@@ -398,7 +398,7 @@ Phases 1 to 3 are built and tested on the builder's computer before anything cha
 | 3. Close, reports and guests | Not started | Everything, including print layouts and guest invitations | A guest signing in from a municipal phone at the real address |
 | 4. Handover | Not started | A first draft of the runbook | The restore test, board-owned accounts, training and installing on every director's phone |
 
-**Done so far (as of 3 November 2026)**
+**Done so far (as of 4 November 2026)**
 
 Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fees can be set in Configuración, but the app cannot record money yet.
 
@@ -410,10 +410,21 @@ Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fee
 - [x] A house's different amount and its reason are entered at registration, and start with the month after its last payment (PRs #3 and #4).
 - [x] Board rules for Phase 2 are written down: the decisions of 25 and 29 October and of 2 and 3 November below.
 - [x] Fees can be set in Configuración, and the census shows the base price's amount (PR #15, merged on 3 November 2026).
+- [x] Cuotas is clearer: each saved amount has its own box, "Cambiar monto" became "Cambiar detalles", and a test proves a later fee takes over when its month arrives (PR #17, merged on 3 November 2026).
+- [x] The screen behind an open panel stays still, on a computer and on a phone (PR #18, merged on 3 November 2026).
+- [x] Money amounts show thousands commas while they are typed. ID numbers, phones, PINs and paper form numbers stay plain (PR #19, merged on 3 November 2026).
+- [x] On a computer, month and date fields open the app's own calendar, in Spanish. A phone keeps its own picker (PR #20, merged on 3 November 2026).
+- [x] Nothing stays hidden on a phone: on a form's last field the button that goes on stays above the keyboard, and "Hay más abajo" says when something is further down (PR #21, merged on 3 November 2026).
+- [x] Every certificate on the droplet now reloads nginx when it renews, so no site keeps serving an old one (set up on 4 November 2026). Its first real use is Báscula Central's renewal, around 25 November.
 
 **What comes next**
 
-Phase 2 has started, and monthly fee payments come next. Only the piece marked below waits for a board answer.
+Phase 2 has started. Two finished changes wait to be merged first, and then monthly fee payments come next. Only the piece marked below waits for a board answer.
+
+Finished, waiting to be merged, in this order:
+
+- [ ] The keyboard stays down on a phone until a field is tapped ([PR #22](https://github.com/Elvis-techh/junta-agua-zoilabe/pull/22)). It is on the test copy now, for the owner to try and merge.
+- [ ] A country code beside every phone number. It is built and tested on the branch `feat/phone-country-code`. Its pull request opens after PR #22 is merged, because it changes the database and the test copy keeps that change.
 
 Needs people, not code:
 
@@ -478,6 +489,13 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 **Decisions made on 3 November 2026**
 
 - The first amount of each fee may start in a past month, so what houses already owe from the paper book can be counted.
+
+**Decisions made on 4 November 2026**
+
+- On a phone, no screen brings up the keyboard by itself. It comes up when the person taps a field, so the screen can be read first.
+- A phone number carries its country code, chosen beside the number. The list is Honduras (+504, the default), Estados Unidos y Canadá (+1), España (+34), México (+52), Guatemala (+502), El Salvador (+503), Nicaragua (+505), Costa Rica (+506) and Panamá (+507).
+- Each country's length is checked: 8 digits for Honduras, Guatemala, El Salvador, Nicaragua and Costa Rica, 10 for Estados Unidos y Canadá and México, and 9 for España. Panamá takes 7 or 8, because its landlines have 7; that one is Claude's suggestion, not yet confirmed by the owner.
+- Numbers already saved gain +504, since until now only Honduran numbers could be saved. Who may see a full number does not change: a masked number still shows only its last two digits, and not its country.
 
 **Still open**
 
