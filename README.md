@@ -196,6 +196,13 @@ minutes), then open <https://prueba-agua.basculacentral.com> on the phone. A
 purple "Copia de prueba" strip names the version it runs; it matches the pull
 request's branch and commit. Never type real families into it.
 
+While typing on a phone, the top and bottom bars step aside. On a form's last
+field, the button that goes on stays just above the keyboard; before that, the
+next field shows instead. Whenever something is below what can be
+seen, on a screen or in a panel, a "Hay más abajo" pill says so; tapping it
+closes the keyboard and brings the rest up (`src/viewport.ts`,
+`src/components/MoreBelow.tsx`).
+
 The steps for testing each change and starting each phase, how it works, how
 to put another branch on it, how to start it over with empty data, and how it
 was set up: [docs/test-copy.md](docs/test-copy.md).
