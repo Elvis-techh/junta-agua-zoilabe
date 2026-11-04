@@ -6,8 +6,10 @@ import type { CensusOptions, HouseholdFile, InactiveReason, PhoneMissing, Relati
 import { INACTIVE_REASONS, PHONE_MISSING, RELATIONS, WATER_CONNECTIONS, formatIdNumber, formatLempiras, whatsappLink } from "../census.ts";
 import { DateField } from "../components/CalendarField.tsx";
 import { Dialog } from "../components/Dialog.tsx";
+import { PhoneField } from "../components/PhoneField.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
+import { formatPhone, phoneEntry, wholePhone } from "../phone.ts";
 import { recall, remember } from "../queue.ts";
 import { formatDate, formatDateTime } from "../time.ts";
 import { HouseholdStatus } from "./Census.tsx";
@@ -76,7 +78,7 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
       <section className="card stack" style={{ gap: 6 }}>
         <strong style={{ fontSize: "1.2rem" }}>{owner.fullName}</strong>
         <div>Identidad: {formatIdNumber(owner.idNumber)}</div>
-        <div>Teléfono: {owner.phone ?? (owner.phoneMissing ? PHONE_MISSING[owner.phoneMissing] : "—")}</div>
+        <div>Teléfono: {owner.phone ? formatPhone(owner.phone) : owner.phoneMissing ? PHONE_MISSING[owner.phoneMissing] : "—"}</div>
         {owner.gender && <div>Género: {owner.gender}</div>}
         <div>
           {RELATIONS[owner.relation]} desde el {calendarDate(owner.startsOn)}
@@ -330,7 +332,7 @@ function EditPerson({
   const { owner } = file;
   const [fullName, setFullName] = useState(owner.fullName);
   const [idNumber, setIdNumber] = useState(owner.idNumber);
-  const [phone, setPhone] = useState(owner.phone ?? "");
+  const [phone, setPhone] = useState(() => phoneEntry(owner.phone));
   const [phoneMode, setPhoneMode] = useState<"number" | PhoneMissing>(owner.phoneMissing ?? "number");
   const [gender, setGender] = useState(owner.gender ?? "");
   const [reason, setReason] = useState("");
@@ -345,7 +347,7 @@ function EditPerson({
         fullName,
         gender: gender || null,
         // ID number and phone are sent only by someone allowed to see them.
-        ...(canEditSensitive ? { idNumber, ...(phoneMode === "number" ? { phone } : { phoneMissing: phoneMode }) } : {}),
+        ...(canEditSensitive ? { idNumber, ...(phoneMode === "number" ? { phone: wholePhone(phone) } : { phoneMissing: phoneMode }) } : {}),
         ...(reason.trim() ? { reason: reason.trim() } : {}),
       });
       await onSaved("Datos de la persona guardados.");
@@ -381,10 +383,10 @@ function EditPerson({
             </select>
           </label>
           {phoneMode === "number" && (
-            <label>
+            <div className="field">
               Número
-              <input value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 8))} inputMode="numeric" placeholder="8 números" />
-            </label>
+              <PhoneField value={phone} onChange={setPhone} />
+            </div>
           )}
         </>
       )}

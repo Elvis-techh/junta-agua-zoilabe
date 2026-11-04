@@ -61,7 +61,7 @@ export function createInvitation(
   return {
     url,
     message,
-    whatsappUrl: `https://wa.me/504${user.phone}?text=${encodeURIComponent(message)}`,
+    whatsappUrl: `https://wa.me/${user.phone.slice(1)}?text=${encodeURIComponent(message)}`,
     expiresAt,
   };
 }

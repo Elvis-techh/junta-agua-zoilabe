@@ -18,16 +18,13 @@ import { recordAudit } from "../lib/audit.js";
 import { HttpError, parse } from "../lib/http.js";
 import { createInvitation } from "../lib/invitations.js";
 import { ROLE_CODES, roleName } from "../lib/permissions.js";
+import { phoneSchema } from "../lib/phone.js";
 
 const nameSchema = z
   .string()
   .trim()
   .min(3, "Escriba el nombre completo.")
   .max(120, "El nombre es demasiado largo.");
-const phoneSchema = z
-  .string()
-  .trim()
-  .regex(/^[0-9]{8}$/, "El número de WhatsApp debe tener 8 números. Revise e intente de nuevo.");
 const roleSchema = z.enum(ROLE_CODES as [string, ...string[]], { message: "Elija un cargo de la lista." });
 const reasonSchema = z.string().trim().max(500).optional();
 

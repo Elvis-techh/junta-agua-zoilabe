@@ -59,6 +59,14 @@ const json = <T = unknown>(name: string) => text(name, { mode: "json" }).$type<T
 const onlyDigits = (column: AnySQLiteColumn, digits: number) =>
   sql`(length(${column}) = ${sql.raw(String(digits))} AND ${column} NOT GLOB '*[^0-9]*')`;
 
+/**
+ * `column` is a whole phone number: a plus, then 8 to 15 digits, code included
+ * ("+50499998888"). How long each country's numbers are is checked by
+ * src/lib/phone.ts, so adding a country does not mean rebuilding a table.
+ */
+const wholePhone = (column: AnySQLiteColumn) =>
+  sql`(length(${column}) BETWEEN 9 AND 16 AND ${column} GLOB '+*' AND substr(${column}, 2) NOT GLOB '*[^0-9]*')`;
+
 // ---------------------------------------------------------------------------
 // Users and access
 // ---------------------------------------------------------------------------
@@ -95,7 +103,7 @@ export const users = sqliteTable(
   {
     id: uuid("id").primaryKey(),
     name: text("name").notNull(),
-    /** WhatsApp number, 8 digits. */
+    /** WhatsApp number with its country code: "+50499998888". */
     phone: text("phone").notNull(),
     roleCode: text("role_code")
       .notNull()
@@ -112,7 +120,7 @@ export const users = sqliteTable(
   },
   (table) => [
     uniqueIndex("users_phone_unique").on(table.phone),
-    check("users_phone_digits", onlyDigits(table.phone, 8)),
+    check("users_phone_digits", wholePhone(table.phone)),
   ],
 );
 
@@ -200,6 +208,7 @@ export const people = sqliteTable(
     fullName: text("full_name").notNull(),
     /** Honduran identity number, 13 digits. */
     idNumber: text("id_number").notNull(),
+    /** With its country code: "+50499998888". */
     phone: text("phone"),
     /** Why there is no phone: the family has none, or prefers not to give it. */
     phoneMissing: text("phone_missing", { enum: ["no_phone", "declined"] }),
@@ -210,7 +219,7 @@ export const people = sqliteTable(
   (table) => [
     uniqueIndex("people_id_number_unique").on(table.idNumber),
     check("people_id_number_digits", onlyDigits(table.idNumber, 13)),
-    check("people_phone_digits", sql`${table.phone} IS NULL OR ${onlyDigits(table.phone, 8)}`),
+    check("people_phone_digits", sql`${table.phone} IS NULL OR ${wholePhone(table.phone)}`),
     // A phone, or the reason there is none — never both, never neither.
     check("people_phone_or_reason", sql`(${table.phone} IS NULL) <> (${table.phoneMissing} IS NULL)`),
   ],

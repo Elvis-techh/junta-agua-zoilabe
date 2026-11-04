@@ -4,7 +4,9 @@ import type { Invitation, Me, StaffUser } from "../api.ts";
 import { api } from "../api.ts";
 import { ConfirmPin } from "../components/ConfirmPin.tsx";
 import { Dialog } from "../components/Dialog.tsx";
+import { PhoneField } from "../components/PhoneField.tsx";
 import { Icon } from "../icons.tsx";
+import { EMPTY_PHONE, formatPhone, phoneProblem, wholePhone } from "../phone.ts";
 import { ROLES, roleName } from "../roles.ts";
 import { formatDate, formatDateTime } from "../time.ts";
 
@@ -67,7 +69,7 @@ export function UsersScreen({ me }: { me: Me }) {
               <StatusBadge user={user} />
             </div>
             <div className="muted">
-              {user.roleName} · {user.phone}
+              {user.roleName} · {formatPhone(user.phone)}
             </div>
             <div className="muted">
               {user.lastLoginAt ? `Último ingreso: ${formatDateTime(user.lastLoginAt)}` : "Todavía no ha entrado"}
@@ -100,7 +102,7 @@ export function UsersScreen({ me }: { me: Me }) {
 /** Nueva cuenta: name, WhatsApp, role, then "¿Está correcto?". */
 function CreateUser({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(EMPTY_PHONE);
   const [roleCode, setRoleCode] = useState("");
   const [reviewing, setReviewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +112,7 @@ function CreateUser({ onClose, onCreated }: { onClose: () => void; onCreated: (i
     setBusy(true);
     setError(null);
     try {
-      const { user } = await api<{ user: { id: string } }>("POST", "/users", { name, phone, roleCode });
+      const { user } = await api<{ user: { id: string } }>("POST", "/users", { name, phone: wholePhone(phone), roleCode });
       onCreated(user.id);
     } catch (err) {
       setError((err as Error).message);
@@ -128,15 +130,10 @@ function CreateUser({ onClose, onCreated }: { onClose: () => void; onCreated: (i
             Nombre completo
             <input value={name} onChange={(e) => setName(e.target.value)} autoFocus autoCapitalize="words" />
           </label>
-          <label>
+          <div className="field">
             Número de WhatsApp
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 8))}
-              inputMode="numeric"
-              placeholder="8 números"
-            />
-          </label>
+            <PhoneField value={phone} onChange={setPhone} />
+          </div>
           <label>
             Cargo
             <select value={roleCode} onChange={(e) => setRoleCode(e.target.value)}>
@@ -151,7 +148,7 @@ function CreateUser({ onClose, onCreated }: { onClose: () => void; onCreated: (i
           {error && <p className="message error">{error}</p>}
           <button
             className="btn go block"
-            disabled={name.trim().length < 3 || phone.length !== 8 || !roleCode}
+            disabled={name.trim().length < 3 || phoneProblem(phone) !== null || !roleCode}
             onClick={() => setReviewing(true)}
           >
             Siguiente
@@ -162,7 +159,7 @@ function CreateUser({ onClose, onCreated }: { onClose: () => void; onCreated: (i
           <p style={{ fontSize: "1.2rem" }}>¿Está correcto?</p>
           <div className="card">
             <strong>{name.trim()}</strong>
-            <div>WhatsApp: {phone}</div>
+            <div>WhatsApp: {formatPhone(wholePhone(phone))}</div>
             <div>Cargo: {roleName(roleCode)}</div>
           </div>
           <button className="btn go block" disabled={busy} onClick={() => void save()}>

@@ -58,6 +58,12 @@ one more thing to run and back up there.
 - **Instants are ISO-8601 UTC text, read back as `Date`** (the `instant`
   column type in `schema.ts`); calendar dates are `"YYYY-MM-DD"` text; JSON is
   text. Compare instants with a `Date` (`gt(col, new Date())`), never `now()`.
+- **Phones are stored whole**, as `+50499998888`, on accounts and on people.
+  The countries and their lengths are in `backend/src/lib/phone.ts` and again
+  in `frontend/src/phone.ts`, because a phone with no signal checks a number by
+  itself; a test fails if the two differ. Adding a country means both files and
+  no migration. A masked phone is always `••••••` and its last two digits, so
+  its length does not give the country away.
 - **Text comparisons that must understand Spanish** happen in JavaScript or
   through `search_text()`. SQLite's `lower()` and `LIKE` only know A to Z.
 - **Who can open the file** is the operating system's job: the `zoilabe` user
