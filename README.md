@@ -104,6 +104,8 @@ Saving any amount asks for the PIN again.
    The first amount of each fee may start in a past month, so what houses
    already owe from the paper book can be counted. `0` is allowed, for a
    fee the board does not charge.
+   Amounts get their thousands commas as they are typed: `1250.5` shows as
+   `1,250.5`. Identity numbers, phones and PINs never do.
 2. Tap **Seguir**, read the summary, tap **Sí, guardar** and type the PIN.
    The card shows L 70.00 "en uso", and **Registrar familia** now says
    "Precio base: L 70.00 al mes".

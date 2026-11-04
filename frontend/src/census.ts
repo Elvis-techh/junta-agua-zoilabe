@@ -27,16 +27,59 @@ export function capitalizeName(value: string): string {
 
 /**
  * What someone types as an amount in lempiras, in whole centavos:
- * "35" → 3500, "35.5" → 3550, "L 35,50" → 3550. Null when it is not an amount.
+ * "35" → 3500, "35.5" → 3550, "1,250.50" → 125050, "L 35,50" → 3550. A comma
+ * before exactly three digits separates thousands; a comma before the last one
+ * or two digits is a decimal point. Null when it is not an amount.
  * Parsed as text, never through a float, so 0.1 + 0.2 never appears.
  */
 export function parseLempiras(text: string): number | null {
-  const cleaned = text.trim().replace(/^L\.?\s*/i, "").replace(",", ".");
+  const cleaned = text
+    .trim()
+    .replace(/^L\.?\s*/i, "")
+    .replace(/,(\d{1,2})$/, ".$1")
+    .replace(/,(?=\d{3}(?:\.|,|$))/g, "");
   const match = /^(\d{1,5})(?:\.(\d{1,2}))?$/.exec(cleaned);
   if (!match) {
     return null;
   }
   return Number(match[1]) * 100 + Number((match[2] ?? "").padEnd(2, "0"));
+}
+
+/**
+ * What an amount field shows while it is typed: "1250.5" → "1,250.5".
+ * Only digits and one decimal point are kept, with up to five whole digits
+ * (the most `parseLempiras` and the server accept) and two decimals. Commas
+ * typed by hand are dropped, since the field puts its own.
+ */
+export function formatAmountTyping(typed: string): string {
+  const kept = typed.replace(/[^\d.]/g, "");
+  const point = kept.indexOf(".");
+  const whole = (point === -1 ? kept : kept.slice(0, point)).replace(/^0+(?=\d)/, "").slice(0, 5);
+  const grouped = whole.replace(/\B(?=(\d{3})+$)/g, ",");
+  if (point === -1) {
+    return grouped;
+  }
+  const decimals = kept.slice(point + 1).replace(/\./g, "").slice(0, 2);
+  return `${grouped || "0"}.${decimals}`;
+}
+
+/** How many digits and decimal points are in `text`: what stays the same when commas move. */
+export function significantChars(text: string): number {
+  return text.replace(/[^\d.]/g, "").length;
+}
+
+/** Where the cursor goes in `shown` to stay after the same `count` digits and decimal points. */
+export function amountCaret(shown: string, count: number): number {
+  let seen = 0;
+  for (let at = 0; at < shown.length; at += 1) {
+    if (seen === count) {
+      return at;
+    }
+    if (shown[at] !== ",") {
+      seen += 1;
+    }
+  }
+  return shown.length;
 }
 
 /** "L 70.00". Matches backend/src/lib/census.ts. */
