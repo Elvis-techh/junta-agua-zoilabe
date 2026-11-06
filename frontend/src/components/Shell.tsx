@@ -7,6 +7,7 @@ import { navigation, routeOf, tabOf } from "../home.ts";
 import { Icon } from "../icons.tsx";
 import { censusQueue, remember, sendRegistration } from "../queue.ts";
 import { CensusScreen } from "../screens/Census.tsx";
+import { CollectScreen, PaymentScreen } from "../screens/Collect.tsx";
 import { HistoryScreen } from "../screens/History.tsx";
 import { HomeScreen } from "../screens/Home.tsx";
 import { HouseholdScreen } from "../screens/Household.tsx";
@@ -88,6 +89,12 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
     }
     if (route.startsWith("/censo/vivienda/") && can("census:view")) {
       return <HouseholdScreen key={route} me={me} id={route.slice("/censo/vivienda/".length)} onOpen={go} />;
+    }
+    if (route === "/finanzas/cobrar" && can("finance:record") && can("census:view")) {
+      return <CollectScreen onOpen={go} />;
+    }
+    if (route.startsWith("/finanzas/cobrar/") && can("finance:record") && can("finance:view")) {
+      return <PaymentScreen key={route} id={route.slice("/finanzas/cobrar/".length)} onOpen={go} />;
     }
     if (route === "/usuarios" && can("users:manage")) {
       return <UsersScreen me={me} />;

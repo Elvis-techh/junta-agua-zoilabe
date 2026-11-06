@@ -11,6 +11,16 @@ import { sql } from "drizzle-orm";
 
 import type { DbOrTx } from "../db/client.js";
 
+const MONTH_NAMES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+
+/** "2027-01-01" → "enero de 2027". */
+export function monthName(firstDay: string): string {
+  return `${MONTH_NAMES[Number(firstDay.slice(5, 7)) - 1]} de ${firstDay.slice(0, 4)}`;
+}
+
 /** "2026-03-17" → "2026-03-01". */
 export function firstOfMonth(date: string): string {
   return `${date.slice(0, 7)}-01`;

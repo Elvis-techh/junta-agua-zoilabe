@@ -37,7 +37,13 @@ changing how money, permissions or the history log work.
     the current month; an amount typed wrong may be corrected with a reason
     until a payment is made at it; an amount may be zero; saving asks for
     the PIN.
-  - Next: monthly fee payments.
+  - **Monthly fee payments (Cobrar): built.** The treasurer picks the
+    house, the months, the amount and date, how it was paid and the paper
+    receipt's number, then "¿Está correcto?". See "Trying Cobrar" below.
+    Owner decisions of 6 November 2026: the money fills the chosen months
+    oldest first; a payment larger than those months owe is refused; a month
+    keeps the price it had when its first money arrived.
+  - Next: corrections (a reversal that points to the original, with a reason).
 
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
@@ -134,6 +140,42 @@ whatever the screen shows.
 While a panel like these is open, the screen behind it stays still, on a
 computer and on a phone, and it is back where it was when the panel closes.
 
+### Trying Cobrar
+
+As the treasurer (with a base fee set in Configuración → Cuotas, and a
+family registered), tap **Cobrar** on Inicio, or **Registrar pago** on a
+household's file. A payment needs signal: it is not kept on the phone.
+
+1. Search for the house by name or code and tap it.
+2. **¿Qué meses paga?** Each month shows what it still owes ("L 70.00",
+   "Faltan L 40.00") or "Pagado". The list starts three months back and runs
+   a year ahead; **Ver meses anteriores** adds older ones. Tap the months
+   written on the paper receipt.
+3. **¿Cuánto pagó?** starts on the full amount. Paying less fills the
+   chosen months oldest first, so only the last one is left partly paid. More
+   than they owe is refused, as is an amount that does not reach every month
+   chosen: the screen says what to change. The date may be earlier than today
+   (a receipt typed in later), never later, and never in a closed month.
+4. **Recibo de papel**: cash, transfer (which asks for its reference) or
+   other, and the receipt's number. **¿Quién pagó?** starts on the owner's
+   name; a note is optional.
+5. **¿Está correcto?** shows how much goes to each month. **Sí, guardar**.
+   A receipt number already used asks first: if the receipt book started
+   again, save it anyway, and both entries show "Número de recibo repetido:
+   revisar".
+6. The household's file lists its payments under **Pagos**, and each one is in
+   **Historial** (Finanzas): "Tina (Tesorero/a) registró un pago de L 100.00
+   de María López por noviembre y diciembre de 2026 …".
+
+A month keeps the price it had when its first money arrived: if the board
+raises the fee after a house paid half of a month ahead, that month still
+costs the old price. Nothing is changed or deleted: each payment's share of
+each month is kept in `payment_months`, which, like `transactions`, the
+database only adds to. A retry on weak signal sends the same submission, so
+it is never saved twice. Only roles with "Registrar pagos y gastos" may
+save, and only those with "Ver finanzas" see the months and payments; the
+server checks both.
+
 ### Trying the census
 
 1. As the administrator, open **Configuración** and add the village's
@@ -177,7 +219,8 @@ starting the API.
 
 The file refuses, by itself, to delete any row of any table, and to change
 any row of the history log (`audit_log`) or of the money entries
-(`transactions`): triggers that `src/db/guards.ts` puts back after every
+(`transactions`, and `payment_months`, how each payment was shared among
+months): triggers that `src/db/guards.ts` puts back after every
 migration. That includes the delete hidden inside SQLite's `INSERT OR
 REPLACE`. Taking one away would take a deliberate `DROP TRIGGER` with
 other tools, and the history log's hash chain (`npm run db:verify-log`)

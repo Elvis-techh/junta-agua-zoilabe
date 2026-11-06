@@ -8,15 +8,17 @@ export type Route =
   | "/censo/buscar"
   | "/censo/registrar"
   | "/configuracion"
-  | `/censo/vivienda/${string}`;
+  | "/finanzas/cobrar"
+  | `/censo/vivienda/${string}`
+  | `/finanzas/cobrar/${string}`;
 
 /** The screen for an address, or Inicio for one this app does not have. */
 export function routeOf(path: string): Route {
-  const fixed: Route[] = ["/usuarios", "/historial", "/censo", "/censo/buscar", "/censo/registrar", "/configuracion"];
+  const fixed: Route[] = ["/usuarios", "/historial", "/censo", "/censo/buscar", "/censo/registrar", "/configuracion", "/finanzas/cobrar"];
   if ((fixed as string[]).includes(path)) {
     return path as Route;
   }
-  if (/^\/censo\/vivienda\/[0-9a-f-]{36}$/.test(path)) {
+  if (/^\/(censo\/vivienda|finanzas\/cobrar)\/[0-9a-f-]{36}$/.test(path)) {
     return path as Route;
   }
   return "/";
@@ -36,7 +38,7 @@ const B = {
   buscar: { label: "Buscar", icon: "search", route: "/censo/buscar", permission: "census:view" },
   lista: { label: "Lista", icon: "list", route: "/censo", permission: "census:view" },
   censo: { label: "Censo", icon: "list", route: "/censo", permission: "census:view" },
-  cobrar: { label: "Cobrar", icon: "cash" },
+  cobrar: { label: "Cobrar", icon: "cash", route: "/finanzas/cobrar", permission: "finance:record" },
   gasto: { label: "Gasto", icon: "receipt" },
   resumen: { label: "Resumen del mes", icon: "chart" },
   quienDebe: { label: "Quién debe", icon: "alert" },

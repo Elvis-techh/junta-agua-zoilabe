@@ -24,9 +24,9 @@ describe("what the database itself refuses", () => {
     await t.close();
   });
 
-  it("guards every table against deletes, and the two history tables against changes", () => {
+  it("guards every table against deletes, and the history and money tables against changes", () => {
     const tables = appTables(t.sqlite);
-    assert.ok(tables.length >= 17, tables.join(", "));
+    assert.ok(tables.length >= 18, tables.join(", "));
 
     const present = triggers(t);
     for (const table of tables) {
