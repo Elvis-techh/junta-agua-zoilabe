@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { after, before, describe, it, mock } from "node:test";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 
 import { newId } from "../src/auth/session.js";
+import { createDb } from "../src/db/client.js";
+import { MIGRATIONS_FOLDER, runMigrations } from "../src/db/migrations.js";
 import { auditLog, categories, feeRates, months, transactions } from "../src/db/schema.js";
 import { earliestFeeStart, firstOfMonth, monthAfter, paidFrom } from "../src/lib/fees.js";
 import { feeOn } from "../src/lib/settings.js";
@@ -43,6 +48,8 @@ describe("Configuración → Cuotas", () => {
     t.app.inject({ method, url: "/api/settings/fees", headers: { cookie }, ...(payload ? { payload } : {}) });
   const correct = (cookie: string, id: number, payload: object) =>
     t.app.inject({ method: "PATCH", url: `/api/settings/fees/${id}`, headers: { cookie }, payload });
+  const remove = (cookie: string, id: number, payload: object) =>
+    t.app.inject({ method: "POST", url: `/api/settings/fees/${id}/remove`, headers: { cookie }, payload });
   const confirmPin = async (cookie: string) => {
     const confirmed = await t.app.inject({
       method: "POST",
@@ -210,6 +217,102 @@ describe("Configuración → Cuotas", () => {
     assert.equal(feeOn(t.db, "base_monthly", today), 7500);
   });
 
+  it("removes an amount the board did not mean: it stops counting, and stays in the database with who and why", async () => {
+    const [upcoming] = (await baseRates()).rates;
+    assert.deepEqual([upcoming.amountCentavos, upcoming.startsOn], [8000, nextMonth]);
+
+    assert.equal((await remove(president.cookie, upcoming.id, {})).statusCode, 400);
+    assert.equal((await remove(president.cookie, upcoming.id, { reason: "no" })).statusCode, 400);
+    assert.equal((await remove(treasurer.cookie, upcoming.id, { reason: "La junta no lo aprobó" })).statusCode, 403);
+    assert.equal(feeOn(t.db, "base_monthly", nextMonth), 8000);
+
+    const sent = await remove(president.cookie, upcoming.id, { reason: "La junta no aprobó este aumento" });
+    assert.equal(sent.statusCode, 200);
+    // Its month goes back to the amount before it, and Cuotas no longer lists it.
+    assert.equal(feeOn(t.db, "base_monthly", nextMonth), 7500);
+    const base = await baseRates();
+    assert.deepEqual(base.rates.map((rate: { amountCentavos: number }) => rate.amountCentavos), [7500, 6000]);
+    assert.equal(base.currentId, base.rates[0].id);
+
+    const [row] = await t.db.select().from(feeRates).where(eq(feeRates.id, upcoming.id));
+    assert.equal(row!.amountCentavos, 8000);
+    assert.ok(row!.removedAt instanceof Date);
+    assert.equal(row!.removedBy, president.id);
+    assert.equal(row!.removedReason, "La junta no aprobó este aumento");
+
+    const [entry] = await t.db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.action, "fee_rate.removed"), eq(auditLog.entityId, String(upcoming.id))));
+    assert.equal(entry!.area, "settings");
+    assert.equal(entry!.reason, "La junta no aprobó este aumento");
+    assert.match(
+      entry!.summary,
+      /^Ana Presidenta \(.+\) quitó la cuota mensual base de L 80\.00 desde .+ \(esos meses vuelven a L 75\.00\)$/,
+    );
+    assert.deepEqual(entry!.before, { kind: "base_monthly", amountCentavos: 8000, startsOn: nextMonth });
+  });
+
+  it("does not correct or remove an amount already removed", async () => {
+    const [removed] = await t.db.select().from(feeRates).where(isNotNull(feeRates.removedAt));
+    const corrected = await correct(president.cookie, removed!.id, { amountCentavos: 8500, reason: "Error al escribir" });
+    assert.equal(corrected.statusCode, 404);
+    assert.equal((await remove(president.cookie, removed!.id, { reason: "Otra vez" })).statusCode, 404);
+    const [row] = await t.db.select().from(feeRates).where(eq(feeRates.id, removed!.id));
+    assert.equal(row!.amountCentavos, 8000);
+  });
+
+  it("frees a removed amount's month for another amount", async () => {
+    const sent = await call(president.cookie, "POST", { kind: "base_monthly", amountCentavos: 9000, startsOn: nextMonth });
+    assert.equal(sent.statusCode, 201);
+    assert.equal(feeOn(t.db, "base_monthly", nextMonth), 9000);
+  });
+
+  it("does not remove an amount once a payment covers its month", async () => {
+    const [, current] = (await baseRates()).rates;
+    assert.equal(current.amountCentavos, 7500);
+    const sent = await remove(president.cookie, current.id, { reason: "Ya no se necesita" });
+    assert.equal(sent.statusCode, 409);
+    assert.equal(sent.json().error, "already_paid");
+    assert.equal(feeOn(t.db, "base_monthly", today), 7500);
+  });
+
+  it("says when removing an amount leaves its months with none, and a first amount may then start in the past again", async () => {
+    const created = await call(president.cookie, "POST", { kind: "reconnection", amountCentavos: 50000, startsOn: nextMonth });
+    assert.equal(created.statusCode, 201);
+    const id = created.json().rate.id;
+    assert.equal((await remove(president.cookie, id, { reason: "Se puso en la cuota equivocada" })).statusCode, 200);
+    assert.equal(feeOn(t.db, "reconnection", nextMonth), null);
+
+    const [entry] = await t.db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.action, "fee_rate.removed"), eq(auditLog.entityId, String(id))));
+    assert.match(entry!.summary, /quitó la cuota de reconexión de L 500\.00 desde .+ \(esos meses quedan sin monto\)$/);
+
+    const list = await call(president.cookie, "GET");
+    const reconnection = list.json().fees.find((fee: { kind: string }) => fee.kind === "reconnection");
+    assert.deepEqual(reconnection.rates, []);
+    assert.equal(reconnection.earliestStart, null);
+  });
+
+  it("asks for the PIN again before removing", async () => {
+    const vice = await signedInUser(t, "vicepresidente");
+    const [upcoming] = (await baseRates()).rates;
+    const sent = await remove(vice.cookie, upcoming.id, { reason: "La junta no lo aprobó" });
+    assert.equal(sent.statusCode, 403);
+    assert.equal(sent.json().error, "pin_required");
+    assert.equal(feeOn(t.db, "base_monthly", nextMonth), 9000);
+  });
+
+  it("refuses a removed amount with no reason, even from outside the app", async () => {
+    const [current] = await t.db.select().from(feeRates).where(eq(feeRates.amountCentavos, 7500));
+    await rejectsWithDbError(
+      t.db.update(feeRates).set({ removedAt: new Date() }).where(eq(feeRates.id, current!.id)),
+      /fee_rates_removed_reason/,
+    );
+  });
+
   it("is never deleted, even from outside the app", async () => {
     await rejectsWithDbError(t.db.delete(feeRates), /nothing is deleted: fee_rates/);
   });
@@ -278,5 +381,51 @@ describe("a fee set for a later month", () => {
     assert.equal(feeOn(t.db, "base_monthly", "2026-12-31"), 10000);
     assert.equal(feeOn(t.db, "base_monthly", "2027-01-01"), 7000);
     assert.equal(feeOn(t.db, "base_monthly", "2027-06-15"), 7000);
+  });
+});
+
+describe("the migration that lets a fee amount be removed", () => {
+  it("keeps every amount saved before it in force, and frees only a removed amount's month", () => {
+    // A database as it stood before the migration: everything up to Cobrar.
+    const folder = mkdtempSync(join(tmpdir(), "zoilabe-migrations-"));
+    cpSync(MIGRATIONS_FOLDER, folder, { recursive: true });
+    const journalPath = join(folder, "meta", "_journal.json");
+    const journal = JSON.parse(readFileSync(journalPath, "utf8")) as { entries: Array<{ tag: string }> };
+    journal.entries = journal.entries.filter((entry) => entry.tag <= "0002");
+    writeFileSync(journalPath, JSON.stringify(journal));
+    const { db, sqlite } = createDb(":memory:");
+    runMigrations(db, sqlite, folder);
+    rmSync(folder, { recursive: true, force: true });
+
+    sqlite.exec(`
+      INSERT INTO fee_rates (kind, amount_centavos, starts_on) VALUES
+        ('base_monthly', 10000, '2026-11-01'),
+        ('base_monthly', 20000, '2027-01-01'),
+        ('late_fee', 2000, '2026-11-01');
+    `);
+
+    runMigrations(db, sqlite);
+
+    assert.deepEqual(
+      sqlite.prepare("SELECT id, kind, amount_centavos, removed_at, removed_by, removed_reason FROM fee_rates ORDER BY id").all(),
+      [
+        { id: 1, kind: "base_monthly", amount_centavos: 10000, removed_at: null, removed_by: null, removed_reason: null },
+        { id: 2, kind: "base_monthly", amount_centavos: 20000, removed_at: null, removed_by: null, removed_reason: null },
+        { id: 3, kind: "late_fee", amount_centavos: 2000, removed_at: null, removed_by: null, removed_reason: null },
+      ],
+    );
+    assert.equal(feeOn(db, "base_monthly", "2027-02-01"), 20000);
+
+    // Two amounts in force may not share a month; once one is removed, they may.
+    const again = "INSERT INTO fee_rates (kind, amount_centavos, starts_on) VALUES ('base_monthly', 15000, '2027-01-01')";
+    assert.throws(() => sqlite.exec(again), /UNIQUE/);
+    sqlite.exec("UPDATE fee_rates SET removed_at = '2026-11-06T12:00:00.000Z', removed_reason = 'No se aprobó' WHERE id = 2");
+    sqlite.exec(again);
+    assert.equal(feeOn(db, "base_monthly", "2027-02-01"), 15000);
+
+    // The rebuilt table keeps its guard, and new ids carry on after the old ones.
+    assert.throws(() => sqlite.exec("DELETE FROM fee_rates"), /nothing is deleted/);
+    assert.equal((sqlite.prepare("SELECT max(id) AS id FROM fee_rates").get() as { id: number }).id, 4);
+    sqlite.close();
   });
 });

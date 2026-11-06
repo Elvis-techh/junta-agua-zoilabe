@@ -104,6 +104,7 @@ history version had:
 | Invitation accept (`POST /auth/invitation/accept`) | one link used twice at once | `FOR UPDATE` |
 | Fee change (`POST /settings/fees`) | two first amounts of the same fee both start in the past, or a log entry names the wrong amount it replaced | `LOCK TABLE fee_rates IN SHARE ROW EXCLUSIVE MODE` |
 | Fee correction (`PATCH /settings/fees/:id`) | a payment is recorded between the "nothing paid yet" check and the correction, which then rewrites a paid month | `FOR UPDATE` on the rate, and the payment route takes the same lock |
+| Fee removal (`POST /settings/fees/:id/remove`) | a payment is recorded between the "nothing paid yet" check and the removal, so a month is paid at an amount that is then removed; or two removals of one fee each log the wrong amount the months go back to | `FOR UPDATE` on the rate, plus the fee-change table lock, and the payment route takes the same lock |
 | Cobrar (`POST /finance/payments`, `src/routes/payments.ts`) | two payments of one house are shared out from the same "already paid" and together pay a month twice; two payments with the same paper receipt number both pass the "repeated?" check; a retried send is saved twice; two entries make the same month's row | advisory lock `7_311_004` for the whole payment (house, receipt number and month row at once), plus the fee-correction lock above |
 
 The wrong-PIN counter needs nothing: it counts inside the `UPDATE` itself.

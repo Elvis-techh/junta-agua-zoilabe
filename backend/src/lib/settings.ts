@@ -1,4 +1,4 @@
-import { and, desc, eq, lte } from "drizzle-orm";
+import { and, desc, eq, isNull, lte } from "drizzle-orm";
 
 import type { DbOrTx } from "../db/client.js";
 import { feeRates, settings } from "../db/schema.js";
@@ -22,12 +22,15 @@ export type FeeKind = (typeof feeRates.$inferSelect)["kind"];
 
 export const FEE_KINDS = ["base_monthly", "late_fee", "reconnection"] as const satisfies readonly FeeKind[];
 
-/** The amount of a fee in force on `day`, in centavos, or null while the board has not set one. */
+/**
+ * The amount of a fee in force on `day`, in centavos, or null while the board
+ * has not set one. A removed amount does not count: the one before it applies.
+ */
 export function feeOn(db: DbOrTx, kind: FeeKind, day: string): number | null {
   const row = db
     .select({ amount: feeRates.amountCentavos })
     .from(feeRates)
-    .where(and(eq(feeRates.kind, kind), lte(feeRates.startsOn, day)))
+    .where(and(eq(feeRates.kind, kind), lte(feeRates.startsOn, day), isNull(feeRates.removedAt)))
     .orderBy(desc(feeRates.startsOn))
     .limit(1)
     .get();

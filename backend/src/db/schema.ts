@@ -306,7 +306,13 @@ export const householdFees = sqliteTable(
 // Finances
 // ---------------------------------------------------------------------------
 
-/** Base monthly fee, late fee (mora) and reconnection fee, each from a start date. */
+/**
+ * Base monthly fee, late fee (mora) and reconnection fee, each from a start date.
+ *
+ * An amount the board did not mean, or no longer wants, is removed ("Quitar")
+ * until a payment covers its month: the row stays, with when, who and why,
+ * and no longer counts. Its month is then free for another amount.
+ */
 export const feeRates = sqliteTable(
   "fee_rates",
   {
@@ -316,10 +322,17 @@ export const feeRates = sqliteTable(
     startsOn: date("starts_on").notNull(),
     createdAt: createdAt(),
     createdBy: uuid("created_by").references(() => users.id),
+    removedAt: instant("removed_at"),
+    removedBy: uuid("removed_by").references(() => users.id),
+    removedReason: text("removed_reason"),
   },
   (table) => [
-    uniqueIndex("fee_rates_kind_start_unique").on(table.kind, table.startsOn),
+    uniqueIndex("fee_rates_kind_start_unique")
+      .on(table.kind, table.startsOn)
+      .where(sql`${table.removedAt} IS NULL`),
     check("fee_rates_amount", sql`${table.amountCentavos} >= 0`),
+    // A removed amount always says why.
+    check("fee_rates_removed_reason", sql`(${table.removedAt} IS NULL) = (${table.removedReason} IS NULL)`),
   ],
 );
 
