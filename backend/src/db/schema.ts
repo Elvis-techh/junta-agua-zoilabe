@@ -366,7 +366,9 @@ export const months = sqliteTable(
   (table) => [
     uniqueIndex("months_month_unique").on(table.month),
     check("months_first_day", sql`substr(${table.month}, 9, 2) = '01'`),
-    // Separation of duties, in the database as well as in the app.
+    // A month close takes two people: whoever prepared it cannot approve it.
+    // Every role may do both (owner, 6 November 2026), so this check is what
+    // keeps the two apart.
     check(
       "months_preparer_not_approver",
       sql`${table.approvedBy} IS NULL OR ${table.approvedBy} <> ${table.preparedBy}`,

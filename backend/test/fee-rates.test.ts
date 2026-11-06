@@ -14,7 +14,7 @@ import { earliestFeeStart, firstOfMonth, monthAfter, paidFrom } from "../src/lib
 import { feeOn } from "../src/lib/settings.js";
 import { HONDURAS_TIME_ZONE, businessToday } from "../src/lib/time.js";
 import type { TestApp } from "./helpers.js";
-import { TEST_PIN, buildTestApp, rejectsWithDbError, signedInUser } from "./helpers.js";
+import { TEST_PIN, buildTestApp, rejectsWithDbError, signedInUser, withdraw } from "./helpers.js";
 
 describe("the earliest month a fee may start", () => {
   it("is any month for the first amount, and this month after that", () => {
@@ -27,7 +27,6 @@ describe("the earliest month a fee may start", () => {
 describe("Configuración → Cuotas", () => {
   let t: TestApp;
   let president: { id: string; cookie: string };
-  let treasurer: { cookie: string };
   let secretary: { cookie: string };
   const today = businessToday(HONDURAS_TIME_ZONE);
   const thisMonth = firstOfMonth(today);
@@ -37,8 +36,10 @@ describe("Configuración → Cuotas", () => {
   before(async () => {
     t = await buildTestApp();
     president = await signedInUser(t, "presidente", "Ana Presidenta");
-    treasurer = await signedInUser(t, "tesorero");
     secretary = await signedInUser(t, "secretario");
+    // Every role may change settings (owner, 6 November 2026); the secretary's
+    // is taken away here, as the Permisos tab can, to prove the server refuses.
+    await withdraw(t, "secretario", ["settings:edit"]);
   });
   after(async () => {
     await t.close();
@@ -64,12 +65,11 @@ describe("Configuración → Cuotas", () => {
     return list.json().fees.find((fee: { kind: string }) => fee.kind === "base_monthly");
   };
 
-  it("is kept to Configuración's roles: the server refuses anyone else", async () => {
-    for (const user of [treasurer, secretary]) {
-      assert.equal((await call(user.cookie, "GET")).statusCode, 403);
-      const sent = await call(user.cookie, "POST", { kind: "base_monthly", amountCentavos: 7000, startsOn: lastYear });
-      assert.equal(sent.statusCode, 403);
-    }
+  it("is kept to roles that may change settings: the server refuses anyone else", async () => {
+    assert.equal((await call(secretary.cookie, "GET")).statusCode, 403);
+    const sent = await call(secretary.cookie, "POST", { kind: "base_monthly", amountCentavos: 7000, startsOn: lastYear });
+    assert.equal(sent.statusCode, 403);
+    assert.equal(sent.json().error, "forbidden");
     assert.equal((await t.db.select().from(feeRates)).length, 0);
   });
 
@@ -174,7 +174,7 @@ describe("Configuración → Cuotas", () => {
 
     const noReason = await correct(president.cookie, first.id, { amountCentavos: 6000 });
     assert.equal(noReason.statusCode, 400);
-    assert.equal((await correct(treasurer.cookie, first.id, { amountCentavos: 6000, reason: "Error al escribir" })).statusCode, 403);
+    assert.equal((await correct(secretary.cookie, first.id, { amountCentavos: 6000, reason: "Error al escribir" })).statusCode, 403);
 
     const sent = await correct(president.cookie, first.id, { amountCentavos: 6000, reason: "Error al escribir: era L 60" });
     assert.equal(sent.statusCode, 200);
@@ -223,7 +223,7 @@ describe("Configuración → Cuotas", () => {
 
     assert.equal((await remove(president.cookie, upcoming.id, {})).statusCode, 400);
     assert.equal((await remove(president.cookie, upcoming.id, { reason: "no" })).statusCode, 400);
-    assert.equal((await remove(treasurer.cookie, upcoming.id, { reason: "La junta no lo aprobó" })).statusCode, 403);
+    assert.equal((await remove(secretary.cookie, upcoming.id, { reason: "La junta no lo aprobó" })).statusCode, 403);
     assert.equal(feeOn(t.db, "base_monthly", nextMonth), 8000);
 
     const sent = await remove(president.cookie, upcoming.id, { reason: "La junta no aprobó este aumento" });

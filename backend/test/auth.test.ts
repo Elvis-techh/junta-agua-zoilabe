@@ -8,7 +8,7 @@ import { DEVICE_COOKIE, SESSION_COOKIE } from "../src/auth/session.js";
 import { accessTokens, auditLog, users } from "../src/db/schema.js";
 import { verifyChain } from "../src/lib/audit.js";
 import type { TestApp } from "./helpers.js";
-import { TEST_PIN, buildTestApp, nextPhone, signedInUser } from "./helpers.js";
+import { TEST_PIN, buildTestApp, nextPhone, signedInUser, withdraw } from "./helpers.js";
 
 /** The cookie header a browser would send after this response. */
 function cookiesFrom(response: LightMyRequestResponse, previous = ""): string {
@@ -181,9 +181,13 @@ describe("invitation and PIN sign-in", () => {
     assert.equal((await post("/api/auth/pin", { pin: TEST_PIN }, device)).statusCode, 200);
   });
 
-  it("keeps two roles apart: the server refuses what the role may not do", async () => {
+  it("keeps two roles apart once one is narrowed: the server refuses what the role may not do", async () => {
     const secretary = await onboard("Sonia Secretaria", "secretario");
     const president = await onboard("Pablo Presidente", "presidente");
+
+    // Every role holds every permission (owner, 6 November 2026) until the Permisos tab narrows one.
+    assert.equal((await get("/api/users", secretary.cookie)).statusCode, 200);
+    await withdraw(t, "secretario", ["users:manage", "log:view"]);
 
     const bySecretary = await get("/api/users", secretary.cookie);
     assert.equal(bySecretary.statusCode, 403);

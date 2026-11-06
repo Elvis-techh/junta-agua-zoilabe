@@ -51,6 +51,15 @@ changing how money, permissions or the history log work.
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
   so its amount starts with the month it is registered in.
+- **Every role may do everything** (owner decision of 6 November 2026): the
+  board does not always meet in full, and a task only one or two people could
+  do would wait for them. A new database gives every role every permission,
+  and migration `0004` does the same to one made before. Roles stay, so
+  Historial says who acted and in which role, and the Permisos tab can still
+  narrow a role. A month close still takes two people: the database refuses
+  an approval by whoever prepared it. Inicio shows the role's usual buttons
+  first, then "Otras tareas" (Registrar familia, Buscar, Cobrar) for whatever
+  the role's own buttons do not already offer.
 - **Database: SQLite** (decided 29 October 2026), one file like Lindero's and
   Báscula Central's, so the droplet needs no database server. The rules that
   PostgreSQL's two logins enforced are now triggers in the file itself (see
@@ -111,7 +120,7 @@ once an administrator exists.
 
 ### Trying the fees
 
-As the administrator or the president, open **Configuración** → **Cuotas**.
+With any role, open **Configuración** → **Cuotas**.
 Saving any amount asks for the PIN again.
 On a computer, month and date fields open the app's own calendar, in Spanish;
 a phone keeps its own picker.
@@ -143,17 +152,18 @@ a phone keeps its own picker.
    marked removed. Every change, correction and removal is in
    **Historial**, with the amount and the reason.
 
-The server refuses these changes from any other role, and without the PIN,
-whatever the screen shows.
+The server refuses these changes from a role the Permisos tab has taken
+"Cambiar la configuración" from, and without the PIN, whatever the screen
+shows.
 
 While a panel like these is open, the screen behind it stays still, on a
 computer and on a phone, and it is back where it was when the panel closes.
 
 ### Trying Cobrar
 
-As the treasurer (with a base fee set in Configuración → Cuotas, and a
-family registered), tap **Cobrar** on Inicio, or **Registrar pago** on a
-household's file. A payment needs signal: it is not kept on the phone.
+With any role (with a base fee set in Configuración → Cuotas, and a family
+registered), tap **Cobrar** on Inicio (under "Otras tareas" for a role whose
+own buttons do not have it), or **Registrar pago** on a household's file. A payment needs signal: it is not kept on the phone.
 
 1. Search for the house by name or code and tap it.
 2. **¿Qué meses paga?** Each month shows what it still owes ("L 70.00",

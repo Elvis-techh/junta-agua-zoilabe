@@ -4,7 +4,7 @@
  * Code asks about a PERMISSION, never about a role. The live answer comes from
  * the `role_permissions` table, which the Permisos tab edits; the matrix below
  * is only what a new database is seeded with (docs/app-plan.md, "Roles and
- * permissions").
+ * permissions"): since 6 November 2026, everything for every role.
  */
 
 export const ROLES = [
@@ -63,17 +63,6 @@ export function isPermission(value: string): value is Permission {
 }
 
 /**
- * Pairs no single role may hold together: the person who records money, or
- * prepares the close, cannot also approve it. The Permisos tab refuses an edit
- * that would join them, and the `months` table refuses an approval by the
- * person who prepared it.
- */
-export const INCOMPATIBLE: ReadonlyArray<readonly [Permission, Permission]> = [
-  ["finance:record", "month:approve"],
-  ["month:prepare", "month:approve"],
-];
-
-/**
  * Permissions the administrator role always keeps, whatever the Permisos tab
  * says. Without them nobody could undo a bad edit: they are the way back in.
  */
@@ -94,79 +83,28 @@ export const GUEST_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>([
   "export:finance",
 ]);
 
-const BOARD_VIEW: Permission[] = ["census:view", "census:view_sensitive", "finance:view"];
-
-const PRESIDENT: Permission[] = [
-  "census:view",
-  "census:view_sensitive",
-  "census:edit",
-  "census:deactivate",
-  "household_fee:set",
-  "finance:view",
-  "month:approve",
-  "users:manage",
-  "guests:manage",
-  "permissions:view",
-  "settings:edit",
-  "log:view",
-  "export:census",
-  "export:finance",
-  "export:log",
-];
-
 /**
- * The App Plan's matrix, row by row.
+ * What a new database starts with: every role holds every permission.
  *
- * One reading to confirm with the board: the plan gives the administrator
- * "Print and export: All" but also says the administrator "cannot see or touch
- * money records". The second rule wins here, so the administrator exports the
- * census and the history log but not finances. The Permisos tab can change it.
+ * The owner decided on 2026-11-06 that the board does not always meet in
+ * full, and a task only one or two roles could do would wait for them. The
+ * role stays, so every history entry says who acted and in which role, and
+ * the Permisos tab can still narrow a role later.
+ *
+ * A month close still takes two people: the `months` table refuses an
+ * approval by the person who prepared it (`months_preparer_not_approver`).
  */
+const EVERYTHING: ReadonlySet<Permission> = new Set(PERMISSION_CODES);
+
 export const DEFAULT_MATRIX: Record<RoleCode, ReadonlySet<Permission>> = {
-  administrador: new Set<Permission>([
-    "census:view",
-    "census:view_sensitive",
-    "census:edit",
-    "census:deactivate",
-    "users:manage",
-    "guests:manage",
-    "permissions:view",
-    "permissions:edit",
-    "settings:edit",
-    "log:view",
-    "export:census",
-    "export:log",
-  ]),
-  presidente: new Set(PRESIDENT),
-  // Acts when the president is away, with every permission the president has.
-  vicepresidente: new Set(PRESIDENT),
-  secretario: new Set<Permission>([
-    "census:view",
-    "census:view_sensitive",
-    "census:edit",
-    "census:deactivate",
-    "household_fee:set_at_registration",
-    "export:census",
-  ]),
-  tesorero: new Set<Permission>([
-    "census:view",
-    "census:view_sensitive",
-    "household_fee:set",
-    "finance:view",
-    "finance:record",
-    "finance:reverse",
-    "month:prepare",
-    "export:finance",
-  ]),
-  fiscal: new Set<Permission>([
-    ...BOARD_VIEW,
-    "log:view",
-    "export:census",
-    "export:finance",
-    "export:log",
-  ]),
-  primer_vocal: new Set<Permission>([...BOARD_VIEW, "export:census", "export:finance"]),
-  segundo_vocal: new Set<Permission>([...BOARD_VIEW, "export:census", "export:finance"]),
+  administrador: EVERYTHING,
+  presidente: EVERYTHING,
+  vicepresidente: EVERYTHING,
+  secretario: EVERYTHING,
+  tesorero: EVERYTHING,
+  fiscal: EVERYTHING,
+  primer_vocal: EVERYTHING,
+  segundo_vocal: EVERYTHING,
 };
 
 /**
@@ -174,12 +112,6 @@ export const DEFAULT_MATRIX: Record<RoleCode, ReadonlySet<Permission>> = {
  * Shared by the Permisos route and its tests.
  */
 export function matrixProblem(role: RoleCode, granted: ReadonlySet<Permission>): string | null {
-  for (const [first, second] of INCOMPATIBLE) {
-    if (granted.has(first) && granted.has(second)) {
-      return `Un mismo cargo no puede «${PERMISSIONS[first]}» y «${PERMISSIONS[second]}».`;
-    }
-  }
-
   if (role === "administrador") {
     for (const permission of LOCKED_FOR_ADMIN) {
       if (!granted.has(permission)) {

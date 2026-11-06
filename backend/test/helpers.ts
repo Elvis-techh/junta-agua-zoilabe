@@ -7,6 +7,7 @@
 import assert from "node:assert/strict";
 
 import type Database from "better-sqlite3";
+import { and, eq, inArray } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 
 import { buildApp } from "../src/app.js";
@@ -23,10 +24,10 @@ import { loadConfig } from "../src/config/env.js";
 import { createDb } from "../src/db/client.js";
 import type { Db } from "../src/db/client.js";
 import { runMigrations } from "../src/db/migrations.js";
-import { users } from "../src/db/schema.js";
+import { rolePermissions, users } from "../src/db/schema.js";
 import { seedDatabase } from "../src/db/seeding.js";
 import { hashPin } from "../src/lib/pin.js";
-import type { RoleCode } from "../src/lib/permissions.js";
+import type { Permission, RoleCode } from "../src/lib/permissions.js";
 import { HONDURAS_TIME_ZONE } from "../src/lib/time.js";
 
 export interface TestDatabase {
@@ -133,4 +134,16 @@ export async function signedInUser(
     deviceCookie: `${DEVICE_COOKIE}=${device.token}`,
     sessionId: session.id,
   };
+}
+
+/**
+ * Take permissions away from a role, as the Permisos tab would. Every role
+ * holds every permission by default (owner, 6 November 2026), so a test that
+ * proves the server refuses a request takes the permission away first.
+ */
+export async function withdraw(t: TestDatabase, roleCode: RoleCode, permissions: Permission[]): Promise<void> {
+  await t.db
+    .update(rolePermissions)
+    .set({ granted: false })
+    .where(and(eq(rolePermissions.roleCode, roleCode), inArray(rolePermissions.permission, permissions)));
 }

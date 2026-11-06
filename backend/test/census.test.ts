@@ -10,7 +10,7 @@ import { capitalizeName, householdCode, maskDigits } from "../src/lib/census.js"
 import { firstOfMonth } from "../src/lib/fees.js";
 import { HONDURAS_TIME_ZONE, businessToday } from "../src/lib/time.js";
 import type { TestApp } from "./helpers.js";
-import { buildTestApp, rejectsWithDbError, signedInUser } from "./helpers.js";
+import { buildTestApp, rejectsWithDbError, signedInUser, withdraw } from "./helpers.js";
 
 describe("census rules", () => {
   it("capitalizes names the way the village writes them", () => {
@@ -66,6 +66,14 @@ describe("census", () => {
     secretary = await signedInUser(t, "secretario", "Sara Secretaria");
     treasurer = await signedInUser(t, "tesorero");
     vocal = await signedInUser(t, "primer_vocal");
+
+    // Every role holds every permission (owner, 6 November 2026). Some are
+    // narrowed here, as the Permisos tab can, to prove the server refuses
+    // what a role may not do.
+    await withdraw(t, "tesorero", ["census:edit", "census:deactivate"]);
+    await withdraw(t, "primer_vocal", ["census:edit"]);
+    await withdraw(t, "administrador", ["household_fee:set", "household_fee:set_at_registration"]);
+    await withdraw(t, "secretario", ["settings:edit"]);
 
     const created = await call(admin.cookie, "POST", "/api/settings/sectors", { name: "El Centro" });
     assert.equal(created.statusCode, 201);
@@ -271,7 +279,7 @@ describe("census", () => {
   });
 
   it("refuses a different fee from a role that may not set one, even through the API", async () => {
-    // The administrator registers census records but holds no fee permission (App Plan matrix).
+    // The administrator registers census records but holds no fee permission here (see `before`).
     const refused = await call(
       admin.cookie,
       "POST",
@@ -282,7 +290,7 @@ describe("census", () => {
     assert.equal((await call(admin.cookie, "POST", "/api/census/households", registration())).statusCode, 201);
   });
 
-  it("lets only the census roles register", async () => {
+  it("lets only a role that may edit the census register", async () => {
     assert.equal((await call(treasurer.cookie, "POST", "/api/census/households", registration())).statusCode, 403);
     assert.equal((await call(vocal.cookie, "POST", "/api/census/households", registration())).statusCode, 403);
     assert.equal((await call(vocal.cookie, "GET", "/api/census/households")).statusCode, 200);
@@ -453,7 +461,7 @@ describe("census", () => {
     assert.equal(adminOptions.json().canSetDifferentFee, false);
   });
 
-  it("keeps sector management to Configuración's roles, and logs it", async () => {
+  it("keeps sector management to roles that may change settings, and logs it", async () => {
     assert.equal((await call(secretary.cookie, "POST", "/api/settings/sectors", { name: "La Playa" })).statusCode, 403);
     assert.equal((await call(admin.cookie, "POST", "/api/settings/sectors", { name: "el centro" })).statusCode, 409);
 

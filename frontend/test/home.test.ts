@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { HOME_BUTTONS, homeButtons, navigation, routeOf, tabOf } from "../src/home.ts";
+import { HOME_BUTTONS, homeButtons, navigation, otherTasks, routeOf, tabOf } from "../src/home.ts";
 import { ROLES } from "../src/roles.ts";
 
 describe("home buttons", () => {
@@ -20,6 +20,22 @@ describe("home buttons", () => {
     const withoutLog = homeButtons("fiscal", []).map((b) => b.label);
     assert.ok(withLog.includes("Historial"));
     assert.ok(!withoutLog.includes("Historial"));
+  });
+
+  it("offers the other tasks below a role's own buttons, now that every role may do everything", () => {
+    const everything = ["census:view", "census:edit", "finance:view", "finance:record", "log:view", "users:manage", "settings:edit"];
+    const labels = (role: string, permissions = everything) => otherTasks(role, permissions).map((b) => b.label);
+    assert.deepEqual(labels("secretario"), ["Cobrar"]);
+    assert.deepEqual(labels("tesorero"), ["Registrar familia", "Buscar"]);
+    assert.deepEqual(labels("administrador"), ["Registrar familia", "Buscar", "Cobrar"]);
+    // Only what the role may still do, if the Permisos tab narrowed it.
+    assert.deepEqual(labels("secretario", ["census:view", "census:edit"]), []);
+    // Places are in the bottom bar, never repeated as tasks.
+    for (const role of ROLES) {
+      for (const task of otherTasks(role.code, everything)) {
+        assert.ok(!["/censo", "/usuarios", "/historial", "/configuracion"].includes(task.route!), task.label);
+      }
+    }
   });
 
   it("never shows more than four items in the bar, the rest under Más", () => {

@@ -69,6 +69,21 @@ export function homeButtons(roleCode: string, permissions: readonly string[]): H
   );
 }
 
+/**
+ * Tasks anyone may do from Inicio, below their role's own buttons: since 6
+ * November 2026 every role may do everything, so the secretary can collect
+ * a payment when the treasurer is away. Tasks only, not places: Censo,
+ * Usuarios, Historial and Configuración are already in the bottom bar. A
+ * screen a later phase builds joins this list once it is built.
+ */
+const TASKS: HomeButton[] = [B.registrar, B.buscar, B.cobrar];
+
+/** The other tasks this user may do, that their role's own buttons do not already offer. */
+export function otherTasks(roleCode: string, permissions: readonly string[]): HomeButton[] {
+  const own = new Set((HOME_BUTTONS[roleCode] ?? []).map((button) => button.route));
+  return TASKS.filter((task) => !own.has(task.route) && (!task.permission || permissions.includes(task.permission)));
+}
+
 export interface Tab {
   label: string;
   icon: IconName;

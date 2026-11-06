@@ -9,7 +9,7 @@ import { firstOfMonth } from "../src/lib/fees.js";
 import { addMonths, allocatePayment, monthList, monthsBetween } from "../src/lib/payments.js";
 import { HONDURAS_TIME_ZONE, businessToday } from "../src/lib/time.js";
 import type { TestApp } from "./helpers.js";
-import { buildTestApp, rejectsWithDbError, signedInUser } from "./helpers.js";
+import { buildTestApp, rejectsWithDbError, signedInUser, withdraw } from "./helpers.js";
 
 describe("months", () => {
   it("move across the end of a year in both directions", () => {
@@ -133,7 +133,10 @@ describe("Cobrar: recording monthly fee payments", () => {
     await t.close();
   });
 
-  it("lets only those who may see finances read a house's months, and only the treasurer record", async () => {
+  it("lets only those who may see finances read a house's months, and only those who may record, record", async () => {
+    // Every role may do both (owner, 6 November 2026); two are narrowed here, as the Permisos tab can.
+    await withdraw(t, "primer_vocal", ["finance:record"]);
+    await withdraw(t, "secretario", ["finance:view"]);
     const asVocal = await call(vocal.cookie, "GET", `/api/finance/households/${householdId}/months`);
     assert.equal(asVocal.statusCode, 200);
     const asSecretary = await call(secretary.cookie, "GET", `/api/finance/households/${householdId}/months`);

@@ -207,6 +207,34 @@ select:focus-visible {
   font-size: 0.85rem;
 }
 
+/*
+ * Inicio's other tasks: compact, three to a row, below the role's own
+ * buttons, so four large buttons and these still fit above the bottom bar on
+ * a 360 px phone.
+ */
+.home-more {
+  display: grid;
+  gap: 8px;
+}
+
+.home-more h2 {
+  margin: 4px 0 0;
+  font-size: 1.05rem;
+}
+
+.home-grid.home-grid-small {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.home-grid-small .home-btn {
+  min-height: 64px;
+  padding: 8px 6px;
+  gap: 4px;
+  text-align: center;
+  line-height: 1.2;
+}
+
 /* ---- Forms ------------------------------------------------------------- */
 
 label {
