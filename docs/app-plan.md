@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 111, taken 2026-11-06.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 113, taken 2026-11-06.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -417,14 +417,15 @@ Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fee
 - [x] Nothing stays hidden on a phone: on a form's last field the button that goes on stays above the keyboard, and "Hay más abajo" says when something is further down (PR #21, merged on 3 November 2026).
 - [x] Every certificate on the droplet now reloads nginx when it renews, so no site keeps serving an old one (set up on 4 November 2026). Its first real use is Báscula Central's renewal, around 25 November.
 - [x] On a phone, the keyboard stays down until a field is tapped (PR #22, merged on 6 November 2026).
+- [x] Every phone number carries its country code, chosen from a list of nine with Honduras first (PR #23, merged on 6 November 2026).
 
 **What comes next**
 
-Phase 2 has started. The phone country codes wait to be merged, and then monthly fee payments come next. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
+Phase 2 has started. Monthly fee payments are built and wait to be merged, and then corrections come next. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
 
 Finished, waiting to be merged:
 
-- [ ] A country code beside every phone number ([PR #23](https://github.com/Elvis-techh/junta-agua-zoilabe/pull/23)). It is on the test copy now, for the owner to try and merge.
+- [ ] Monthly fee payments, "Cobrar" ([PR #24](https://github.com/Elvis-techh/junta-agua-zoilabe/pull/24)). It is on the test copy now, for the owner to try and merge.
 
 Needs people, not code:
 
@@ -435,7 +436,7 @@ Needs people, not code:
 Phase 2 pieces in suggested build order. Each is one pull request, tried on the test copy before it is merged:
 
 - [x] Fees in Configuración: base monthly fee, late fee (mora) and reconnection fee, each with a start date. The census then shows the base price's amount.
-- [ ] Monthly fee payments: household, the months the treasurer selects, amount, payment method and paper receipt number, with a reference for a bank transfer. This includes partial payments and paying ahead. A repeated receipt number is flagged, not blocked.
+- [ ] Monthly fee payments: household, the months the treasurer selects, amount, payment method and paper receipt number, with a reference for a bank transfer. This includes partial payments and paying ahead. A repeated receipt number is flagged, not blocked. Built in PR #24.
 - [ ] Corrections: a reversal entry that points to the original and needs a written reason.
 - [ ] What each house already owes, entered month by month before its first payment, so each unpaid month can carry its own late fee (decided 6 November).
 - [ ] Other income: late fee, reconnection fee, connection fee, donation and other.
@@ -502,6 +503,9 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - The treasurer enters what each house already owes month by month, so each unpaid month can carry its own late fee.
 - Panamá keeps 7 or 8 digits: its mobiles have 8 and its landlines 7.
 - Phase 1's "done when" test with the secretary waits until most of the app is built.
+- A payment's money fills the months the treasurer selects oldest first, so only the last one can be left partly paid.
+- A payment larger than what the selected months owe is refused: the treasurer selects more months or fixes the amount. No money sits unassigned.
+- A month keeps the price it had when its first money arrived. If the fee changes after a house paid part of a month, that month still costs the earlier price.
 
 **Still open**
 
