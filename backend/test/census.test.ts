@@ -139,7 +139,7 @@ describe("census", () => {
       addToExistingPerson: true,
     });
     assert.equal(third.statusCode, 201);
-    assert.deepEqual(third.json().person, { fullName: "Juan Pérez", phone: "99887766" });
+    assert.deepEqual(third.json().person, { fullName: "Juan Pérez", phone: "+50499887766" });
 
     // A new person still needs both.
     const unnamed = await call(secretary.cookie, "POST", "/api/census/households", {
@@ -177,7 +177,7 @@ describe("census", () => {
     const patch = (payload: object) => call(secretary.cookie, "PATCH", `/api/census/people/${personId}`, payload);
     assert.equal((await patch({ phone: "91112222" })).statusCode, 200);
     const [withPhone] = await t.db.select().from(people).where(eq(people.id, personId));
-    assert.deepEqual([withPhone?.phone, withPhone?.phoneMissing], ["91112222", null]);
+    assert.deepEqual([withPhone?.phone, withPhone?.phoneMissing], ["+50491112222", null]);
 
     assert.equal((await patch({ phone: null })).statusCode, 400);
     assert.equal((await patch({ phoneMissing: "declined" })).statusCode, 200);
@@ -190,7 +190,7 @@ describe("census", () => {
       .where(and(eq(auditLog.action, "person.edited"), eq(auditLog.entityId, personId)))
       .orderBy(desc(auditLog.id))
       .limit(1);
-    assert.deepEqual(entry?.before, { phone: "91112222", phoneMissing: null });
+    assert.deepEqual(entry?.before, { phone: "+50491112222", phoneMissing: null });
     assert.match(entry!.summary, /: teléfono$/);
 
     // And the database itself refuses a person with neither.

@@ -121,7 +121,7 @@ the tests may not notice.
 | `strftime('%Y-%m-%dT%H:%M:%fZ', 'now')` (`schema.ts`, every `created_at`) | `now()` (`.defaultNow()`) |
 | `max(CAST(substr(code, 3) AS INTEGER))` (household code) | `max(substring(code from 3)::int)` |
 | `json_each(t.months_covered)` (`lastPaidMonth` and `paidFrom`, `src/lib/fees.ts`) | `unnest(t.months_covered)` |
-| `NOT GLOB '*[^0-9]*'` (phone and ID checks) | `~ '^[0-9]{8}$'`, `~ '^[0-9]{13}$'` |
+| `GLOB '+*'`, `NOT GLOB '*[^0-9]*'` (phone and ID checks) | `~ '^\+[0-9]{8,15}$'`, `~ '^[0-9]{13}$'` |
 | `IS NOT 'transfer'` (transfer needs a bank reference) | `IS DISTINCT FROM 'transfer'` |
 | `substr(month, 9, 2) = '01'` (months start on day 1) | `extract(day from month) = 1` |
 | `search_text(col)` (census search) | row 4 |

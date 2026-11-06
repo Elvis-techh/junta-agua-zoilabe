@@ -4,6 +4,8 @@
  * screen show what will be saved.
  */
 
+import { whatsappNumber } from "./phone.ts";
+
 const NAME_PARTICLES = new Set(["de", "del", "la", "las", "los", "y"]);
 
 /** "juan PÉREZ de la cruz" → "Juan Pérez de la Cruz". Matches backend/src/lib/census.ts. */
@@ -141,8 +143,7 @@ export function formatIdNumber(value: string): string {
 /** The message "Compartir por WhatsApp" prepares for the family. */
 export function whatsappLink(phone: string | null, fullName: string, code: string): string {
   const text = `Hola ${fullName}. Su vivienda quedó registrada en el censo de la Junta de Agua de Zoilabe con el código ${code}. Guarde este mensaje.`;
-  const to = phone && /^\d{8}$/.test(phone) ? `504${phone}` : "";
-  return `https://wa.me/${to}?text=${encodeURIComponent(text)}`;
+  return `https://wa.me/${whatsappNumber(phone)}?text=${encodeURIComponent(text)}`;
 }
 
 /** What GET /census/options answers, also kept on the phone for working without signal. */

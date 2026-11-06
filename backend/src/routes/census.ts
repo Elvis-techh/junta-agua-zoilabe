@@ -31,6 +31,7 @@ import {
 } from "../lib/census.js";
 import { differentFeeStart, lastPaidMonth } from "../lib/fees.js";
 import { HttpError, parse } from "../lib/http.js";
+import { maskPhone, phoneSchema, phoneSearchPatterns } from "../lib/phone.js";
 import { baseMonthlyFee, currentSetting } from "../lib/settings.js";
 import { businessToday, formatCalendarDate } from "../lib/time.js";
 
@@ -44,10 +45,6 @@ const idNumber = z
   .string()
   .trim()
   .regex(/^[0-9]{13}$/, "La identidad debe tener 13 números. Revise e intente de nuevo.");
-const phone = z
-  .string()
-  .trim()
-  .regex(/^[0-9]{8}$/, "El teléfono debe tener 8 números. Revise e intente de nuevo.");
 const gender = z.string().trim().min(1).max(40);
 const phoneMissing = z.enum(PHONE_MISSING_CODES, { message: "Elija por qué no hay teléfono." });
 const NO_PHONE_MESSAGE = "Escriba el teléfono, o elija «No tiene teléfono» o «Prefiere no darlo».";
@@ -85,7 +82,7 @@ const registerBody = z.object({
   person: z.object({
     fullName: fullName.optional(),
     idNumber,
-    phone: phone.optional(),
+    phone: phoneSchema.optional(),
     /** Instead of a phone: the family has none, or prefers not to give it. */
     phoneMissing: phoneMissing.optional(),
     gender: gender.optional(),
@@ -122,7 +119,7 @@ const householdPatch = z
   .partial();
 
 const personPatch = z
-  .object({ fullName, idNumber, phone: phone.nullable(), phoneMissing: phoneMissing.nullable(), gender: gender.nullable(), reason: note })
+  .object({ fullName, idNumber, phone: phoneSchema.nullable(), phoneMissing: phoneMissing.nullable(), gender: gender.nullable(), reason: note })
   .partial();
 
 const deactivateBody = z.object({
@@ -405,7 +402,7 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
       ];
       // Searching by ID number or phone would tell someone who may not see them whether they match.
       if (sensitive && digits.length >= 4) {
-        matches.push(sql`${people.idNumber} LIKE ${`%${digits}%`}`, sql`${people.phone} LIKE ${`%${digits}%`}`);
+        matches.push(sql`${people.idNumber} LIKE ${`%${digits}%`}`, ...phoneSearchPatterns(digits).map((pattern) => sql`${people.phone} LIKE ${pattern}`));
       }
       // A bare number is a household code: "12" finds Z-0012.
       if (/^\d{1,5}$/.test(query.q)) {
@@ -495,7 +492,7 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
         owner: {
           ...owner,
           idNumber: sensitive ? owner.idNumber : maskDigits(owner.idNumber, 4),
-          phone: sensitive ? owner.phone : maskDigits(owner.phone, 2),
+          phone: sensitive ? owner.phone : maskPhone(owner.phone),
         },
         fee: different
           ? { kind: "different" as const, ...different }

@@ -92,10 +92,10 @@ export async function buildTestApp(overrides: Partial<AppConfig> = {}): Promise<
 
 let phoneCounter = 30000000;
 
-/** A fresh, unused 8-digit phone number. */
+/** A fresh, unused Honduran phone number, as the database keeps it. */
 export function nextPhone(): string {
   phoneCounter += 1;
-  return String(phoneCounter);
+  return `+504${phoneCounter}`;
 }
 
 export const TEST_PIN = "482913";

@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 104, taken 2026-11-03.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 111, taken 2026-11-06.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -86,7 +86,7 @@ It keeps every column of the Registros sheet template and adds the fields needed
 | Paper date and form number | Date, text | Paper entry only: the date written on the paper form and its number, if it has one |
 | Full name | Text | Required; capitalized automatically |
 | Identity (ID number) | 13 digits | Required; checked against existing people before saving |
-| Phone / WhatsApp | 8 digits | Required for the owner, unless the family has none or prefers not to give it; that reason is kept instead |
+| Phone / WhatsApp | Country code and number | Required for the owner, unless the family has none or prefers not to give it; that reason is kept instead. The country starts on Honduras (+504), and the length is checked for each country |
 | Gender | Choice | List kept in Configuration |
 | Sector | Choice | Required; list kept in Configuration |
 | References | Text | Required; how to find the house |
@@ -398,7 +398,7 @@ Phases 1 to 3 are built and tested on the builder's computer before anything cha
 | 3. Close, reports and guests | Not started | Everything, including print layouts and guest invitations | A guest signing in from a municipal phone at the real address |
 | 4. Handover | Not started | A first draft of the runbook | The restore test, board-owned accounts, training and installing on every director's phone |
 
-**Done so far (as of 3 November 2026)**
+**Done so far (as of 6 November 2026)**
 
 Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fees can be set in Configuración, but the app cannot record money yet.
 
@@ -410,15 +410,26 @@ Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fee
 - [x] A house's different amount and its reason are entered at registration, and start with the month after its last payment (PRs #3 and #4).
 - [x] Board rules for Phase 2 are written down: the decisions of 25 and 29 October and of 2 and 3 November below.
 - [x] Fees can be set in Configuración, and the census shows the base price's amount (PR #15, merged on 3 November 2026).
+- [x] Cuotas is clearer: each saved amount has its own box, "Cambiar monto" became "Cambiar detalles", and a test proves a later fee takes over when its month arrives (PR #17, merged on 3 November 2026).
+- [x] The screen behind an open panel stays still, on a computer and on a phone (PR #18, merged on 3 November 2026).
+- [x] Money amounts show thousands commas while they are typed. ID numbers, phones, PINs and paper form numbers stay plain (PR #19, merged on 3 November 2026).
+- [x] On a computer, month and date fields open the app's own calendar, in Spanish. A phone keeps its own picker (PR #20, merged on 3 November 2026).
+- [x] Nothing stays hidden on a phone: on a form's last field the button that goes on stays above the keyboard, and "Hay más abajo" says when something is further down (PR #21, merged on 3 November 2026).
+- [x] Every certificate on the droplet now reloads nginx when it renews, so no site keeps serving an old one (set up on 4 November 2026). Its first real use is Báscula Central's renewal, around 25 November.
+- [x] On a phone, the keyboard stays down until a field is tapped (PR #22, merged on 6 November 2026).
 
 **What comes next**
 
-Phase 2 has started, and monthly fee payments come next. Only the piece marked below waits for a board answer.
+Phase 2 has started. The phone country codes wait to be merged, and then monthly fee payments come next. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
+
+Finished, waiting to be merged:
+
+- [ ] A country code beside every phone number ([PR #23](https://github.com/Elvis-techh/junta-agua-zoilabe/pull/23)). It is on the test copy now, for the owner to try and merge.
 
 Needs people, not code:
 
-- [ ] Phase 1's "done when" test: the secretary types in ten made-up paper forms on the test copy, without help.
-- [ ] The board decides how the treasurer enters what each house already owes (see Still open).
+- [ ] Phase 1's "done when" test: the secretary types in ten made-up paper forms on the test copy, without help. Postponed by the owner on 6 November until most of the app is built.
+- [x] The board decides how the treasurer enters what each house already owes. Decided on 6 November: month by month.
 - [ ] The board decides how to run Phase 2's "done when" test (see Still open).
 
 Phase 2 pieces in suggested build order. Each is one pull request, tried on the test copy before it is merged:
@@ -426,7 +437,7 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - [x] Fees in Configuración: base monthly fee, late fee (mora) and reconnection fee, each with a start date. The census then shows the base price's amount.
 - [ ] Monthly fee payments: household, the months the treasurer selects, amount, payment method and paper receipt number, with a reference for a bank transfer. This includes partial payments and paying ahead. A repeated receipt number is flagged, not blocked.
 - [ ] Corrections: a reversal entry that points to the original and needs a written reason.
-- [ ] What each house already owes, entered before its first payment. Waits for the board's answer.
+- [ ] What each house already owes, entered month by month before its first payment, so each unpaid month can carry its own late fee (decided 6 November).
 - [ ] Other income: late fee, reconnection fee, connection fee, donation and other.
 - [ ] Month-end late fees and the arrears list: active, connected households with unpaid months and the late fee owed for each.
 - [ ] Expenses: category, supplier, amount and receipt photo. Photos stay on the computer until the bucket is connected.
@@ -479,9 +490,22 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 
 - The first amount of each fee may start in a past month, so what houses already owe from the paper book can be counted.
 
+**Decisions made on 4 November 2026**
+
+- On a phone, no screen brings up the keyboard by itself. It comes up when the person taps a field, so the screen can be read first.
+- A phone number carries its country code, chosen beside the number. The list is Honduras (+504, the default), Estados Unidos y Canadá (+1), España (+34), México (+52), Guatemala (+502), El Salvador (+503), Nicaragua (+505), Costa Rica (+506) and Panamá (+507).
+- Each country's length is checked: 8 digits for Honduras, Guatemala, El Salvador, Nicaragua and Costa Rica, 10 for Estados Unidos y Canadá and México, and 9 for España. Panamá takes 7 or 8, because its landlines have 7; the owner confirmed this on 6 November.
+- Numbers already saved gain +504, since until now only Honduran numbers could be saved. Who may see a full number does not change: a masked number still shows only its last two digits, and not its country.
+
+**Decisions made on 6 November 2026**
+
+- The treasurer enters what each house already owes month by month, so each unpaid month can carry its own late fee.
+- Panamá keeps 7 or 8 digits: its mobiles have 8 and its landlines 7.
+- Phase 1's "done when" test with the secretary waits until most of the app is built.
+
 **Still open**
 
 - [ ] Check the data separation on the droplet (own database file and system user, storage key and backup for each app) before the first deployment. This has not been done yet and will be updated later.
-- [ ] How the treasurer enters what each house already owes: month by month (so each unpaid month can carry its own late fee), or one total per house.
+- [x] How the treasurer enters what each house already owes: month by month (so each unpaid month can carry its own late fee), or one total per house. Decided on 6 November: month by month.
 - [ ] How to run Phase 2's "done when" test: it compares a real month with the real paper receipt book, but the test copy takes only made-up data. The options are a made-up receipt book on the test copy, or a real month after the real app is deployed.
 

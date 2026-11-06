@@ -25,7 +25,9 @@ changing how money, permissions or the history log work.
   with the fee question), paper entry mode, duplicate check, search and
   list, household file, offline queue, inactive status, and Configuración →
   Sectores. Its "done when" test (the secretary types in 10 paper forms from
-  a phone without help) has not been run yet.
+  a phone without help) has not been run yet. Owner decision of 4 November
+  2026: phones carry a country code, chosen from a list of nine, with Honduras
+  (+504) first.
 - **Phase 2 (Finances): started.** Its pieces, in build order, are ticked off
   under "What comes next" in the [app plan](docs/app-plan.md).
   - **Fees in Configuración: built.** The base monthly fee, the late fee
@@ -91,6 +93,9 @@ Nobody can sign in until an administrator exists. In a second terminal:
 npm run user:first-admin -- --name "Nombre Apellido" --phone 99998888
 ```
 
+Digits alone are a Honduran number; another country's starts with its code,
+as in `--phone +12025550123`.
+
 It prints an invitation link. Open it, choose a 6-digit PIN, and you are in.
 Every other account is created from Usuarios. The command refuses to run
 once an administrator exists.
@@ -140,9 +145,11 @@ computer and on a phone, and it is back where it was when the panel closes.
    first for the date and number written on the paper form.
 4. Type the same identity number twice: the second time the app opens that
    person instead, and offers "Agregar otra vivienda".
-5. On the phone step, "No tiene teléfono" and "Prefiere no darlo" register a
-   family without a number. The saved screen then shows no WhatsApp button,
-   and a number can be added later from the household file.
+5. On the phone step, the box beside the number holds the country: it starts
+   on Honduras (+504), and tapping it opens the list. The length is checked for
+   each country. "No tiene teléfono" and "Prefiere no darlo" register a family
+   without a number. The saved screen then shows no WhatsApp button, and a
+   number can be added later from the household file.
 6. To try the offline queue, turn off the Wi-Fi (or, in Chrome, DevTools →
    Network → Offline) while the app is open, register a family, and turn it
    back on. The "por enviar" counter in the top bar goes back to zero by
