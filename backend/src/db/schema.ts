@@ -1,5 +1,5 @@
 /**
- * The seventeen tables of the App Plan's data model (docs/app-plan.md, "Data
+ * The eighteen tables of the App Plan's data model (docs/app-plan.md, "Data
  * model"). Phase 0 uses users, roles, role_permissions, access_tokens,
  * audit_log and settings; the rest are created now so the whole schema is
  * reviewed once, and filled by the census and finance phases.
@@ -394,6 +394,8 @@ export const transactions = sqliteTable(
     note: text("note"),
     reversesId: uuid("reverses_id"),
     reason: text("reason"),
+    /** Made on the phone, so a retry on weak signal cannot record the same payment twice. */
+    submissionId: uuid("submission_id"),
     createdAt: createdAt(),
     createdBy: uuid("created_by")
       .notNull()
@@ -401,6 +403,7 @@ export const transactions = sqliteTable(
   },
   (table) => [
     index("transactions_month_idx").on(table.monthId),
+    uniqueIndex("transactions_submission_unique").on(table.submissionId),
     index("transactions_household_idx").on(table.householdId),
     uniqueIndex("transactions_reverses_unique").on(table.reversesId),
     check(
@@ -411,6 +414,45 @@ export const transactions = sqliteTable(
       "transactions_transfer_reference",
       sql`${table.paymentMethod} IS NOT 'transfer' OR ${table.bankReference} IS NOT NULL`,
     ),
+  ],
+);
+
+/**
+ * How a monthly fee payment was shared among the months it covers.
+ *
+ * The owner decided on 2026-11-06: the money fills the selected months oldest
+ * first, so only the last one can be left partly paid, and a month keeps the
+ * price it had when its first money arrived. Each row keeps that share and
+ * that price, so neither depends on working the past out again after a fee
+ * changes. Append-only, like `transactions`: a correction will be a reversal,
+ * not an edit.
+ */
+export const paymentMonths = sqliteTable(
+  "payment_months",
+  {
+    id: uuid("id").primaryKey(),
+    transactionId: uuid("transaction_id")
+      .notNull()
+      .references(() => transactions.id),
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => households.id),
+    /** The month this share pays for, as its first day. */
+    month: date("month").notNull(),
+    amountCentavos: bigint("amount_centavos").notNull(),
+    /** The month's full price, fixed by the first payment that reached it. */
+    priceCentavos: integer("price_centavos").notNull(),
+    createdAt: createdAt(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id),
+  },
+  (table) => [
+    index("payment_months_household_idx").on(table.householdId, table.month),
+    index("payment_months_transaction_idx").on(table.transactionId),
+    check("payment_months_first_day", sql`substr(${table.month}, 9, 2) = '01'`),
+    check("payment_months_price", sql`${table.priceCentavos} >= 0`),
+    check("payment_months_amount", sql`${table.amountCentavos} <> 0`),
   ],
 );
 

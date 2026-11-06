@@ -17,7 +17,7 @@ import { inTransaction } from "../db/client.js";
 import { feeRates, users } from "../db/schema.js";
 import { formatLempiras } from "../lib/census.js";
 import { recordAudit } from "../lib/audit.js";
-import { earliestFeeStart, paidFrom } from "../lib/fees.js";
+import { earliestFeeStart, monthName, paidFrom } from "../lib/fees.js";
 import { HttpError, parse } from "../lib/http.js";
 import type { FeeKind } from "../lib/settings.js";
 import { FEE_KINDS } from "../lib/settings.js";
@@ -29,16 +29,6 @@ const FEE_NAMES: Record<FeeKind, string> = {
   late_fee: "la mora",
   reconnection: "la cuota de reconexión",
 };
-
-const MONTH_NAMES = [
-  "enero", "febrero", "marzo", "abril", "mayo", "junio",
-  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
-];
-
-/** "2027-01-01" → "enero de 2027". */
-function monthName(firstDay: string): string {
-  return `${MONTH_NAMES[Number(firstDay.slice(5, 7)) - 1]} de ${firstDay.slice(0, 4)}`;
-}
 
 // Zero is allowed (owner, 2026-11-02): the board may decide not to charge a fee.
 const amountCentavos = z

@@ -822,6 +822,25 @@ textarea:focus-visible {
   line-height: 1.2;
 }
 
+/* Cobrar: a month's name, and under it what it owes ("L 70.00", "Faltan L 40.00", "Pagado"). */
+.btn.month-choice {
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+}
+
+.btn.month-choice small {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+/* A paid month stays readable: it is an answer, not a button that is off. */
+.btn.month-choice:disabled {
+  opacity: 1;
+  border-style: dashed;
+  color: var(--muted);
+}
+
 .big-code {
   font-size: 2.6rem;
   font-weight: 800;

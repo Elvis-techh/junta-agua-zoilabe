@@ -3,8 +3,9 @@
  * changes history" do not depend on the app's code being right.
  *
  *  - No row of any table can be deleted.
- *  - No row of `audit_log` or `transactions` can be changed either: they are
- *    only ever added to. A money mistake is a reversal entry, not an edit.
+ *  - No row of `audit_log`, `transactions` or `payment_months` can be changed
+ *    either: they are only ever added to. A money mistake is a reversal
+ *    entry, not an edit.
  *
  * SQLite has no logins to take permissions away from, so these are triggers
  * that abort the statement. A bug in the app cannot get past them: it would
@@ -20,7 +21,14 @@
 import type Database from "better-sqlite3";
 
 /** Tables whose rows are only ever added: no UPDATE, not even by mistake. */
-export const APPEND_ONLY_TABLES = ["audit_log", "transactions"] as const;
+export const APPEND_ONLY_TABLES = ["audit_log", "transactions", "payment_months"] as const;
+
+/**
+ * The append-only tables the very first migration makes, so a database
+ * without them is not this app's. A later one (payment_months) is guarded from
+ * the migration that makes it on, since the guards run after every migration.
+ */
+const FIRST_APPEND_ONLY_TABLES: readonly string[] = ["audit_log", "transactions"];
 
 /** The message a refused statement fails with. Tests match on these words. */
 export const NO_DELETE = "nothing is deleted";
@@ -44,7 +52,7 @@ function quoted(identifier: string): string {
 
 export function applyGuards(sqlite: Database.Database): void {
   const tables = appTables(sqlite);
-  const missing = APPEND_ONLY_TABLES.filter((table) => !tables.includes(table));
+  const missing = FIRST_APPEND_ONLY_TABLES.filter((table) => !tables.includes(table));
   if (missing.length > 0) {
     throw new Error(`Append-only tables are missing: ${missing.join(", ")}`);
   }
@@ -56,7 +64,7 @@ export function applyGuards(sqlite: Database.Database): void {
          BEGIN SELECT RAISE(ABORT, '${NO_DELETE}: ${table}'); END`,
       );
     }
-    for (const table of APPEND_ONLY_TABLES) {
+    for (const table of APPEND_ONLY_TABLES.filter((name) => tables.includes(name))) {
       sqlite.exec(
         `CREATE TRIGGER IF NOT EXISTS ${quoted(`${table}_no_update`)} BEFORE UPDATE ON ${quoted(table)}
          BEGIN SELECT RAISE(ABORT, '${NO_UPDATE}: ${table}'); END`,

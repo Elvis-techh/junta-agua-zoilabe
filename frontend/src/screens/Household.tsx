@@ -9,6 +9,8 @@ import { Dialog } from "../components/Dialog.tsx";
 import { PhoneField } from "../components/PhoneField.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
+import type { Payment } from "../payments.ts";
+import { PAYMENT_METHODS, shortMonth } from "../payments.ts";
 import { formatPhone, phoneEntry, wholePhone } from "../phone.ts";
 import { recall, remember } from "../queue.ts";
 import { formatDate, formatDateTime } from "../time.ts";
@@ -143,7 +145,14 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
         </section>
       )}
 
+      {can("finance:view") && <HouseholdPayments householdId={file.id} />}
+
       <h2>Acciones</h2>
+      {can("finance:record") && can("finance:view") && (
+        <button className="btn primary block" onClick={() => onOpen(`/finanzas/cobrar/${file.id}`)}>
+          <Icon name="cash" /> Registrar pago
+        </button>
+      )}
       {sensitiveVisible && owner.phone && (
         <a className="btn go block" href={whatsappLink(owner.phone, owner.fullName, file.code)} target="_blank" rel="noreferrer">
           <Icon name="whatsapp" /> Compartir por WhatsApp
@@ -186,6 +195,58 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
       )}
       {dialog === "deactivate" && <Deactivate file={file} onClose={() => setDialog(null)} onSaved={changed} />}
     </main>
+  );
+}
+
+/** Pagos: what this house has paid, newest first, with how each payment was shared among months. */
+export function HouseholdPayments({ householdId }: { householdId: string }) {
+  const [payments, setPayments] = useState<Payment[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api<{ payments: Payment[] }>("GET", `/finance/households/${householdId}/payments`)
+      .then((data) => setPayments(data.payments))
+      .catch((err: Error) => setError(err.message));
+  }, [householdId]);
+
+  return (
+    <section className="stack" style={{ gap: 8 }}>
+      <h2>Pagos</h2>
+      {error && <p className="message error">{error}</p>}
+      {payments?.length === 0 && <p className="muted">Todavía no hay pagos registrados en la aplicación.</p>}
+      {payments?.slice(0, 12).map((payment) => <PaymentCard key={payment.id} payment={payment} />)}
+    </section>
+  );
+}
+
+export function PaymentCard({ payment }: { payment: Payment }) {
+  return (
+    <div className="card stack" style={{ gap: 4 }}>
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <strong>{formatLempiras(payment.amountCentavos)}</strong>
+        <span className="muted">{calendarDate(payment.occurredOn)}</span>
+      </div>
+      <div>
+        {payment.shares
+          .map((share) => `${shortMonth(share.month)} ${share.month.slice(0, 4)}: ${formatLempiras(share.amountCentavos)}`)
+          .join(" · ")}
+      </div>
+      <div className="muted">
+        Recibo nº {payment.paperReceiptNumber} · {PAYMENT_METHODS[payment.paymentMethod]}
+        {payment.bankReference ? ` ${payment.bankReference}` : ""} · Registró {payment.recordedBy}
+      </div>
+      {payment.repeatedReceipt && (
+        <span className="status warn" style={{ justifySelf: "start" }}>
+          <Icon name="alert" size={18} /> Número de recibo repetido: revisar
+        </span>
+      )}
+      {payment.reversed && (
+        <span className="status danger" style={{ justifySelf: "start" }}>
+          <Icon name="x" size={18} /> Corregido
+        </span>
+      )}
+      {payment.note && <div className="muted">Nota: {payment.note}</div>}
+    </div>
   );
 }
 

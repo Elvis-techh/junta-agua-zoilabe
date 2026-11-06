@@ -77,7 +77,7 @@ c6aa10c:<path>`), the last `main` before the switch.
 | # | Area | SQLite today | PostgreSQL | Size |
 |---|---|---|---|---|
 | 1 | Queries | 74 synchronous `.get()` `.all()` `.run()` in `src/` | every one `await`ed; every helper and handler `async` again | L |
-| 2 | One write at a time | `inTransaction` (24 call sites): synchronous IMMEDIATE, nothing else runs inside it | async transactions run side by side: the locks in the list below come back | M, and the riskiest |
+| 2 | One write at a time | `inTransaction` (25 call sites): synchronous IMMEDIATE, nothing else runs inside it | async transactions run side by side: the locks in the list below come back | M, and the riskiest |
 | 3 | Nothing deleted, history unchanged | triggers (`src/db/guards.ts`), `recursive_triggers` on | two logins and their grants (history: `backend/src/db/roles.ts`). Triggers can stay as a second layer | M |
 | 4 | Accent-blind search | `search_text()`, a JavaScript function on the connection | history: `translate(lower(x), 'áéíóúüñ', 'aeiouun')`, or the `unaccent` extension | S |
 | 5 | Raw SQL | 16 fragments, list below | translations below | S |
@@ -104,10 +104,11 @@ history version had:
 | Invitation accept (`POST /auth/invitation/accept`) | one link used twice at once | `FOR UPDATE` |
 | Fee change (`POST /settings/fees`) | two first amounts of the same fee both start in the past, or a log entry names the wrong amount it replaced | `LOCK TABLE fee_rates IN SHARE ROW EXCLUSIVE MODE` |
 | Fee correction (`PATCH /settings/fees/:id`) | a payment is recorded between the "nothing paid yet" check and the correction, which then rewrites a paid month | `FOR UPDATE` on the rate, and the payment route takes the same lock |
+| Cobrar (`POST /finance/payments`, `src/routes/payments.ts`) | two payments of one house are shared out from the same "already paid" and together pay a month twice; two payments with the same paper receipt number both pass the "repeated?" check; a retried send is saved twice; two entries make the same month's row | advisory lock `7_311_004` for the whole payment (house, receipt number and month row at once), plus the fee-correction lock above |
 
 The wrong-PIN counter needs nothing: it counts inside the `UPDATE` itself.
 **New code that relies on one write at a time adds its row here**: Phase 2's
-receipt numbers and month close will.
+month close will.
 
 While converting, add a lint check for promises nobody waits for
 (typescript-eslint's `no-floating-promises`): on PostgreSQL a query someone
