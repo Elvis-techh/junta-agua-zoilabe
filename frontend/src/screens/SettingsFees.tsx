@@ -17,7 +17,7 @@ export interface Rate {
   startsOn: string;
   createdAt: string;
   createdByName: string | null;
-  /** False once a payment has been made at this amount. */
+  /** False once a payment has been made at this amount: it can then be neither corrected nor removed. */
   correctable: boolean;
 }
 
@@ -56,6 +56,21 @@ function formatMonth(firstDay: string): string {
 type Editing = { fee: Fee; rate: null } | { fee: Fee; rate: Rate };
 
 /**
+ * What removing `rate` does to its months, in the words the dialog shows:
+ * they go back to the amount before it, or are left with none, until the
+ * next amount (if any) starts.
+ */
+export function removalEffect(fee: Fee, rate: Rate): string {
+  // Newest start first: the first older one is the amount before it.
+  const before = fee.rates.find((other) => other.startsOn < rate.startsOn);
+  const next = fee.rates.filter((other) => other.startsOn > rate.startsOn).at(-1);
+  const until = next ? `, hasta que empiece el de ${formatMonth(next.startsOn)}` : "";
+  return before
+    ? `Desde ${formatMonth(rate.startsOn)} vuelve a cobrarse ${formatLempiras(before.amountCentavos)}, el monto anterior${until}.`
+    : `Desde ${formatMonth(rate.startsOn)} no habrá monto${until}.`;
+}
+
+/**
  * What is wrong with the form, said before the PIN is asked for, or null.
  * The server checks all of it again; a month already taken would otherwise
  * only show up after the PIN.
@@ -84,10 +99,20 @@ export function feeFormProblem(
 
 /**
  * One fee: what is in use, then each saved amount in its own box with its own
- * "Corregir", and below them the button that changes the fee as a whole, so
- * the two kinds of change cannot be taken for each other.
+ * "Corregir" and "Quitar", and below them the button that changes the fee as
+ * a whole, so the two kinds of change cannot be taken for each other.
  */
-export function FeeCard({ fee, today, onEdit }: { fee: Fee; today: string; onEdit: (editing: Editing) => void }) {
+export function FeeCard({
+  fee,
+  today,
+  onEdit,
+  onRemove,
+}: {
+  fee: Fee;
+  today: string;
+  onEdit: (editing: Editing) => void;
+  onRemove: (fee: Fee, rate: Rate) => void;
+}) {
   const current = fee.rates.find((rate) => rate.id === fee.currentId) ?? null;
   return (
     <div className="card stack" style={{ gap: 12 }}>
@@ -120,9 +145,12 @@ export function FeeCard({ fee, today, onEdit }: { fee: Fee; today: string; onEdi
             {rate.createdByName && <span className="muted">{rate.createdByName}</span>}
           </div>
           {rate.correctable && (
-            <div>
+            <div className="rate-actions">
               <button className="btn" onClick={() => onEdit({ fee, rate })}>
                 <Icon name="edit" /> Corregir
+              </button>
+              <button className="btn danger" onClick={() => onRemove(fee, rate)}>
+                <Icon name="x" /> Quitar
               </button>
             </div>
           )}
@@ -139,13 +167,14 @@ export function FeeCard({ fee, today, onEdit }: { fee: Fee; today: string; onEdi
 /**
  * Configuración → Cuotas. A new amount never replaces an old one: it is added
  * from the month it starts, so past months keep the price they were charged
- * at. An amount typed wrong can be corrected, with a reason, until a payment
- * has been made at it.
+ * at. Until a payment has been made at an amount, it can be corrected if it
+ * was typed wrong, or removed if the board did not mean it, with a reason.
  */
 export function FeesSection() {
   const [fees, setFees] = useState<Fee[] | null>(null);
   const [today, setToday] = useState("");
   const [editing, setEditing] = useState<Editing | null>(null);
+  const [removing, setRemoving] = useState<{ fee: Fee; rate: Rate } | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -174,7 +203,13 @@ export function FeesSection() {
 
       <div className="list">
         {fees?.map((fee) => (
-          <FeeCard key={fee.kind} fee={fee} today={today} onEdit={setEditing} />
+          <FeeCard
+            key={fee.kind}
+            fee={fee}
+            today={today}
+            onEdit={setEditing}
+            onRemove={(shown, rate) => setRemoving({ fee: shown, rate })}
+          />
         ))}
       </div>
 
@@ -190,7 +225,103 @@ export function FeesSection() {
           }}
         />
       )}
+
+      {removing && (
+        <RemoveDialog
+          {...removing}
+          onClose={() => setRemoving(null)}
+          onRemoved={async (text) => {
+            setRemoving(null);
+            setMessage({ kind: "ok", text });
+            await load();
+          }}
+        />
+      )}
     </section>
+  );
+}
+
+/**
+ * "Quitar": an amount the board did not mean, or no longer wants. It says
+ * what its months go back to, asks why, then asks for the PIN. The server
+ * keeps the amount, marked removed, and the history shows who and why.
+ */
+function RemoveDialog({
+  fee,
+  rate,
+  onClose,
+  onRemoved,
+}: {
+  fee: Fee;
+  rate: Rate;
+  onClose: () => void;
+  onRemoved: (message: string) => Promise<void>;
+}) {
+  const title = FEES[fee.kind].title;
+  const [reason, setReason] = useState("");
+  const [askPin, setAskPin] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const check = () => {
+    if (reason.trim().length < 5) {
+      setError("Escriba por qué se quita.");
+      return;
+    }
+    setError(null);
+    setAskPin(true);
+  };
+
+  const remove = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await api("POST", `/settings/fees/${rate.id}/remove`, { reason: reason.trim() });
+      await onRemoved(`Se quitó ${formatLempiras(rate.amountCentavos)} desde ${formatMonth(rate.startsOn)} de la ${title.toLowerCase()}.`);
+    } catch (err) {
+      setError((err as Error).message);
+      setSaving(false);
+    }
+  };
+
+  if (askPin) {
+    return (
+      <ConfirmPin
+        onClose={() => setAskPin(false)}
+        onConfirmed={() => {
+          setAskPin(false);
+          void remove();
+        }}
+      />
+    );
+  }
+
+  return (
+    <Dialog title="Quitar este monto" onClose={onClose}>
+      <p>
+        {title}: <strong>{formatLempiras(rate.amountCentavos)}</strong> desde <strong>{formatMonth(rate.startsOn)}</strong>.
+      </p>
+      <p>{removalEffect(fee, rate)}</p>
+      <label>
+        Por qué se quita
+        <input
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Ejemplo: la junta no aprobó este aumento"
+          autoFocus={!isTouchScreen()}
+        />
+      </label>
+      <p className="muted">Queda en el historial y no se puede borrar. Para quitarlo se pide su PIN.</p>
+      {error && <p className="message error">{error}</p>}
+      <div className="row">
+        <button className="btn primary" disabled={saving} onClick={check}>
+          <Icon name="x" /> Quitar monto
+        </button>
+        <button className="btn" disabled={saving} onClick={onClose}>
+          <Icon name="back" /> Volver
+        </button>
+      </div>
+    </Dialog>
   );
 }
 

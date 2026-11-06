@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 113, taken 2026-11-06.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 130, taken 2026-11-06.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -38,40 +38,24 @@ The directive needs a single source of truth that links each house to its owner 
 
 ## Roles and permissions
 
-Eight roles cover the technical administrator and the board, and each user holds exactly one role.
+Eight roles cover the technical administrator and the board, and each user holds exactly one role. Since 6 November 2026 every role can do everything in the app: the board does not always meet in full, and a task only one or two people could do would wait for them. The role still says who each person is, so every history entry shows who acted and in which role.
 
-- **Administrador**: technical administrator. Manages the system and users, and cannot see or touch money records in the app.
-- **Presidente**: runs the board, approves each month close and manages users.
-- **Vicepresidente/a**: acts when the president is away and has every permission the president has. Wherever this plan says president, the vice-president can act too.
-- **Secretario/a**: keeps the census.
-- **Tesorero/a**: records all income and expenses and prepares each month close.
-- **Fiscal**: audits. Reads everything, changes nothing.
-- **Primer vocal and Segundo vocal** (first and second board member): see the census and finances and change nothing.
+- **Administrador**: technical administrator. Looks after the system and the accounts.
+- **Presidente**: runs the board.
+- **Vicepresidente/a**: acts when the president is away.
+- **Secretario/a**: usually keeps the census.
+- **Tesorero/a**: usually records income and expenses and prepares each month close.
+- **Fiscal**: audits.
+- **Primer vocal and Segundo vocal** (first and second board member).
 
-| Action | Admin | President | Vice-president | Secretary | Treasurer | Fiscal | Board members |
-|---|---|---|---|---|---|---|---|
-| View census list and household files | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| See full ID number and phone | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| Register and edit census records | Yes | Yes | Yes | Yes | No | No | No |
-| Deactivate a census record (reason required) | Yes | Yes | Yes | Yes | No | No | No |
-| Set a different fee for a house (reason required) | No | Yes | Yes | At registration | Yes | No | No |
-| Record payments and expenses | No | No | No | No | Yes | No | No |
-| Correct a money entry (reversal, reason required) | No | No | No | No | Yes | No | No |
-| Close a month | No | Approves | Approves | No | Prepares | No | No |
-| View finances | No | Yes | Yes | No | Yes | Yes | Yes |
-| Manage users | Yes | Yes | Yes | No | No | No | No |
-| Create and revoke guest invitations | Yes | Yes | Yes | No | No | No | No |
-| Edit role permissions | Yes | View | View | No | No | No | No |
-| Change settings (fees, late fee, reconnection fee, sectors, categories) | Yes | Yes | Yes | No | No | No | No |
-| View the history log | Yes | Yes | Yes | No | No | Yes | No |
-| Print and export | All | All | All | Census | Finances | All | Census and finances |
+Every role holds every permission: viewing the census with full ID numbers and phones, registering and deactivating records, setting fees and different amounts, recording and correcting money, preparing and approving a month close, viewing finances, managing users and guest invitations, editing role permissions, changing settings, viewing the history log, and printing and exporting.
 
-Five rules sit behind the matrix:
+Five rules sit behind this:
 
-- **Separation of duties.** The person who records money cannot approve the month close, and nobody can change their own role.
-- **Permissions are data.** The Permisos tab edits the matrix without new code, and every change is written to the history log.
+- **Two people close a month.** Anyone can prepare a month close and anyone else can approve it, but never the same person for the same month. Nobody can change their own role.
+- **Every change says who.** Each history entry names the person and their role, which is why roles stay although they no longer limit anyone.
+- **Permissions are data.** The Permisos tab can still narrow a role later without new code, and every change is written to the history log.
 - **The server decides.** Permissions are checked on every request. Hiding a button is a convenience, not security.
-- **Board defaults.** The vice-president holds the president's permissions so the board can work when the president is away. The first and second board members can view but not change anything. The administrator can adjust any of this in the Permisos tab.
 - **Guests are not roles.** People outside the board, such as municipal staff, get a temporary invitation with its own view-only permissions (see Module 3).
 
 ## Module 1: Census
@@ -139,8 +123,8 @@ Every entry also carries a date, an optional note and the name of the person who
 **Monthly cycle**
 
 1. The treasurer records entries during the month, each with the number of the paper receipt handed to the payer. A digital receipt with a "Compartir por WhatsApp" button is created only when someone asks for one.
-2. At month end the treasurer taps "Preparar cierre". The app shows opening balance, income, expenses and closing balance, and asks for the cash actually counted.
-3. The president reviews the figures and any cash difference, then taps "Aprobar cierre".
+2. At month end a board member, usually the treasurer, taps "Preparar cierre". The app shows opening balance, income, expenses and closing balance, and asks for the cash actually counted.
+3. Another board member, usually the president, reviews the figures and any cash difference, then taps "Aprobar cierre".
 4. The month locks. Nothing in it can be added or changed; a late item goes into the next month with a note.
 5. The fiscal reviews the closed month and a guest sees the summary if their invitation allows it.
 
@@ -165,16 +149,16 @@ Each account holds a name, WhatsApp number, role, status, who created it and whe
 
 **How a director signs in**
 
-1. An administrator creates the account and taps "Enviar invitación". The app prepares a WhatsApp message with a personal link, valid for 48 hours and usable once.
+1. A board member creates the account and taps "Enviar invitación". The app prepares a WhatsApp message with a personal link, valid for 48 hours and usable once.
 2. The person opens the link on their own phone, chooses a 6-digit PIN and adds the app to the home screen. The phone is remembered.
 3. From then on they open the app and type the PIN. A 6-digit PIN matches the WhatsApp verification codes they already know.
 4. Closing a month, correcting an entry, changing a role and saving or correcting a fee ask for the PIN again.
-5. After 5 wrong PINs the account locks. An administrator unlocks it after confirming the person by phone call.
-6. If a phone is lost, an administrator removes that device in one tap and sends a new invitation.
+5. After 5 wrong PINs the account locks. A board member unlocks it after confirming the person by phone call.
+6. If a phone is lost, a board member removes that device in one tap and sends a new invitation.
 
 **Guest invitations** give an outsider, such as municipal staff, temporary view-only access without an account.
 
-1. The administrator, president or vice-president taps "Invitar" and enters the guest's name and email.
+1. A board member taps "Invitar" and enters the guest's name and email.
 2. They tick what the guest may see (below) and choose how long the invitation lasts, up to 24 hours.
 3. The app creates a temporary password and shows it once, with a button to share the email and password by WhatsApp.
 4. The guest opens the app's web address in any browser and signs in with the email and password. Nothing needs to be installed.
@@ -195,7 +179,7 @@ The history log, users and settings can never be included in an invitation.
 **Rules**
 
 - **One person, one account.** Shared logins are not allowed, because the log must show who acted.
-- **Visible tabs follow the role.** A user sees only the tabs and buttons their role permits.
+- **Visible tabs follow the role.** A user sees the tabs and buttons their role permits: since 6 November, all of them.
 - **Guests are temporary and view-only.** A guest never sees the history log, users or settings, and an expired or revoked invitation ends the session at once.
 - **Guest passwords** are generated by the app, shown once and stored only as a fingerprint.
 - **Remembered phones expire** after 90 days without use.
@@ -230,7 +214,7 @@ Page views are not logged. Exports are, because they are how data leaves the sys
 - Entries read as plain sentences, for example "12 de marzo, 3:40 pm: Ana (Tesorera) registró un pago de L 150 de Juan Pérez".
 - Filters cover date range, person, module and household code.
 - "Ver detalle" opens the before and after values.
-- The president, fiscal and administrators can open the log; other roles cannot.
+- Every board member can open the log.
 
 ## Configuration and reports
 
@@ -295,22 +279,22 @@ Seventeen tables hold everything, and people are kept apart from households so o
 
 ## Screens and navigation
 
-The home screen shows a few large buttons chosen by the user's role, and every task runs one question per screen.
+The home screen shows first the large buttons for what the user's role usually does, then the other tasks below them, and every task runs one question per screen.
 
 | Tab | Contains | Visible to |
 |---|---|---|
 | Inicio | Large action buttons and alerts, such as a month waiting for approval | Everyone |
-| Censo | Register, search, list, household file | Everyone; read-only except Secretary, President, Admin |
-| Finanzas | Payments, expenses, month close, statements | President, Treasurer, Fiscal, Board members; guests see what their invitation allows |
-| Reportes | Printable reports | Everyone, limited by role |
-| Usuarios | Staff accounts and guest invitations | Admin, President |
-| Permisos | The role-by-permission matrix | Admin edits, President views |
-| Historial | The history log | Admin, President, Fiscal |
-| Configuración | Settings and system status | Admin, President |
+| Censo | Register, search, list, household file | Everyone |
+| Finanzas | Payments, expenses, month close, statements | Everyone; guests see what their invitation allows |
+| Reportes | Printable reports | Everyone |
+| Usuarios | Staff accounts and guest invitations | Everyone |
+| Permisos | The role-by-permission matrix | Everyone |
+| Historial | The history log | Everyone |
+| Configuración | Settings and system status | Everyone |
 
 On a phone the bottom bar shows at most four items plus "Más".
 
-| Role | Home buttons |
+| Role | First home buttons |
 |---|---|
 | Secretario/a | Registrar familia, Buscar, Lista |
 | Tesorero/a | Cobrar, Gasto, Resumen del mes, Quién debe |
@@ -400,7 +384,7 @@ Phases 1 to 3 are built and tested on the builder's computer before anything cha
 
 **Done so far (as of 6 November 2026)**
 
-Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fees can be set in Configuración, but the app cannot record money yet.
+Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fees can be set in Configuración and monthly fee payments can be recorded.
 
 - [x] Test copy running at [prueba-agua.basculacentral.com](https://prueba-agua.basculacentral.com) with made-up data only, set up on 1 November 2026 (PRs #11 to #13). Every pull request now goes there for a phone check. Its own separation check passed; the real app's is still open below.
 - [x] Database moved to SQLite (PR #8).
@@ -418,14 +402,15 @@ Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fee
 - [x] Every certificate on the droplet now reloads nginx when it renews, so no site keeps serving an old one (set up on 4 November 2026). Its first real use is Báscula Central's renewal, around 25 November.
 - [x] On a phone, the keyboard stays down until a field is tapped (PR #22, merged on 6 November 2026).
 - [x] Every phone number carries its country code, chosen from a list of nine with Honduras first (PR #23, merged on 6 November 2026).
+- [x] Monthly fee payments, "Cobrar": the treasurer records a house's payment for the months on the paper receipt, shared oldest month first, with the receipt's number (PR #24, merged on 6 November 2026).
 
 **What comes next**
 
-Phase 2 has started. Monthly fee payments are built and wait to be merged, and then corrections come next. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
+Phase 2 has started, and the app now records monthly fee payments. Removing a fee amount waits to be merged. Giving every role every permission comes next, then corrections. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
 
 Finished, waiting to be merged:
 
-- [ ] Monthly fee payments, "Cobrar" ([PR #24](https://github.com/Elvis-techh/junta-agua-zoilabe/pull/24)). It is on the test copy now, for the owner to try and merge.
+- [ ] Removing a fee amount, "Quitar" ([PR #25](https://github.com/Elvis-techh/junta-agua-zoilabe/pull/25)). It is on the test copy now, for the owner to try and merge.
 
 Needs people, not code:
 
@@ -436,7 +421,9 @@ Needs people, not code:
 Phase 2 pieces in suggested build order. Each is one pull request, tried on the test copy before it is merged:
 
 - [x] Fees in Configuración: base monthly fee, late fee (mora) and reconnection fee, each with a start date. The census then shows the base price's amount.
-- [ ] Monthly fee payments: household, the months the treasurer selects, amount, payment method and paper receipt number, with a reference for a bank transfer. This includes partial payments and paying ahead. A repeated receipt number is flagged, not blocked. Built in PR #24.
+- [x] Monthly fee payments: household, the months the treasurer selects, amount, payment method and paper receipt number, with a reference for a bank transfer. This includes partial payments and paying ahead. A repeated receipt number is flagged, not blocked. Merged in PR #24 on 6 November 2026.
+- [ ] Removing a fee amount ("Quitar") until a payment covers its month, with a written reason (decided 6 November). Built in PR #25.
+- [ ] Every role gets every permission, and a month close still takes two different people (decided 6 November).
 - [ ] Corrections: a reversal entry that points to the original and needs a written reason.
 - [ ] What each house already owes, entered month by month before its first payment, so each unpaid month can carry its own late fee (decided 6 November).
 - [ ] Other income: late fee, reconnection fee, connection fee, donation and other.
@@ -506,6 +493,10 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - A payment's money fills the months the treasurer selects oldest first, so only the last one can be left partly paid.
 - A payment larger than what the selected months owe is refused: the treasurer selects more months or fixes the amount. No money sits unassigned.
 - A month keeps the price it had when its first money arrived. If the fee changes after a house paid part of a month, that month still costs the earlier price.
+- Until a payment covers its month, a fee amount can be removed ("Quitar") with a written reason and the PIN. It stays in the database, marked removed, and its months go back to the amount before it.
+- Every role can do everything in the app, including accounts, guest invitations and the Permisos tab. The board does not always meet in full, and a task only one or two people could do would wait for them. Roles stay, so the history shows who did what.
+- A month close still takes two different people: anyone prepares it, and someone else approves it.
+- The administrator can record and correct money too.
 
 **Still open**
 

@@ -36,7 +36,10 @@ changing how money, permissions or the history log work.
     fees" below. Owner decisions of 2 November 2026: a change may start in
     the current month; an amount typed wrong may be corrected with a reason
     until a payment is made at it; an amount may be zero; saving asks for
-    the PIN.
+    the PIN. Owner decision of 6 November 2026: until a payment is made at
+    it, an amount may also be removed ("Quitar"), with a reason; it stays in
+    the database, marked removed, and its months go back to the amount
+    before it.
   - **Monthly fee payments (Cobrar): built.** The treasurer picks the
     house, the months, the amount and date, how it was paid and the paper
     receipt's number, then "¿Está correcto?". See "Trying Cobrar" below.
@@ -131,8 +134,14 @@ a phone keeps its own picker.
    the **Corregir** in its box, which asks for the right amount and the
    reason. Once a payment has been made at an amount, the button is gone:
    correcting it would change a month already paid.
-5. Nothing here is deleted. Every change and correction is in
-   **Historial**, with the amount it replaced and the reason.
+5. An amount the board did not mean, or no longer wants, goes with the
+   **Quitar** in its box. The panel says what its months go back to (the
+   amount before it, or none), asks why, then asks for the PIN. The box
+   disappears, and its month is free for another amount. Like **Corregir**,
+   it is gone once a payment has been made at the amount.
+6. Nothing here is deleted, not even a removed amount: the database keeps it,
+   marked removed. Every change, correction and removal is in
+   **Historial**, with the amount and the reason.
 
 The server refuses these changes from any other role, and without the PIN,
 whatever the screen shows.

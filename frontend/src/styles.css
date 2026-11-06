@@ -483,7 +483,7 @@ input.pin {
   gap: 12px;
 }
 
-/* One saved fee amount, boxed with its own "Corregir" (Configuración → Cuotas). */
+/* One saved fee amount, boxed with its own "Corregir" and "Quitar" (Configuración → Cuotas). */
 .rate-box {
   display: grid;
   gap: 8px;
@@ -491,6 +491,18 @@ input.pin {
   border: 2px solid var(--line);
   border-radius: var(--radius);
   background: var(--bg);
+}
+
+/* The two side by side, even on a 360 px phone, so a box stays short. */
+.rate-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.rate-actions .btn {
+  gap: 6px;
+  padding: 0 8px;
 }
 
 .muted {
