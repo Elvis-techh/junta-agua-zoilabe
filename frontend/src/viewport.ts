@@ -56,7 +56,12 @@ export function hiddenBelow(contentBottom: number, visibleBottom: number): boole
   return contentBottom - visibleBottom > HIDDEN_MIN_PX;
 }
 
-/** A phone or tablet, where focusing a field brings up the keyboard over the screen. */
+/**
+ * A phone or tablet, where focusing a field brings up the keyboard over the
+ * screen. So no screen does that by itself: `autoFocus={!isTouchScreen()}`,
+ * and on a phone the keyboard comes up when the person taps the field. A test
+ * reads every screen for this (test/noKeyboardOnOpen.test.ts).
+ */
 export function isTouchScreen(): boolean {
   return typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches === true;
 }

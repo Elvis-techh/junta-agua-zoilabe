@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api } from "../api.ts";
 import { Icon } from "../icons.tsx";
+import { isTouchScreen } from "../viewport.ts";
 import { FeesSection } from "./SettingsFees.tsx";
 
 interface Sector {
@@ -81,7 +82,7 @@ export function SettingsScreen() {
               <div className="row" style={{ alignItems: "end" }}>
                 <label style={{ flex: 1, minWidth: 200 }}>
                   Nombre
-                  <input value={renaming.name} onChange={(e) => setRenaming({ id: sector.id, name: e.target.value })} autoFocus />
+                  <input value={renaming.name} onChange={(e) => setRenaming({ id: sector.id, name: e.target.value })} autoFocus={!isTouchScreen()} />
                 </label>
                 <button
                   className="btn go"

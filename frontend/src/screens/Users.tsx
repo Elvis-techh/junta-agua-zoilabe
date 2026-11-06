@@ -7,6 +7,7 @@ import { Dialog } from "../components/Dialog.tsx";
 import { Icon } from "../icons.tsx";
 import { ROLES, roleName } from "../roles.ts";
 import { formatDate, formatDateTime } from "../time.ts";
+import { isTouchScreen } from "../viewport.ts";
 
 /** Status as word + icon + color together, never color alone. */
 function StatusBadge({ user }: { user: StaffUser }) {
@@ -126,7 +127,7 @@ function CreateUser({ onClose, onCreated }: { onClose: () => void; onCreated: (i
         <>
           <label>
             Nombre completo
-            <input value={name} onChange={(e) => setName(e.target.value)} autoFocus autoCapitalize="words" />
+            <input value={name} onChange={(e) => setName(e.target.value)} autoFocus={!isTouchScreen()} autoCapitalize="words" />
           </label>
           <label>
             Número de WhatsApp

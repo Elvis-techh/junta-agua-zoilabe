@@ -301,7 +301,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
       return (
         <main className="screen stack">
           {head("Nombre completo")}
-          <input value={fullName} onChange={(e) => setFullName(e.target.value)} autoFocus autoCapitalize="words" autoComplete="off" />
+          <input value={fullName} onChange={(e) => setFullName(e.target.value)} autoFocus={!isTouchScreen()} autoCapitalize="words" autoComplete="off" />
           {errorLine}
           <button className="btn go block" onClick={() => (fullName.trim().length < 3 ? setError("Escriba el nombre completo.") : next())}>
             Siguiente
@@ -319,7 +319,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
             inputMode="numeric"
             pattern="[0-9]*"
             placeholder="13 números"
-            autoFocus
+            autoFocus={!isTouchScreen()}
             autoComplete="off"
           />
           <p className="muted">{idNumber.length} de 13 números{idNumber.length === 13 ? ` · ${formatIdNumber(idNumber)}` : ""}</p>
@@ -465,7 +465,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
               onChange={(e) => setReferences(e.target.value)}
               rows={3}
               placeholder="Ejemplo: frente a la iglesia, portón verde"
-              autoFocus
+              autoFocus={!isTouchScreen()}
             />
           </label>
           {mode === "house" &&

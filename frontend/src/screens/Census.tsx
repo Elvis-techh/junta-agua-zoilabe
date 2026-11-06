@@ -7,6 +7,7 @@ import { WATER_CONNECTIONS } from "../census.ts";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
 import { censusQueue, recall, sendRegistration } from "../queue.ts";
+import { isTouchScreen } from "../viewport.ts";
 
 /** Status as word + icon + color together, never color alone. */
 export function HouseholdStatus({ status }: { status: "active" | "inactive" }) {
@@ -68,7 +69,7 @@ export function CensusScreen({ me, onOpen, autoFocus }: { me: Me; onOpen: Go; au
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Nombre, código o referencias"
-          autoFocus={autoFocus}
+          autoFocus={autoFocus && !isTouchScreen()}
           enterKeyHint="search"
         />
       </label>
