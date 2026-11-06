@@ -8,7 +8,7 @@ import { DEVICE_COOKIE, SESSION_COOKIE } from "../src/auth/session.js";
 import { accessTokens, auditLog, users } from "../src/db/schema.js";
 import { verifyChain } from "../src/lib/audit.js";
 import type { TestApp } from "./helpers.js";
-import { TEST_PIN, buildTestApp, nextPhone, signedInUser } from "./helpers.js";
+import { TEST_PIN, buildTestApp, nextPhone, signedInUser, takeAway } from "./helpers.js";
 
 /** The cookie header a browser would send after this response. */
 function cookiesFrom(response: LightMyRequestResponse, previous = ""): string {
@@ -182,6 +182,7 @@ describe("invitation and PIN sign-in", () => {
   });
 
   it("keeps two roles apart: the server refuses what the role may not do", async () => {
+    takeAway(t, "secretario", "users:manage", "log:view");
     const secretary = await onboard("Sonia Secretaria", "secretario");
     const president = await onboard("Pablo Presidente", "presidente");
 

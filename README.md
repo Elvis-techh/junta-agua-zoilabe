@@ -46,6 +46,17 @@ changing how money, permissions or the history log work.
     Owner decisions of 6 November 2026: the money fills the chosen months
     oldest first; a payment larger than those months owe is refused; a month
     keeps the price it had when its first money arrived.
+  - **Removing a fee amount (Quitar): built.** Until a payment covers its
+    month, with a reason and the PIN (owner decision of 6 November 2026).
+  - **Every role holds every permission: built.** Owner decision of
+    6 November 2026: the board does not always meet in full, and a task only
+    one or two people could do would wait for them. Roles stay, so Historial
+    shows who did what, and a permission can still be taken from a role
+    through the Permisos route (its screen is not built yet). A database
+    seeded before that day gets every permission once, the next time the
+    seed runs (the test copy runs it on every update), with a history entry for each role that gained something. A
+    month close still takes two different people: the database refuses an
+    approval by whoever prepared it.
   - Next: corrections (a reversal that points to the original, with a reason).
 
   A different amount starts with the month after the house's last payment
@@ -143,8 +154,9 @@ a phone keeps its own picker.
    marked removed. Every change, correction and removal is in
    **Historial**, with the amount and the reason.
 
-The server refuses these changes from any other role, and without the PIN,
-whatever the screen shows.
+Every role may do this now (6 November 2026), but the server still checks the
+"Cambiar la configuración" permission and the PIN on every change, whatever
+the screen shows.
 
 While a panel like these is open, the screen behind it stays still, on a
 computer and on a phone, and it is back where it was when the panel closes.

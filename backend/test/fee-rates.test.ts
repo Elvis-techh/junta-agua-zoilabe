@@ -14,7 +14,7 @@ import { earliestFeeStart, firstOfMonth, monthAfter, paidFrom } from "../src/lib
 import { feeOn } from "../src/lib/settings.js";
 import { HONDURAS_TIME_ZONE, businessToday } from "../src/lib/time.js";
 import type { TestApp } from "./helpers.js";
-import { TEST_PIN, buildTestApp, rejectsWithDbError, signedInUser } from "./helpers.js";
+import { TEST_PIN, buildTestApp, rejectsWithDbError, signedInUser, takeAway } from "./helpers.js";
 
 describe("the earliest month a fee may start", () => {
   it("is any month for the first amount, and this month after that", () => {
@@ -39,6 +39,11 @@ describe("Configuración → Cuotas", () => {
     president = await signedInUser(t, "presidente", "Ana Presidenta");
     treasurer = await signedInUser(t, "tesorero");
     secretary = await signedInUser(t, "secretario");
+    // Every role holds every permission since 6 November 2026. These tests
+    // prove the server refuses a role without settings:edit, so the
+    // treasurer and the secretary lose it here, as the Permisos tab can.
+    takeAway(t, "tesorero", "settings:edit");
+    takeAway(t, "secretario", "settings:edit");
   });
   after(async () => {
     await t.close();
@@ -64,7 +69,7 @@ describe("Configuración → Cuotas", () => {
     return list.json().fees.find((fee: { kind: string }) => fee.kind === "base_monthly");
   };
 
-  it("is kept to Configuración's roles: the server refuses anyone else", async () => {
+  it("is kept to roles with settings:edit: the server refuses anyone else", async () => {
     for (const user of [treasurer, secretary]) {
       assert.equal((await call(user.cookie, "GET")).statusCode, 403);
       const sent = await call(user.cookie, "POST", { kind: "base_monthly", amountCentavos: 7000, startsOn: lastYear });
