@@ -538,7 +538,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
               )}
             </>
           ) : (
-            <p className="muted">Su cargo no puede fijar un monto diferente. La presidencia, la secretaría o la tesorería sí.</p>
+            <p className="muted">Su cargo no tiene permiso para fijar un monto diferente.</p>
           )}
         </main>
       );

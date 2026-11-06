@@ -63,15 +63,15 @@ export function isPermission(value: string): value is Permission {
 }
 
 /**
- * Pairs no single role may hold together: the person who records money, or
- * prepares the close, cannot also approve it. The Permisos tab refuses an edit
- * that would join them, and the `months` table refuses an approval by the
- * person who prepared it.
+ * Pairs no single role may hold together. Empty since 6 November 2026: the
+ * board gave every role every permission, because it does not always meet in
+ * full and a task only one or two people could do would wait for them. The
+ * month close still takes two different people, but that is about the
+ * PERSON, not the role: the `months` table refuses an approval by whoever
+ * prepared it (`months_preparer_not_approver`), and the close routes will
+ * check it too. Kept, so the Permisos tab can be given a rule again.
  */
-export const INCOMPATIBLE: ReadonlyArray<readonly [Permission, Permission]> = [
-  ["finance:record", "month:approve"],
-  ["month:prepare", "month:approve"],
-];
+export const INCOMPATIBLE: ReadonlyArray<readonly [Permission, Permission]> = [];
 
 /**
  * Permissions the administrator role always keeps, whatever the Permisos tab
@@ -94,80 +94,17 @@ export const GUEST_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>([
   "export:finance",
 ]);
 
-const BOARD_VIEW: Permission[] = ["census:view", "census:view_sensitive", "finance:view"];
-
-const PRESIDENT: Permission[] = [
-  "census:view",
-  "census:view_sensitive",
-  "census:edit",
-  "census:deactivate",
-  "household_fee:set",
-  "finance:view",
-  "month:approve",
-  "users:manage",
-  "guests:manage",
-  "permissions:view",
-  "settings:edit",
-  "log:view",
-  "export:census",
-  "export:finance",
-  "export:log",
-];
-
 /**
- * The App Plan's matrix, row by row.
+ * Every role holds every permission (board decision, 6 November 2026). Roles
+ * stay, so the history log still shows who did what as which officer, and
+ * the Permisos tab can still take a permission away from a role.
  *
- * One reading to confirm with the board: the plan gives the administrator
- * "Print and export: All" but also says the administrator "cannot see or touch
- * money records". The second rule wins here, so the administrator exports the
- * census and the history log but not finances. The Permisos tab can change it.
+ * A database made before that day is brought up to it once, by
+ * `grantEveryPermissionOnce` (src/db/seeding.ts).
  */
-export const DEFAULT_MATRIX: Record<RoleCode, ReadonlySet<Permission>> = {
-  administrador: new Set<Permission>([
-    "census:view",
-    "census:view_sensitive",
-    "census:edit",
-    "census:deactivate",
-    "users:manage",
-    "guests:manage",
-    "permissions:view",
-    "permissions:edit",
-    "settings:edit",
-    "log:view",
-    "export:census",
-    "export:log",
-  ]),
-  presidente: new Set(PRESIDENT),
-  // Acts when the president is away, with every permission the president has.
-  vicepresidente: new Set(PRESIDENT),
-  secretario: new Set<Permission>([
-    "census:view",
-    "census:view_sensitive",
-    "census:edit",
-    "census:deactivate",
-    "household_fee:set_at_registration",
-    "export:census",
-  ]),
-  tesorero: new Set<Permission>([
-    "census:view",
-    "census:view_sensitive",
-    "household_fee:set",
-    "finance:view",
-    "finance:record",
-    "finance:reverse",
-    "month:prepare",
-    "export:finance",
-  ]),
-  fiscal: new Set<Permission>([
-    ...BOARD_VIEW,
-    "log:view",
-    "export:census",
-    "export:finance",
-    "export:log",
-  ]),
-  primer_vocal: new Set<Permission>([...BOARD_VIEW, "export:census", "export:finance"]),
-  segundo_vocal: new Set<Permission>([...BOARD_VIEW, "export:census", "export:finance"]),
-};
+export const DEFAULT_MATRIX = Object.fromEntries(
+  ROLE_CODES.map((role) => [role, new Set<Permission>(PERMISSION_CODES)]),
+) as unknown as Record<RoleCode, ReadonlySet<Permission>>;
 
 /**
  * Why a role's new set of permissions is not allowed, or null if it is.
