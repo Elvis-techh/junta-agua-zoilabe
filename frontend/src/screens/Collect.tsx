@@ -67,6 +67,11 @@ export function CollectScreen({ onOpen }: { onOpen: Go }) {
   );
 }
 
+/** A reversed payment to record again, with its details filled in. */
+export interface PaymentPreset {
+  again: Payment;
+}
+
 type Step = "months" | "amount" | "receipt" | "payer" | "review" | "saved";
 const ORDER: Step[] = ["months", "amount", "receipt", "payer", "review"];
 
@@ -75,21 +80,27 @@ const ORDER: Step[] = ["months", "amount", "receipt", "payer", "review"];
  * date, the paper receipt, who paid, then "¿Está correcto?". A payment needs
  * signal: the server shares the money among the months and keeps the paper
  * receipt's number. A retry sends the same submission, so it is never saved twice.
+ *
+ * `again` is a payment just reversed ("Anular pago") to record again: every
+ * answer starts as it was, and the treasurer changes what was wrong.
  */
-export function PaymentScreen({ id, onOpen }: { id: string; onOpen: Go }) {
+export function PaymentScreen({ id, again, onOpen }: { id: string; again?: Payment; onOpen: Go }) {
   const [data, setData] = useState<HouseMonths | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [from, setFrom] = useState<string | null>(null);
+  // An older payment's months may be further back than the list usually starts.
+  const [from, setFrom] = useState<string | null>(again?.shares[0]?.month ?? null);
 
   const [step, setStep] = useState<Step>("months");
-  const [selected, setSelected] = useState<string[]>([]);
-  const [amountText, setAmountText] = useState("");
-  const [occurredOn, setOccurredOn] = useState("");
-  const [method, setMethod] = useState<PaymentMethod | null>(null);
-  const [bankReference, setBankReference] = useState("");
-  const [receipt, setReceipt] = useState("");
-  const [payerName, setPayerName] = useState("");
-  const [note, setNote] = useState("");
+  const [selected, setSelected] = useState<string[]>(() => again?.shares.map((share) => share.month) ?? []);
+  const [amountText, setAmountText] = useState(() =>
+    again ? formatLempiras(again.amountCentavos).replace(/^L /, "").replace(/\.00$/, "") : "",
+  );
+  const [occurredOn, setOccurredOn] = useState(again?.occurredOn ?? "");
+  const [method, setMethod] = useState<PaymentMethod | null>(again?.paymentMethod ?? null);
+  const [bankReference, setBankReference] = useState(again?.bankReference ?? "");
+  const [receipt, setReceipt] = useState(again?.paperReceiptNumber ?? "");
+  const [payerName, setPayerName] = useState(again?.payerName ?? "");
+  const [note, setNote] = useState(again?.note ?? "");
   const [submissionId, setSubmissionId] = useState(newSubmissionId);
 
   const [error, setError] = useState<string | null>(null);
@@ -187,6 +198,9 @@ export function PaymentScreen({ id, onOpen }: { id: string; onOpen: Go }) {
         Vivienda {household.code} · {household.ownerName}
       </p>
       <h1>{title}</h1>
+      {again && (step === "months" || step === "review") && (
+        <p className="message">Se registra de nuevo el pago anulado del recibo nº {again.paperReceiptNumber}. Cambie lo que estaba mal.</p>
+      )}
     </>
   );
   const errorLine = error && <p className="message error">{error}</p>;

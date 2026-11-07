@@ -98,6 +98,7 @@ describe("a payment's card on the household's file", () => {
           recordedBy: "Tina Tesorera",
           createdAt: "2026-11-05T20:00:00.000Z",
           reversed: false,
+          reversal: null,
           repeatedReceipt: false,
           shares: [{ month: "2026-12-01", amountCentavos: 4000, priceCentavos: 7000 }],
         },
@@ -105,5 +106,52 @@ describe("a payment's card on the household's file", () => {
     );
     assert.match(html, /Diciembre 2026: L 40\.00/);
     assert.doesNotMatch(html, /en parte|repetido/);
+  });
+
+  const paid = {
+    id: "p2",
+    occurredOn: "2026-11-05",
+    amountCentavos: 7000,
+    paymentMethod: "cash" as const,
+    bankReference: null,
+    paperReceiptNumber: "1236",
+    payerName: "María López",
+    note: null,
+    recordedBy: "Tina Tesorera",
+    createdAt: "2026-11-05T20:00:00.000Z",
+    reversed: false,
+    reversal: null,
+    repeatedReceipt: true,
+    shares: [{ month: "2026-11-01", amountCentavos: 7000, priceCentavos: 7000 }],
+  };
+
+  it("offers Anular pago only to a role that may reverse, and only on a payment not yet reversed", async () => {
+    const { PaymentCard } = await import("../src/screens/Household.tsx");
+    const withButton = renderToStaticMarkup(createElement(PaymentCard, { payment: paid, onReverse: () => undefined }));
+    assert.match(withButton, /Anular pago/);
+    const withoutPermission = renderToStaticMarkup(createElement(PaymentCard, { payment: paid }));
+    assert.doesNotMatch(withoutPermission, /Anular pago/);
+  });
+
+  it("shows a reversed payment as Anulado, with when, who and why, and no repeated-receipt warning", async () => {
+    const { PaymentCard } = await import("../src/screens/Household.tsx");
+    const html = renderToStaticMarkup(
+      createElement(PaymentCard, {
+        payment: {
+          ...paid,
+          reversed: true,
+          reversal: {
+            id: "r1",
+            occurredOn: "2026-11-07",
+            reason: "Se registró en la vivienda equivocada",
+            recordedBy: "Pablo Presidente",
+            createdAt: "2026-11-07T16:00:00.000Z",
+          },
+        },
+        onReverse: () => undefined,
+      }),
+    );
+    assert.match(html, /Anulado el 7 de noviembre de 2026 por Pablo Presidente: Se registró en la vivienda equivocada/);
+    assert.doesNotMatch(html, /Anular pago|repetido/);
   });
 });

@@ -3,8 +3,17 @@
  *
  * A payment is one permanent entry in `transactions` plus its shares in
  * `payment_months`, one for each month it reaches; src/lib/payments.ts holds
- * how the money is shared. Nothing here changes or removes an entry: a
- * mistake will be fixed with a reversal (the next piece of Phase 2).
+ * how the money is shared. Nothing here changes or removes an entry.
+ *
+ * A mistake is fixed by "Anular pago": a reversal entry with the opposite
+ * amount that points to the original and carries a written reason. The
+ * board's answers of 7 November 2026: only a whole payment is reversed (a
+ * wrong amount or month is reversed and recorded again); the reversal is
+ * dated the day it is made and counts in that month, while the original
+ * stays in its own; it can be made at any time, even after the original's
+ * month is closed; and a reversal is final, never itself reversed. A
+ * reversal has no shares, so the months go back to how they were before
+ * the payment (src/lib/payments.ts, `monthStates`).
  */
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import type { FastifyPluginAsync } from "fastify";
@@ -63,11 +72,20 @@ const paymentBody = z.object({
   confirmRepeatedReceipt: z.boolean().optional(),
 });
 
+const reverseBody = z.object({
+  reason: z
+    .string({ message: "Escriba por qué se anula." })
+    .trim()
+    .min(5, "Escriba por qué se anula.")
+    .max(300, "El motivo es demasiado largo."),
+});
+
 const monthsQuery = z.object({ from: month.optional(), to: month.optional() });
 
 type Params = { id: string };
 
 const NO_HOUSEHOLD = new HttpError(404, "not_found", "No se encontró esa vivienda.");
+const NO_PAYMENT = new HttpError(404, "not_found", "No se encontró ese pago.");
 
 /** The household and the name of the person it is registered to now. */
 function householdOf(tx: DbOrTx, id: string) {
@@ -136,20 +154,40 @@ function paymentsOf(tx: DbOrTx, where: { householdId: string } | { id: string })
       .where(eq(paymentMonths.transactionId, row.id))
       .orderBy(paymentMonths.month)
       .all(),
+    reversal: reversalOf(tx, row.id),
   }));
 }
 
+/** The entry that reversed this payment, if one did: when, by whom and why. */
+function reversalOf(tx: DbOrTx, id: string) {
+  return (
+    tx
+      .select({
+        id: transactions.id,
+        occurredOn: transactions.occurredOn,
+        reason: transactions.reason,
+        recordedBy: users.name,
+        createdAt: transactions.createdAt,
+      })
+      .from(transactions)
+      .innerJoin(users, eq(users.id, transactions.createdBy))
+      .where(eq(transactions.reversesId, id))
+      .get() ?? null
+  );
+}
+
 /** The month row an entry dated `occurredOn` belongs to, made when its month has none yet. */
-function openMonthFor(tx: Tx, occurredOn: string): number {
+function openMonthFor(
+  tx: Tx,
+  occurredOn: string,
+  closed = (first: string) =>
+    `El mes de ${monthName(first)} ya está cerrado. Registre el pago con la fecha de hoy y escriba en la nota de qué fecha es.`,
+): number {
   const first = firstOfMonth(occurredOn);
   const existing = tx.select().from(months).where(eq(months.month, first)).get();
   if (existing) {
     if (existing.status !== "open") {
-      throw new HttpError(
-        409,
-        "month_closed",
-        `El mes de ${monthName(first)} ya está cerrado. Registre el pago con la fecha de hoy y escriba en la nota de qué fecha es.`,
-      );
+      throw new HttpError(409, "month_closed", closed(first));
     }
     return existing.id;
   }
@@ -159,6 +197,7 @@ function openMonthFor(tx: Tx, occurredOn: string): number {
 export const paymentRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app, options) => {
   const view = { preHandler: app.requirePermission("finance:view") };
   const record = { preHandler: app.requirePermission("finance:record") };
+  const reverse = { preHandler: [app.requirePermission("finance:reverse"), app.requireRecentPin] };
   const today = () => businessToday(options.timeZone);
 
   /** The months of a house, with each one's price and what has been paid towards it. */
@@ -328,5 +367,74 @@ export const paymentRoutes: FastifyPluginAsync<{ timeZone: string }> = async (ap
     });
 
     return reply.code(result.created ? 201 : 200).send({ payment: result.payment });
+  });
+
+  /** Anular pago: a reversal entry for the whole payment, with its reason. */
+  app.post<{ Params: Params }>("/finance/payments/:id/reverse", reverse, async (request) => {
+    if (!z.uuid().safeParse(request.params.id).success) {
+      throw NO_PAYMENT;
+    }
+    const body = parse(reverseBody, request.body);
+    const actor = actorOf(request);
+    const day = today();
+
+    return inTransaction(app.db, (tx) => {
+      const original = tx.select().from(transactions).where(eq(transactions.id, request.params.id)).get();
+      // Only a monthly fee payment, never a reversal: a reversal is final.
+      const [payment] = original && !original.reversesId ? paymentsOf(tx, { id: original.id }) : [];
+      if (!original || !payment) {
+        throw NO_PAYMENT;
+      }
+      if (payment.reversal) {
+        throw new HttpError(
+          409,
+          "already_reversed",
+          `Este pago ya se anuló el ${formatCalendarDate(payment.reversal.occurredOn)} (${payment.reversal.recordedBy}).`,
+        );
+      }
+      const household = householdOf(tx, original.householdId!);
+
+      const id = newId();
+      tx.insert(transactions)
+        .values({
+          id,
+          kind: original.kind,
+          categoryId: original.categoryId,
+          householdId: original.householdId,
+          monthId: openMonthFor(tx, day, (first) => `El mes de ${monthName(first)} ya está cerrado.`),
+          occurredOn: day,
+          amountCentavos: -original.amountCentavos,
+          monthsCovered: original.monthsCovered,
+          // Kept so the reversal can be found beside its receipt in the paper book.
+          paperReceiptNumber: original.paperReceiptNumber,
+          payerName: original.payerName,
+          reversesId: original.id,
+          reason: body.reason,
+          createdBy: actor.userId!,
+        })
+        .run();
+
+      const covered = payment.shares.map((share) => share.month);
+      recordAudit(tx, actor, {
+        area: "finances",
+        action: "payment.reversed",
+        summary:
+          `${actor.name} (${actor.role}) anuló el pago de ${formatLempiras(original.amountCentavos)}` +
+          `${original.payerName ? ` de ${original.payerName}` : ""} por ${monthList(covered)}` +
+          ` del ${formatCalendarDate(original.occurredOn)}, vivienda ${household.code}, recibo nº ${original.paperReceiptNumber}`,
+        entityType: "transaction",
+        entityId: original.id,
+        before: {
+          amountCentavos: original.amountCentavos,
+          shares: payment.shares,
+          occurredOn: original.occurredOn,
+          paperReceiptNumber: original.paperReceiptNumber,
+        },
+        after: { reversalId: id, amountCentavos: -original.amountCentavos, occurredOn: day },
+        reason: body.reason,
+      });
+
+      return { payment: paymentsOf(tx, { id: original.id })[0]! };
+    });
   });
 };

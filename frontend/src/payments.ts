@@ -44,6 +44,8 @@ export interface Payment {
   recordedBy: string;
   createdAt: string;
   reversed: boolean;
+  /** The entry that reversed it ("Anular pago"): when, by whom and why. */
+  reversal: { id: string; occurredOn: string; reason: string; recordedBy: string; createdAt: string } | null;
   repeatedReceipt: boolean;
   shares: Array<{ month: string; amountCentavos: number; priceCentavos: number }>;
 }
