@@ -57,7 +57,15 @@ changing how money, permissions or the history log work.
     seed runs (the test copy runs it on every update), with a history entry for each role that gained something. A
     month close still takes two different people: the database refuses an
     approval by whoever prepared it.
-  - Next: corrections (a reversal that points to the original, with a reason).
+  - **Corrections (Anular pago): built.** A payment recorded by mistake is
+    undone from the household's file with a reason and the PIN: a reversal
+    entry with the opposite amount that points to the original. See step 7
+    of "Trying Cobrar" below. Owner decisions of 7 November 2026: only a
+    whole payment is reversed (a wrong amount or month is reversed and
+    recorded again); the reversal is dated the day it is made and counts in
+    that month; it can be made at any time, even after the original's month
+    is closed; and a reversal is final.
+  - Next: what each house already owes, entered month by month.
 
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
@@ -187,6 +195,16 @@ household's file. A payment needs signal: it is not kept on the phone.
 6. The household's file lists its payments under **Pagos**, and each one is in
    **Historial** (Finanzas): "Tina (Tesorero/a) registró un pago de L 100.00
    de María López por noviembre y diciembre de 2026 …".
+7. A payment recorded by mistake: on the household's file, tap **Anular
+   pago** on its card, write why, tap **Anular pago** and type the PIN. The
+   whole payment is undone with today's date, and its months go back to how
+   they were before it (a month whose only money it was costs today's price
+   again). The card stays, crossed out and marked "Anulado", with when, who
+   and why. **Registrar el pago de nuevo** opens Cobrar with every answer
+   filled in, to change what was wrong; the same receipt number is accepted
+   without the "repetido" warning. Historial (Finanzas) shows "… anuló el
+   pago de L 100.00 de María López por …" with the reason. A reversal cannot
+   itself be undone: record the payment again instead.
 
 A month keeps the price it had when its first money arrived: if the board
 raises the fee after a house paid half of a month ahead, that month still
@@ -194,8 +212,9 @@ costs the old price. Nothing is changed or deleted: each payment's share of
 each month is kept in `payment_months`, which, like `transactions`, the
 database only adds to. A retry on weak signal sends the same submission, so
 it is never saved twice. Only roles with "Registrar pagos y gastos" may
-save, and only those with "Ver finanzas" see the months and payments; the
-server checks both.
+save, only those with "Ver finanzas" see the months and payments, and only
+those with "Corregir un registro de dinero" may anular; the server checks
+all three.
 
 ### Trying the census
 

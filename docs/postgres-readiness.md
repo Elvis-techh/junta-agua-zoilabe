@@ -76,8 +76,8 @@ c6aa10c:<path>`), the last `main` before the switch.
 
 | # | Area | SQLite today | PostgreSQL | Size |
 |---|---|---|---|---|
-| 1 | Queries | 74 synchronous `.get()` `.all()` `.run()` in `src/` | every one `await`ed; every helper and handler `async` again | L |
-| 2 | One write at a time | `inTransaction` (25 call sites): synchronous IMMEDIATE, nothing else runs inside it | async transactions run side by side: the locks in the list below come back | M, and the riskiest |
+| 1 | Queries | 93 synchronous `.get()` `.all()` `.run()` in `src/` | every one `await`ed; every helper and handler `async` again | L |
+| 2 | One write at a time | `inTransaction` (27 call sites): synchronous IMMEDIATE, nothing else runs inside it | async transactions run side by side: the locks in the list below come back | M, and the riskiest |
 | 3 | Nothing deleted, history unchanged | triggers (`src/db/guards.ts`), `recursive_triggers` on | two logins and their grants (history: `backend/src/db/roles.ts`). Triggers can stay as a second layer | M |
 | 4 | Accent-blind search | `search_text()`, a JavaScript function on the connection | history: `translate(lower(x), 'áéíóúüñ', 'aeiouun')`, or the `unaccent` extension | S |
 | 5 | Raw SQL | 16 fragments, list below | translations below | S |
@@ -106,6 +106,7 @@ history version had:
 | Fee correction (`PATCH /settings/fees/:id`) | a payment is recorded between the "nothing paid yet" check and the correction, which then rewrites a paid month | `FOR UPDATE` on the rate, and the payment route takes the same lock |
 | Fee removal (`POST /settings/fees/:id/remove`) | a payment is recorded between the "nothing paid yet" check and the removal, so a month is paid at an amount that is then removed; or two removals of one fee each log the wrong amount the months go back to | `FOR UPDATE` on the rate, plus the fee-change table lock, and the payment route takes the same lock |
 | Cobrar (`POST /finance/payments`, `src/routes/payments.ts`) | two payments of one house are shared out from the same "already paid" and together pay a month twice; two payments with the same paper receipt number both pass the "repeated?" check; a retried send is saved twice; two entries make the same month's row | advisory lock `7_311_004` for the whole payment (house, receipt number and month row at once), plus the fee-correction lock above |
+| Anular pago (`POST /finance/payments/:id/reverse`, `src/routes/payments.ts`) | two reversals of one payment both pass the "already reversed?" check (the unique index on `reverses_id` still refuses the second, but with a database error instead of the sentence); a payment is reversed while Cobrar shares a new one out from the months it still held | the same advisory lock `7_311_004` as Cobrar |
 | Every permission for every role, once (`grantEveryPermissionOnce`, `src/db/seeding.ts`) | runs from the seed, before the API starts, so nothing races it today; run beside a live API, a Permisos edit between its read and its write would be overwritten, or two seeds would both log the grant | none while it runs from the seed; otherwise `LOCK TABLE role_permissions` |
 
 The wrong-PIN counter needs nothing: it counts inside the `UPDATE` itself.
