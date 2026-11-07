@@ -1,0 +1,29 @@
+{
+  "name": "junta-agua-zoilabe",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently --names \"api,web\" --prefix-colors \"magenta.bold,cyan.bold\" --kill-others-on-fail \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:frontend": "npm run dev --workspace @zoilabe/frontend",
+    "dev:backend": "npm run dev --workspace @zoilabe/backend",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:migrate": "npm run db:migrate --workspace @zoilabe/backend",
+    "db:seed": "npm run db:seed --workspace @zoilabe/backend",
+    "db:reset": "npm run db:reset --workspace @zoilabe/backend",
+    "db:backup": "npm run db:backup --workspace @zoilabe/backend",
+    "db:verify-log": "npm run db:verify-log --workspace @zoilabe/backend",
+    "user:first-admin": "npm run user:first-admin --workspace @zoilabe/backend --"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}
