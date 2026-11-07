@@ -7,6 +7,7 @@ import { navigation, routeOf, tabOf } from "../home.ts";
 import { Icon } from "../icons.tsx";
 import { censusQueue, remember, sendRegistration } from "../queue.ts";
 import { CensusScreen } from "../screens/Census.tsx";
+import type { PaymentPreset } from "../screens/Collect.tsx";
 import { CollectScreen, PaymentScreen } from "../screens/Collect.tsx";
 import { HistoryScreen } from "../screens/History.tsx";
 import { HomeScreen } from "../screens/Home.tsx";
@@ -21,7 +22,10 @@ import { MoreBelow } from "./MoreBelow.tsx";
 /** How often waiting census entries are tried again while the app is open. */
 const RETRY_MS = 30_000;
 
-export type Go = (route: Route, preset?: RegisterPreset) => void;
+/** What a screen is opened with: a census start, or a payment to record again. */
+export type Preset = RegisterPreset | PaymentPreset;
+
+export type Go = (route: Route, preset?: Preset) => void;
 
 /**
  * The signed-in app: who is signed in on top, the screen, and the bottom bar.
@@ -32,7 +36,7 @@ export type Go = (route: Route, preset?: RegisterPreset) => void;
  */
 export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: boolean; onSignedOut: () => void; onRetry: () => void }) {
   const [route, setRoute] = useState<Route>(() => routeOf(window.location.pathname));
-  const [preset, setPreset] = useState<RegisterPreset | null>(null);
+  const [preset, setPreset] = useState<Preset | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const pending = useSyncExternalStore(
     (listener) => censusQueue.subscribe(listener),
@@ -85,7 +89,8 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
     }
     if (route === "/censo/registrar" && can("census:edit")) {
       // A new key per start, so "Registrar otra" begins from a clean form.
-      return <RegisterScreen key={preset?.startedAt ?? "start"} me={me} preset={preset} onOpen={go} />;
+      const start = preset && "startedAt" in preset ? preset : null;
+      return <RegisterScreen key={start?.startedAt ?? "start"} me={me} preset={start} onOpen={go} />;
     }
     if (route.startsWith("/censo/vivienda/") && can("census:view")) {
       return <HouseholdScreen key={route} me={me} id={route.slice("/censo/vivienda/".length)} onOpen={go} />;
@@ -94,7 +99,10 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
       return <CollectScreen onOpen={go} />;
     }
     if (route.startsWith("/finanzas/cobrar/") && can("finance:record") && can("finance:view")) {
-      return <PaymentScreen key={route} id={route.slice("/finanzas/cobrar/".length)} onOpen={go} />;
+      const again = preset && "again" in preset ? preset.again : undefined;
+      return (
+        <PaymentScreen key={`${route}${again?.id ?? ""}`} id={route.slice("/finanzas/cobrar/".length)} again={again} onOpen={go} />
+      );
     }
     if (route === "/usuarios" && can("users:manage")) {
       return <UsersScreen me={me} />;

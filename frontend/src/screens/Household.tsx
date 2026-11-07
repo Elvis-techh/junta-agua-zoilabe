@@ -5,14 +5,16 @@ import { api } from "../api.ts";
 import type { CensusOptions, HouseholdFile, InactiveReason, PhoneMissing, Relation, WaterConnection } from "../census.ts";
 import { INACTIVE_REASONS, PHONE_MISSING, RELATIONS, WATER_CONNECTIONS, formatIdNumber, formatLempiras, whatsappLink } from "../census.ts";
 import { DateField } from "../components/CalendarField.tsx";
+import { ConfirmPin } from "../components/ConfirmPin.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import { PhoneField } from "../components/PhoneField.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
 import type { Payment } from "../payments.ts";
-import { PAYMENT_METHODS, shortMonth } from "../payments.ts";
+import { PAYMENT_METHODS, monthList, shortMonth } from "../payments.ts";
 import { formatPhone, phoneEntry, wholePhone } from "../phone.ts";
 import { recall, remember } from "../queue.ts";
+import { isTouchScreen } from "../viewport.ts";
 import { formatDate, formatDateTime } from "../time.ts";
 import { HouseholdStatus } from "./Census.tsx";
 
@@ -145,7 +147,14 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
         </section>
       )}
 
-      {can("finance:view") && <HouseholdPayments householdId={file.id} />}
+      {can("finance:view") && (
+        <HouseholdPayments
+          householdId={file.id}
+          canReverse={can("finance:reverse")}
+          canRecord={can("finance:record")}
+          onOpen={onOpen}
+        />
+      )}
 
       <h2>Acciones</h2>
       {can("finance:record") && can("finance:view") && (
@@ -198,32 +207,78 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
   );
 }
 
-/** Pagos: what this house has paid, newest first, with how each payment was shared among months. */
-export function HouseholdPayments({ householdId }: { householdId: string }) {
+/**
+ * Pagos: what this house has paid, newest first, with how each payment was
+ * shared among months. A payment recorded by mistake is undone with "Anular
+ * pago", and can then be recorded again with its details filled in.
+ */
+export function HouseholdPayments({
+  householdId,
+  canReverse,
+  canRecord,
+  onOpen,
+}: {
+  householdId: string;
+  canReverse: boolean;
+  canRecord: boolean;
+  onOpen: Go;
+}) {
   const [payments, setPayments] = useState<Payment[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reversing, setReversing] = useState<Payment | null>(null);
+  const [reversed, setReversed] = useState<Payment | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     api<{ payments: Payment[] }>("GET", `/finance/households/${householdId}/payments`)
       .then((data) => setPayments(data.payments))
       .catch((err: Error) => setError(err.message));
   }, [householdId]);
 
+  useEffect(load, [load]);
+
   return (
     <section className="stack" style={{ gap: 8 }}>
       <h2>Pagos</h2>
       {error && <p className="message error">{error}</p>}
+      {reversed && (
+        <div className="card stack" style={{ gap: 8 }}>
+          <p className="message ok" style={{ margin: 0 }}>
+            Pago anulado: {formatLempiras(reversed.amountCentavos)}, recibo nº {reversed.paperReceiptNumber}. Sus meses vuelven a quedar
+            como estaban antes de ese pago.
+          </p>
+          {canRecord && (
+            <button className="btn primary block" onClick={() => onOpen(`/finanzas/cobrar/${householdId}`, { again: reversed })}>
+              <Icon name="cash" /> Registrar el pago de nuevo
+            </button>
+          )}
+        </div>
+      )}
       {payments?.length === 0 && <p className="muted">Todavía no hay pagos registrados en la aplicación.</p>}
-      {payments?.slice(0, 12).map((payment) => <PaymentCard key={payment.id} payment={payment} />)}
+      {payments
+        ?.slice(0, 12)
+        .map((payment) => (
+          <PaymentCard key={payment.id} payment={payment} onReverse={canReverse ? () => setReversing(payment) : undefined} />
+        ))}
+      {reversing && (
+        <ReverseDialog
+          payment={reversing}
+          onClose={() => setReversing(null)}
+          onReversed={(payment) => {
+            setReversing(null);
+            setReversed(payment);
+            load();
+          }}
+        />
+      )}
     </section>
   );
 }
 
-export function PaymentCard({ payment }: { payment: Payment }) {
+export function PaymentCard({ payment, onReverse }: { payment: Payment; onReverse?: () => void }) {
   return (
     <div className="card stack" style={{ gap: 4 }}>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-        <strong>{formatLempiras(payment.amountCentavos)}</strong>
+        <strong style={payment.reversed ? { textDecoration: "line-through" } : undefined}>{formatLempiras(payment.amountCentavos)}</strong>
         <span className="muted">{calendarDate(payment.occurredOn)}</span>
       </div>
       <div>
@@ -235,18 +290,116 @@ export function PaymentCard({ payment }: { payment: Payment }) {
         Recibo nº {payment.paperReceiptNumber} · {PAYMENT_METHODS[payment.paymentMethod]}
         {payment.bankReference ? ` ${payment.bankReference}` : ""} · Registró {payment.recordedBy}
       </div>
-      {payment.repeatedReceipt && (
+      {payment.repeatedReceipt && !payment.reversed && (
         <span className="status warn" style={{ justifySelf: "start" }}>
           <Icon name="alert" size={18} /> Número de recibo repetido: revisar
         </span>
       )}
-      {payment.reversed && (
-        <span className="status danger" style={{ justifySelf: "start" }}>
-          <Icon name="x" size={18} /> Corregido
-        </span>
+      {payment.reversal && (
+        <>
+          <span className="status danger" style={{ justifySelf: "start" }}>
+            <Icon name="x" size={18} /> Anulado
+          </span>
+          <div className="muted">
+            Anulado el {calendarDate(payment.reversal.occurredOn)} por {payment.reversal.recordedBy}: {payment.reversal.reason}
+          </div>
+        </>
       )}
       {payment.note && <div className="muted">Nota: {payment.note}</div>}
+      {onReverse && !payment.reversed && (
+        <button className="btn" style={{ justifySelf: "start" }} onClick={onReverse}>
+          <Icon name="x" /> Anular pago
+        </button>
+      )}
     </div>
+  );
+}
+
+/**
+ * "Anular pago": undoes the whole payment with a reversal entry and a written
+ * reason, after the PIN. Nothing is deleted: the payment stays, marked
+ * "Anulado", and both are in Historial. The board's answers of 7 November
+ * 2026: only a whole payment, at any time, and a reversal is final.
+ */
+function ReverseDialog({
+  payment,
+  onClose,
+  onReversed,
+}: {
+  payment: Payment;
+  onClose: () => void;
+  onReversed: (payment: Payment) => void;
+}) {
+  const [reason, setReason] = useState("");
+  const [askPin, setAskPin] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const check = () => {
+    if (reason.trim().length < 5) {
+      setError("Escriba por qué se anula.");
+      return;
+    }
+    setError(null);
+    setAskPin(true);
+  };
+
+  const reverse = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const { payment: done } = await api<{ payment: Payment }>("POST", `/finance/payments/${payment.id}/reverse`, {
+        reason: reason.trim(),
+      });
+      onReversed(done);
+    } catch (err) {
+      setError((err as Error).message);
+      setSaving(false);
+    }
+  };
+
+  if (askPin) {
+    return (
+      <ConfirmPin
+        onClose={() => setAskPin(false)}
+        onConfirmed={() => {
+          setAskPin(false);
+          void reverse();
+        }}
+      />
+    );
+  }
+
+  return (
+    <Dialog title="Anular este pago" onClose={onClose}>
+      <p>
+        <strong>{formatLempiras(payment.amountCentavos)}</strong> del {calendarDate(payment.occurredOn)}, recibo nº{" "}
+        {payment.paperReceiptNumber}, por {monthList(payment.shares.map((share) => share.month))}.
+      </p>
+      <p>
+        Se anula el pago completo, con la fecha de hoy. Sus meses vuelven a quedar como estaban antes de ese pago. Si el monto o los meses
+        estaban mal, después lo puede registrar de nuevo.
+      </p>
+      <label>
+        Por qué se anula
+        <input
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Ejemplo: se registró en la vivienda equivocada"
+          autoFocus={!isTouchScreen()}
+        />
+      </label>
+      <p className="muted">El pago no se borra: queda marcado como anulado, y los dos quedan en el historial. Se pide su PIN.</p>
+      {error && <p className="message error">{error}</p>}
+      <div className="row">
+        <button className="btn primary" disabled={saving} onClick={check}>
+          <Icon name="x" /> Anular pago
+        </button>
+        <button className="btn" disabled={saving} onClick={onClose}>
+          <Icon name="back" /> Volver
+        </button>
+      </div>
+    </Dialog>
   );
 }
 
