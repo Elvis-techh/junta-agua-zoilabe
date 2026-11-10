@@ -2,10 +2,17 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 
 import type { Db } from "../db/client.js";
+import { inTransaction } from "../db/client.js";
 import type { Actor } from "../lib/audit.js";
 import type { Permission } from "../lib/permissions.js";
 import type { SessionUser } from "./session.js";
-import { PIN_CONFIRMATION_WINDOW_MS, SESSION_COOKIE, getSessionUser } from "./session.js";
+import {
+  SESSION_COOKIE,
+  SESSION_IDLE_LIMIT_MS,
+  SESSION_RENEWAL_INTERVAL_MS,
+  getSessionUser,
+  renewSession,
+} from "./session.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -21,12 +28,21 @@ declare module "fastify" {
     requirePermission: (
       permission: Permission,
     ) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-    /** Route guard: 403 unless the PIN was typed again in the last few minutes. */
-    requireRecentPin: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 }
 
-const UNAUTHENTICATED = { error: "unauthenticated", message: "Escriba su PIN para entrar." };
+const UNAUTHENTICATED = { error: "unauthenticated", message: "Escriba su número y su contraseña para entrar." };
+
+/** The session cookie's settings, the same when it is set at sign-in and when it is renewed. */
+export function sessionCookieOptions(secure: boolean) {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure,
+    path: "/",
+    maxAge: Math.floor(SESSION_IDLE_LIMIT_MS / 1000),
+  };
+}
 
 /** The history log's "who", for the signed-in user of this request. */
 export function actorOf(request: FastifyRequest): Actor {
@@ -47,15 +63,23 @@ export function deviceOf(request: FastifyRequest): string | null {
   return typeof agent === "string" && agent !== "" ? agent : null;
 }
 
-const authPlugin: FastifyPluginAsync<{ db: Db }> = async (app, options) => {
+const authPlugin: FastifyPluginAsync<{ db: Db; secureCookies: boolean }> = async (app, options) => {
   app.decorate("db", options.db);
   app.decorateRequest("user", null);
 
   // Resolve the session on every request, before any route handler runs. The
   // user and their permissions are read from the database, never the cookie.
-  app.addHook("onRequest", async (request) => {
+  app.addHook("onRequest", async (request, reply) => {
     const token = request.cookies[SESSION_COOKIE];
     request.user = token ? getSessionUser(options.db, token) : null;
+
+    // A phone in use stays signed in: once a day, its 90 days start again,
+    // in the database and in the cookie alike.
+    const user = request.user;
+    if (token && user && Date.now() - user.sessionRenewedAt.getTime() > SESSION_RENEWAL_INTERVAL_MS) {
+      inTransaction(options.db, (tx) => renewSession(tx, user.sessionId));
+      reply.setCookie(SESSION_COOKIE, token, sessionCookieOptions(options.secureCookies));
+    }
   });
 
   app.decorate("requireUser", async (request: FastifyRequest, reply: FastifyReply) => {
@@ -83,16 +107,6 @@ const authPlugin: FastifyPluginAsync<{ db: Db }> = async (app, options) => {
         });
       }
     };
-  });
-
-  app.decorate("requireRecentPin", async (request: FastifyRequest, reply: FastifyReply) => {
-    const confirmedAt = request.user?.pinConfirmedAt;
-    if (!confirmedAt || Date.now() - confirmedAt.getTime() > PIN_CONFIRMATION_WINDOW_MS) {
-      await reply.code(403).send({
-        error: "pin_required",
-        message: "Escriba su PIN otra vez para confirmar.",
-      });
-    }
   });
 };
 

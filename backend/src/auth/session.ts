@@ -1,19 +1,23 @@
 /**
- * Invitation links, remembered phones and sessions — all rows of
- * `access_tokens`, told apart by `kind`.
+ * Sign-in sessions: rows of `access_tokens` with kind "session".
  *
- * How a director stays signed in (Module 3): the invitation link is opened
- * once, on their own phone, and leaves behind a DEVICE token that remembers
- * that phone for 90 days from its last use. Typing the PIN on a remembered
- * phone opens a SESSION of a few hours. Removing a device ends its sessions.
+ * How a board member stays signed in (Module 3): they type their phone number
+ * and password once on a phone, and that phone stays signed in until they tap
+ * "Salir", or for 90 days without use. Using the app pushes the 90 days
+ * forward, at most once a day. Changing a password, suspending or
+ * deactivating an account ends its sessions at once.
+ *
+ * Rows of kind "invitation" and "device" are history from before 9 November
+ * 2026, when an invitation link and a 6-digit PIN were the way in. Nothing
+ * issues them now, and none of them opens the app.
  *
  * Only the SHA-256 of each token is stored. A backup copy of the database
  * therefore holds nothing anyone could put in a cookie. A 256-bit random token
- * needs no slow hash (scrypt is for the PIN, which people choose).
+ * needs no slow hash (scrypt is for the password, which people choose).
  */
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
-import { and, eq, gt, inArray, isNull } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, ne } from "drizzle-orm";
 
 import type { DbOrTx } from "../db/client.js";
 import { accessTokens, rolePermissions, roles, users } from "../db/schema.js";
@@ -21,19 +25,14 @@ import type { Permission } from "../lib/permissions.js";
 import { isPermission } from "../lib/permissions.js";
 
 export const SESSION_COOKIE = "zoilabe_session";
-export const DEVICE_COOKIE = "zoilabe_device";
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 
-/** An invitation link works once, within 48 hours. */
-export const INVITATION_LIFETIME_MS = 48 * HOUR;
-/** A remembered phone is forgotten after 90 days without use. */
-export const DEVICE_IDLE_LIMIT_MS = 90 * DAY;
-/** How long the app stays open after the PIN, before asking again. */
-export const SESSION_LIFETIME_MS = 12 * HOUR;
-/** How recent the PIN must be for a sensitive action (change a role, close a month). */
-export const PIN_CONFIRMATION_WINDOW_MS = 5 * 60 * 1000;
+/** A phone signs out by itself after 90 days without use. */
+export const SESSION_IDLE_LIMIT_MS = 90 * DAY;
+/** How often using the app pushes those 90 days forward. */
+export const SESSION_RENEWAL_INTERVAL_MS = DAY;
 
 export function newId(): string {
   return randomUUID();
@@ -54,55 +53,67 @@ export interface SessionUser {
   roleName: string;
   permissions: ReadonlySet<Permission>;
   sessionId: string;
-  deviceId: string;
-  pinConfirmedAt: Date | null;
+  /** When the session was last pushed forward (or opened). */
+  sessionRenewedAt: Date;
 }
 
-/** Issue a token of the given kind and return it; the database keeps only its hash. */
-export function issueToken(
-  db: DbOrTx,
-  values: {
-    userId: string;
-    kind: "invitation" | "device" | "session";
-    lifetimeMs: number;
-    deviceId?: string | null;
-    label?: string | null;
-    createdBy?: string | null;
-  },
-): { id: string; token: string; expiresAt: Date } {
+/** Open a session and return its token; the database keeps only its hash. */
+export function openSession(db: DbOrTx, userId: string): { id: string; token: string; expiresAt: Date } {
   const id = newId();
   const token = newToken();
-  const expiresAt = new Date(Date.now() + values.lifetimeMs);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + SESSION_IDLE_LIMIT_MS);
 
   db.insert(accessTokens)
     .values({
       id,
-      userId: values.userId,
-      kind: values.kind,
+      userId,
+      kind: "session",
       tokenHash: tokenHash(token),
-      deviceId: values.deviceId ?? null,
-      label: values.label ?? null,
       expiresAt,
-      createdBy: values.createdBy ?? null,
+      lastUsedAt: now,
     })
     .run();
 
   return { id, token, expiresAt };
 }
 
-/** A live token of one kind, by its value, or null. */
-export function findLiveToken(
-  db: DbOrTx,
-  token: string,
-  kind: "invitation" | "device" | "session",
-) {
+/** Push a session's 90 days forward from now. */
+export function renewSession(db: DbOrTx, sessionId: string): Date {
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + SESSION_IDLE_LIMIT_MS);
+  db.update(accessTokens)
+    .set({ lastUsedAt: now, expiresAt })
+    .where(and(eq(accessTokens.id, sessionId), isNull(accessTokens.revokedAt)))
+    .run();
+  return expiresAt;
+}
+
+/**
+ * Who a session cookie belongs to, with their permissions, or null.
+ *
+ * Read from the database on every request, so a role change, a suspension or
+ * a new password takes effect on that person's very next tap.
+ */
+export function getSessionUser(db: DbOrTx, token: string): SessionUser | null {
   const row = db
-    .select()
+    .select({
+      sessionId: accessTokens.id,
+      sessionRenewedAt: accessTokens.lastUsedAt,
+      sessionCreatedAt: accessTokens.createdAt,
+      id: users.id,
+      name: users.name,
+      roleCode: users.roleCode,
+      roleName: roles.name,
+      status: users.status,
+    })
     .from(accessTokens)
+    .innerJoin(users, eq(users.id, accessTokens.userId))
+    .innerJoin(roles, eq(roles.code, users.roleCode))
     .where(
       and(
         eq(accessTokens.tokenHash, tokenHash(token)),
-        eq(accessTokens.kind, kind),
+        eq(accessTokens.kind, "session"),
         isNull(accessTokens.revokedAt),
         gt(accessTokens.expiresAt, new Date()),
       ),
@@ -110,46 +121,7 @@ export function findLiveToken(
     .limit(1)
     .get();
 
-  return row ?? null;
-}
-
-/**
- * Who a session cookie belongs to, with their permissions, or null.
- *
- * Read from the database on every request, so a role change, a suspension, a
- * lock or a removed phone takes effect on that person's very next click.
- */
-export function getSessionUser(db: DbOrTx, token: string): SessionUser | null {
-  const session = findLiveToken(db, token, "session");
-  if (!session?.deviceId) {
-    return null;
-  }
-
-  const row = db
-    .select({
-      id: users.id,
-      name: users.name,
-      roleCode: users.roleCode,
-      roleName: roles.name,
-      status: users.status,
-      lockedAt: users.lockedAt,
-      deviceRevokedAt: accessTokens.revokedAt,
-      deviceExpiresAt: accessTokens.expiresAt,
-    })
-    .from(users)
-    .innerJoin(roles, eq(roles.code, users.roleCode))
-    .innerJoin(accessTokens, eq(accessTokens.id, session.deviceId))
-    .where(eq(users.id, session.userId))
-    .limit(1)
-    .get();
-
-  if (
-    !row ||
-    row.status !== "active" ||
-    row.lockedAt !== null ||
-    row.deviceRevokedAt !== null ||
-    row.deviceExpiresAt.getTime() <= Date.now()
-  ) {
+  if (!row || row.status !== "active") {
     return null;
   }
 
@@ -165,23 +137,28 @@ export function getSessionUser(db: DbOrTx, token: string): SessionUser | null {
     roleCode: row.roleCode,
     roleName: row.roleName,
     permissions: new Set(granted.map((g) => g.permission).filter(isPermission)),
-    sessionId: session.id,
-    deviceId: session.deviceId,
-    pinConfirmedAt: session.pinConfirmedAt,
+    sessionId: row.sessionId,
+    sessionRenewedAt: row.sessionRenewedAt ?? row.sessionCreatedAt,
   };
 }
 
-/** End tokens now: every session of a device, or every device and session of a user. */
-export function revokeTokens(
+/**
+ * End a user's sessions now: every phone signs out on its next tap.
+ * `keep` spares one session, so changing your own password does not sign you
+ * out of the phone you changed it on.
+ */
+export function endSessions(
   db: DbOrTx,
-  where: { ids?: string[]; deviceId?: string; userId?: string; kinds?: Array<"invitation" | "device" | "session"> },
+  where: { userId: string; keep?: string | undefined } | { ids: string[] },
   revokedBy: string | null,
 ): void {
   const conditions = [isNull(accessTokens.revokedAt)];
-  if (where.ids) conditions.push(inArray(accessTokens.id, where.ids));
-  if (where.deviceId) conditions.push(eq(accessTokens.deviceId, where.deviceId));
-  if (where.userId) conditions.push(eq(accessTokens.userId, where.userId));
-  if (where.kinds) conditions.push(inArray(accessTokens.kind, where.kinds));
+  if ("ids" in where) {
+    conditions.push(inArray(accessTokens.id, where.ids));
+  } else {
+    conditions.push(eq(accessTokens.userId, where.userId));
+    if (where.keep) conditions.push(ne(accessTokens.id, where.keep));
+  }
 
   db.update(accessTokens)
     .set({ revokedAt: new Date(), revokedBy })

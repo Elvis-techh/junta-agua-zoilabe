@@ -5,7 +5,7 @@
  * touch. Taking the page out of the flow with `position: fixed` stops that, so
  * its position is remembered and put back when the last dialog closes.
  *
- * Counted, because one dialog can open another (the PIN over a form).
+ * Counted, because one dialog can open another (a confirmation over a form).
  */
 export interface ScrollablePage {
   scrollY: number;

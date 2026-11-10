@@ -1,5 +1,5 @@
 /**
- * Create the first administrator and print their invitation link.
+ * Create the first administrator and print their password.
  *
  * Every other account is created from the Usuarios tab, by someone already
  * signed in. This is the one way in that does not need that, so it refuses to
@@ -19,7 +19,7 @@ import { loadConfig } from "../config/env.js";
 import { createDb, inTransaction } from "../db/client.js";
 import { users } from "../db/schema.js";
 import { SYSTEM_ACTOR, recordAudit } from "../lib/audit.js";
-import { createInvitation } from "../lib/invitations.js";
+import { hashPassword, suggestPassword } from "../lib/password.js";
 import { readPhone } from "../lib/phone.js";
 
 const { values } = parseArgs({
@@ -37,9 +37,12 @@ const { phone } = read;
 
 const config = loadConfig();
 const { db, sqlite } = createDb(config.databasePath);
+// Printed once and never stored: only its hash is kept.
+const password = suggestPassword();
+const passwordHash = await hashPassword(password);
 
 try {
-  const invitation = inTransaction(db, (tx) => {
+  inTransaction(db, (tx) => {
     const existing = tx
       .select({ id: users.id })
       .from(users)
@@ -49,7 +52,7 @@ try {
       throw new Error("An administrator account already exists. Create other accounts from Usuarios.");
     }
 
-    const user = { id: newId(), name, phone, roleCode: "administrador", status: "invited" as const };
+    const user = { id: newId(), name, phone, roleCode: "administrador", status: "active" as const, passwordHash };
     tx.insert(users).values(user).run();
     recordAudit(tx, SYSTEM_ACTOR, {
       area: "users",
@@ -59,12 +62,12 @@ try {
       entityId: user.id,
       after: { name, phone, role: "administrador" },
     });
-    return createInvitation(tx, user, null, config.appUrl);
   });
 
-  console.log(`\nAdministrator "${name}" created. The link works once, until ${invitation.expiresAt.toISOString()}.\n`);
-  console.log(`Invitation link:\n  ${invitation.url}\n`);
-  console.log(`Send it by WhatsApp:\n  ${invitation.whatsappUrl}\n`);
+  console.log(`\nAdministrator "${name}" created. Open ${config.appUrl} and sign in with:\n`);
+  console.log(`  Número:      ${phone}`);
+  console.log(`  Contraseña:  ${password}\n`);
+  console.log("Change it in Usuarios if you like. This is the only time it is shown.\n");
 } catch (error) {
   console.error((error as Error).message);
   process.exitCode = 1;

@@ -55,7 +55,7 @@ one more thing to run and back up there.
   synchronous IMMEDIATE transaction, so inside it every query ends in
   `.get()`, `.all()` or `.run()`, never `await`. That is what keeps the
   history log chain and household codes in single file, with no locks of our
-  own. Slow work (hashing a PIN, reading a file) happens before it starts.
+  own. Slow work (hashing a password, reading a file) happens before it starts.
 - **Instants are ISO-8601 UTC text, read back as `Date`** (the `instant`
   column type in `schema.ts`); calendar dates are `"YYYY-MM-DD"` text; JSON is
   text. Compare instants with a `Date` (`gt(col, new Date())`), never `now()`.
@@ -88,7 +88,7 @@ the file. Tests make their own database in memory.
 ## Fixing things, one at a time
 
 1. **One change per branch, started from the latest `main`**, named after its
-   purpose, e.g. `feat/census-paper-mode` or `fix/pin-lockout-count`.
+   purpose, e.g. `feat/census-paper-mode` or `fix/login-attempt-limit`.
 2. **Prove it before merging.** A test that fails without the change and
    passes with it, plus `npm run typecheck` and `npm test`.
 3. **One pull request per change.** The description says what was wrong or

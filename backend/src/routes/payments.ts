@@ -197,7 +197,7 @@ function openMonthFor(
 export const paymentRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app, options) => {
   const view = { preHandler: app.requirePermission("finance:view") };
   const record = { preHandler: app.requirePermission("finance:record") };
-  const reverse = { preHandler: [app.requirePermission("finance:reverse"), app.requireRecentPin] };
+  const reverse = { preHandler: app.requirePermission("finance:reverse") };
   const today = () => businessToday(options.timeZone);
 
   /** The months of a house, with each one's price and what has been paid towards it. */

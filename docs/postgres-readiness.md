@@ -99,9 +99,8 @@ history version had:
 | Registrar familia (`POST /census/households`) | two houses get the same Z-code; a retried send is saved twice | advisory lock `7_311_003` |
 | `lockHousehold` (household edit, deactivate, reactivate) | two edits each log a "before" that is no longer true | `SELECT … FOR UPDATE` |
 | Person edit (`PATCH /census/people/:id`) | the same | `FOR UPDATE` |
-| `lockUser` (`src/routes/users.ts`: role, suspend, unlock…) | the same, on a user | `FOR UPDATE` |
+| `lockUser` (`src/routes/users.ts`: role, password, suspend…) | the same, on a user | `FOR UPDATE` |
 | Sector edit (`PATCH /settings/sectors/:id`) | the same, on a sector | `FOR UPDATE` |
-| Invitation accept (`POST /auth/invitation/accept`) | one link used twice at once | `FOR UPDATE` |
 | Fee change (`POST /settings/fees`) | two first amounts of the same fee both start in the past, or a log entry names the wrong amount it replaced | `LOCK TABLE fee_rates IN SHARE ROW EXCLUSIVE MODE` |
 | Fee correction (`PATCH /settings/fees/:id`) | a payment is recorded between the "nothing paid yet" check and the correction, which then rewrites a paid month | `FOR UPDATE` on the rate, and the payment route takes the same lock |
 | Fee removal (`POST /settings/fees/:id/remove`) | a payment is recorded between the "nothing paid yet" check and the removal, so a month is paid at an amount that is then removed; or two removals of one fee each log the wrong amount the months go back to | `FOR UPDATE` on the rate, plus the fee-change table lock, and the payment route takes the same lock |
@@ -109,7 +108,6 @@ history version had:
 | Anular pago (`POST /finance/payments/:id/reverse`, `src/routes/payments.ts`) | two reversals of one payment both pass the "already reversed?" check (the unique index on `reverses_id` still refuses the second, but with a database error instead of the sentence); a payment is reversed while Cobrar shares a new one out from the months it still held | the same advisory lock `7_311_004` as Cobrar |
 | Every permission for every role, once (`grantEveryPermissionOnce`, `src/db/seeding.ts`) | runs from the seed, before the API starts, so nothing races it today; run beside a live API, a Permisos edit between its read and its write would be overwritten, or two seeds would both log the grant | none while it runs from the seed; otherwise `LOCK TABLE role_permissions` |
 
-The wrong-PIN counter needs nothing: it counts inside the `UPDATE` itself.
 **New code that relies on one write at a time adds its row here**: Phase 2's
 month close will.
 

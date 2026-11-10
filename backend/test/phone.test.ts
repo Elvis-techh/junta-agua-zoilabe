@@ -13,7 +13,7 @@ import { MIGRATIONS_FOLDER, runMigrations } from "../src/db/migrations.js";
 import { rolePermissions } from "../src/db/schema.js";
 import { maskPhone, PHONE_COUNTRIES, phoneSearchPatterns, readPhone } from "../src/lib/phone.js";
 import type { TestApp } from "./helpers.js";
-import { buildTestApp, signedInUser } from "./helpers.js";
+import { buildTestApp, madeUpPassword, signedInUser } from "./helpers.js";
 
 describe("reading a phone number", () => {
   it("keeps each country's number with its code", () => {
@@ -154,14 +154,29 @@ describe("phones on the census and on accounts", () => {
     assert.equal((await call(admin.cookie, "PATCH", url, { phone: "+3461234" })).statusCode, 400);
   });
 
-  it("opens WhatsApp on the right country for an account's invitation", async () => {
-    const created = await call(admin.cookie, "POST", "/api/users", { name: "Carla Mejía", phone: "+12025550188", roleCode: "fiscal" });
+  it("signs in an account with another country's number", async () => {
+    const chosen = madeUpPassword();
+    const created = await call(admin.cookie, "POST", "/api/users", {
+      name: "Carla Mejía",
+      phone: "+12025550188",
+      roleCode: "fiscal",
+      password: chosen,
+    });
     assert.equal(created.statusCode, 201);
-    const invite = await call(admin.cookie, "POST", `/api/users/${created.json().user.id}/invitation`, {});
-    assert.match(invite.json().whatsappUrl, /^https:\/\/wa\.me\/12025550188\?text=/);
+    const signedIn = await t.app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: { phone: "+12025550188", password: chosen },
+    });
+    assert.equal(signedIn.statusCode, 200);
 
-    // The same number written the other way is still the same account.
-    const again = await call(admin.cookie, "POST", "/api/users", { name: "Otra Persona", phone: "+12025550188", roleCode: "fiscal" });
+    // The same number again is still the same account.
+    const again = await call(admin.cookie, "POST", "/api/users", {
+      name: "Otra Persona",
+      phone: "+12025550188",
+      roleCode: "fiscal",
+      password: madeUpPassword(),
+    });
     assert.equal(again.statusCode, 409);
   });
 });

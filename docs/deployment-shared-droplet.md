@@ -107,7 +107,8 @@ sudo -u zoilabe /opt/node22/bin/node --env-file=.env dist/scripts/first-admin.js
 ```
 
 The first line creates the file; after that the API brings it up to date on
-every start. The last line prints the administrator's invitation link.
+every start. The last line prints the administrator's password, once: sign in
+with that number and password, and change it in Usuarios if you like.
 
 ### 5. Services, Nginx, timers
 

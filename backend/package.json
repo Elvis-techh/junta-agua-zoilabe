@@ -16,7 +16,8 @@
     "db:backup": "tsx --env-file-if-exists=.env src/scripts/backup.ts",
     "db:restore": "tsx --env-file-if-exists=.env src/scripts/restore.ts",
     "db:verify-log": "tsx --env-file-if-exists=.env src/scripts/verify-log.ts",
-    "user:first-admin": "tsx --env-file-if-exists=.env src/scripts/first-admin.ts"
+    "user:first-admin": "tsx --env-file-if-exists=.env src/scripts/first-admin.ts",
+    "user:password": "tsx --env-file-if-exists=.env src/scripts/new-password.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1156.0",

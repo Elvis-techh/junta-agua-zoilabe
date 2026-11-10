@@ -32,13 +32,13 @@ export async function buildApp(config: AppConfig, db: Db) {
 
   await app.register(cookie);
 
-  // A generous ceiling for normal use; the PIN routes are far stricter.
+  // A generous ceiling for normal use; signing in is far stricter.
   await app.register(rateLimit, {
     max: config.requestsPerMinute,
     timeWindow: "1 minute",
   });
 
-  await app.register(authPlugin, { db });
+  await app.register(authPlugin, { db, secureCookies: config.nodeEnv === "production" });
 
   /*
    * The last line between an error and the person's screen. Deliberate
@@ -67,11 +67,10 @@ export async function buildApp(config: AppConfig, db: Db) {
     async (api) => {
       await api.register(healthRoutes);
       await api.register(authRoutes, {
-        appUrl: config.appUrl,
         secureCookies: config.nodeEnv === "production",
-        pinAttemptsPerMinute: config.pinAttemptsPerMinute,
+        loginAttemptsPerMinute: config.loginAttemptsPerMinute,
       });
-      await api.register(userRoutes, { appUrl: config.appUrl });
+      await api.register(userRoutes);
       await api.register(permissionRoutes);
       await api.register(auditRoutes);
       await api.register(censusRoutes, { timeZone: config.timeZone });

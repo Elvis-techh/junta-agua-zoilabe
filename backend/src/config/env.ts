@@ -10,7 +10,7 @@ export type AppConfig = {
   nodeEnv: "development" | "test" | "production";
   host: string;
   port: number;
-  /** The address people open; invitation links point here. */
+  /** The address people open on their phones. */
   appUrl: string;
   frontendOrigins: string[];
   /** The database file. Its folder holds its WAL companions too, and must be writable. */
@@ -22,8 +22,8 @@ export type AppConfig = {
    * X-Forwarded-For.
    */
   trustProxy: boolean | string;
-  /** PIN attempts allowed per minute, per address — on top of the 5-wrong-PIN lock. */
-  pinAttemptsPerMinute: number;
+  /** Sign-in attempts allowed per minute, per address. No account locks; this is what holds guessing back. */
+  loginAttemptsPerMinute: number;
   /** The ceiling on every other request, per minute, per address. */
   requestsPerMinute: number;
   /** The board's calendar: Honduras. */
@@ -73,7 +73,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       .filter(Boolean),
     databasePath: env.DATABASE_PATH ? resolve(env.DATABASE_PATH) : DEFAULT_DATABASE_PATH,
     trustProxy: parseTrustProxy(env.TRUST_PROXY),
-    pinAttemptsPerMinute: positiveInteger("PIN_ATTEMPTS_PER_MINUTE", 10),
+    loginAttemptsPerMinute: positiveInteger("LOGIN_ATTEMPTS_PER_MINUTE", 10),
     requestsPerMinute: positiveInteger("REQUESTS_PER_MINUTE", 300),
     timeZone: env.TIME_ZONE ?? HONDURAS_TIME_ZONE,
   };

@@ -5,7 +5,6 @@ import { api } from "../api.ts";
 import type { CensusOptions, HouseholdFile, InactiveReason, PhoneMissing, Relation, WaterConnection } from "../census.ts";
 import { INACTIVE_REASONS, PHONE_MISSING, RELATIONS, WATER_CONNECTIONS, formatIdNumber, formatLempiras, whatsappLink } from "../census.ts";
 import { DateField } from "../components/CalendarField.tsx";
-import { ConfirmPin } from "../components/ConfirmPin.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import { PhoneField } from "../components/PhoneField.tsx";
 import type { Go } from "../components/Shell.tsx";
@@ -317,7 +316,7 @@ export function PaymentCard({ payment, onReverse }: { payment: Payment; onRevers
 
 /**
  * "Anular pago": undoes the whole payment with a reversal entry and a written
- * reason, after the PIN. Nothing is deleted: the payment stays, marked
+ * reason. Nothing is deleted: the payment stays, marked
  * "Anulado", and both are in Historial. The board's answers of 7 November
  * 2026: only a whole payment, at any time, and a reversal is final.
  */
@@ -331,7 +330,6 @@ function ReverseDialog({
   onReversed: (payment: Payment) => void;
 }) {
   const [reason, setReason] = useState("");
-  const [askPin, setAskPin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -340,8 +338,7 @@ function ReverseDialog({
       setError("Escriba por qué se anula.");
       return;
     }
-    setError(null);
-    setAskPin(true);
+    void reverse();
   };
 
   const reverse = async () => {
@@ -357,18 +354,6 @@ function ReverseDialog({
       setSaving(false);
     }
   };
-
-  if (askPin) {
-    return (
-      <ConfirmPin
-        onClose={() => setAskPin(false)}
-        onConfirmed={() => {
-          setAskPin(false);
-          void reverse();
-        }}
-      />
-    );
-  }
 
   return (
     <Dialog title="Anular este pago" onClose={onClose}>
@@ -389,7 +374,7 @@ function ReverseDialog({
           autoFocus={!isTouchScreen()}
         />
       </label>
-      <p className="muted">El pago no se borra: queda marcado como anulado, y los dos quedan en el historial. Se pide su PIN.</p>
+      <p className="muted">El pago no se borra: queda marcado como anulado, y los dos quedan en el historial.</p>
       {error && <p className="message error">{error}</p>}
       <div className="row">
         <button className="btn primary" disabled={saving} onClick={check}>

@@ -11,14 +11,7 @@ import { and, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 
 import { buildApp } from "../src/app.js";
-import {
-  DEVICE_COOKIE,
-  DEVICE_IDLE_LIMIT_MS,
-  SESSION_COOKIE,
-  SESSION_LIFETIME_MS,
-  issueToken,
-  newId,
-} from "../src/auth/session.js";
+import { SESSION_COOKIE, newId, openSession } from "../src/auth/session.js";
 import type { AppConfig } from "../src/config/env.js";
 import { loadConfig } from "../src/config/env.js";
 import { createDb } from "../src/db/client.js";
@@ -26,7 +19,7 @@ import type { Db } from "../src/db/client.js";
 import { runMigrations } from "../src/db/migrations.js";
 import { rolePermissions, users } from "../src/db/schema.js";
 import { seedDatabase } from "../src/db/seeding.js";
-import { hashPin } from "../src/lib/pin.js";
+import { hashPassword, suggestPassword } from "../src/lib/password.js";
 import type { Permission, RoleCode } from "../src/lib/permissions.js";
 import { HONDURAS_TIME_ZONE } from "../src/lib/time.js";
 
@@ -115,39 +108,35 @@ export function nextPhone(): string {
   return `+504${phoneCounter}`;
 }
 
-export const TEST_PIN = "482913";
+/**
+ * A made-up password, new each time the tests run. Never written out in the
+ * code, so a secret scanner has nothing to mistake for a real one.
+ */
+export const madeUpPassword = suggestPassword;
+
+export const TEST_PASSWORD = madeUpPassword();
 
 /**
- * An active user of the given role, signed in on one remembered phone.
+ * An active user of the given role, with TEST_PASSWORD, signed in on one phone.
  * Returns the cookie header to send with `app.inject`.
  */
 export async function signedInUser(
   t: TestDatabase,
   roleCode: RoleCode,
   name = `Prueba ${roleCode}`,
-): Promise<{ id: string; cookie: string; deviceCookie: string; sessionId: string }> {
+): Promise<{ id: string; phone: string; cookie: string; sessionId: string }> {
   const id = newId();
+  const phone = nextPhone();
   await t.db.insert(users).values({
     id,
     name,
-    phone: nextPhone(),
+    phone,
     roleCode,
     status: "active",
-    pinHash: await hashPin(TEST_PIN),
+    passwordHash: await hashPassword(TEST_PASSWORD),
   });
 
-  const device = issueToken(t.db, { userId: id, kind: "device", lifetimeMs: DEVICE_IDLE_LIMIT_MS });
-  const session = issueToken(t.db, {
-    userId: id,
-    kind: "session",
-    lifetimeMs: SESSION_LIFETIME_MS,
-    deviceId: device.id,
-  });
+  const session = openSession(t.db, id);
 
-  return {
-    id,
-    cookie: `${SESSION_COOKIE}=${session.token}; ${DEVICE_COOKIE}=${device.token}`,
-    deviceCookie: `${DEVICE_COOKIE}=${device.token}`,
-    sessionId: session.id,
-  };
+  return { id, phone, cookie: `${SESSION_COOKIE}=${session.token}`, sessionId: session.id };
 }

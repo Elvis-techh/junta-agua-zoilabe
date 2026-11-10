@@ -51,18 +51,11 @@ export interface StaffUser {
   phone: string;
   roleCode: string;
   roleName: string;
+  /** "invited": made before 9 November 2026 and never signed in. New accounts start "active". */
   status: "invited" | "active" | "suspended" | "deactivated";
-  locked: boolean;
+  /** False for an account from before passwords: it cannot sign in until it is given one. */
+  hasPassword: boolean;
   lastLoginAt: string | null;
-  devices: number;
-  invitationExpiresAt: string | null;
-}
-
-export interface Invitation {
-  url: string;
-  message: string;
-  whatsappUrl: string;
-  expiresAt: string;
 }
 
 export interface LogEntry {

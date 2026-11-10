@@ -108,12 +108,17 @@ export const users = sqliteTable(
     roleCode: text("role_code")
       .notNull()
       .references(() => roles.code),
+    /**
+     * New accounts start "active". "invited" is an account made before
+     * 9 November 2026 that never accepted its invitation link.
+     */
     status: text("status", { enum: ["invited", "active", "suspended", "deactivated"] }).notNull(),
-    /** scrypt hash of the 6-digit PIN; null until the invitation is accepted. */
-    pinHash: text("pin_hash"),
-    failedPinCount: integer("failed_pin_count").notNull().default(0),
-    /** Set after 5 wrong PINs; an administrator clears it after a phone call. */
-    lockedAt: instant("locked_at"),
+    /**
+     * scrypt hash of the password the administrator set. Null for an account
+     * from before 9 November 2026 (when a PIN was the way in) until an
+     * administrator gives it a password; until then it cannot sign in.
+     */
+    passwordHash: text("password_hash"),
     lastLoginAt: instant("last_login_at"),
     createdAt: createdAt(),
     createdBy: uuid("created_by"),
@@ -125,11 +130,14 @@ export const users = sqliteTable(
 );
 
 /**
- * Invitation links, remembered phones and sign-in sessions.
+ * Sign-in sessions (kind "session"), one per phone signed in.
+ *
+ * Rows of kind "invitation" and "device", and the columns only they use, are
+ * history from before 9 November 2026, when an invitation link and a 6-digit
+ * PIN were the way in. Nothing writes them now.
  *
  * Only the SHA-256 of each token is stored, so a copy of a backup cannot be
- * used to sign in. A session points at the device it was opened on: removing
- * the device ends its sessions.
+ * used to sign in.
  */
 export const accessTokens = sqliteTable(
   "access_tokens",
@@ -140,15 +148,16 @@ export const accessTokens = sqliteTable(
       .references(() => users.id),
     kind: text("kind", { enum: ["invitation", "device", "session"] }).notNull(),
     tokenHash: text("token_hash").notNull(),
-    /** For a session: the device that opened it. */
+    /** Before 9 November 2026: the remembered phone a session was opened on. */
     deviceId: uuid("device_id"),
-    /** For a device: a short description of the phone, from its browser. */
+    /** Before 9 November 2026: a short description of a remembered phone. */
     label: text("label"),
     expiresAt: instant("expires_at").notNull(),
-    /** For an invitation: when it was used. It works once. */
+    /** Before 9 November 2026: when an invitation link was used. */
     usedAt: instant("used_at"),
+    /** For a session: when it was opened or last pushed forward by use. */
     lastUsedAt: instant("last_used_at"),
-    /** For a session: when the PIN was last typed again for a sensitive action. */
+    /** Before 9 November 2026: when the PIN was last typed again for a sensitive action. */
     pinConfirmedAt: instant("pin_confirmed_at"),
     revokedAt: instant("revoked_at"),
     revokedBy: uuid("revoked_by").references(() => users.id),

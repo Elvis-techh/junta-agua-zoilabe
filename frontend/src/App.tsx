@@ -4,24 +4,17 @@ import type { Me } from "./api.ts";
 import { ApiError, api } from "./api.ts";
 import { Shell } from "./components/Shell.tsx";
 import { recall, remember } from "./queue.ts";
-import { InvitationScreen } from "./screens/Invitation.tsx";
-import { PinScreen } from "./screens/Pin.tsx";
-import { UnregisteredScreen } from "./screens/Unregistered.tsx";
+import { SignInScreen } from "./screens/SignIn.tsx";
 
 type State =
   | { kind: "loading" }
   | { kind: "signedIn"; me: Me; offline: boolean }
-  | { kind: "pinNeeded"; name: string; locked: boolean }
-  | { kind: "unregistered" }
+  | { kind: "signedOut" }
   | { kind: "offline"; message: string };
 
-/**
- * Which screen to show: the invitation (when the link was opened), the PIN pad
- * (a remembered phone), "open your invitation" (an unknown phone), or the app.
- */
+/** Which screen to show: "Entrar" (number and password), or the app. */
 export function App() {
   const [state, setState] = useState<State>({ kind: "loading" });
-  const onInvitation = window.location.pathname === "/invitacion";
 
   const refresh = useCallback(async () => {
     try {
@@ -34,13 +27,10 @@ export function App() {
         // No signal: open on the profile from the last sign-in, so census
         // entries can still be typed. The server checks everything when they are sent.
         setState({ kind: "signedIn", me: remembered, offline: true });
-      } else if (error instanceof ApiError && error.code === "pin_needed") {
-        const device = error.body.device as { name: string; locked: boolean };
-        setState({ kind: "pinNeeded", name: device.name, locked: device.locked });
       } else if (error instanceof ApiError && error.status === 401) {
-        // The phone was removed or never registered: it must not open offline either.
+        // Signed out, or the password changed: it must not open offline either.
         remember("me", null);
-        setState({ kind: "unregistered" });
+        setState({ kind: "signedOut" });
       } else {
         setState({ kind: "offline", message: (error as Error).message });
       }
@@ -50,15 +40,8 @@ export function App() {
   const retry = useCallback(() => void refresh(), [refresh]);
 
   useEffect(() => {
-    if (!onInvitation) {
-      void refresh();
-    }
-  }, [onInvitation, refresh]);
-
-  if (onInvitation) {
-    // A full load of "/" afterwards, so the link (and its token) leaves the address bar and history.
-    return <InvitationScreen onDone={() => window.location.replace("/")} />;
-  }
+    void refresh();
+  }, [refresh]);
 
   switch (state.kind) {
     case "loading":
@@ -70,10 +53,8 @@ export function App() {
           <button className="btn primary block" onClick={() => void refresh()}>Intentar de nuevo</button>
         </main>
       );
-    case "unregistered":
-      return <UnregisteredScreen />;
-    case "pinNeeded":
-      return <PinScreen name={state.name} locked={state.locked} onSignedIn={() => void refresh()} />;
+    case "signedOut":
+      return <SignInScreen onSignedIn={() => void refresh()} />;
     case "signedIn":
       return <Shell me={state.me} offline={state.offline} onSignedOut={() => void refresh()} onRetry={retry} />;
   }
