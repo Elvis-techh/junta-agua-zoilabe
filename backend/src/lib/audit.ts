@@ -37,8 +37,6 @@ export interface Actor {
   name: string;
   /** The role's display name at that moment, e.g. "Tesorero/a". */
   role: string;
-  /** The phone or browser it came from, as its user agent describes it. */
-  device?: string | null;
 }
 
 /** For entries the system writes itself: the first administrator, the nightly check. */
@@ -46,7 +44,7 @@ export const SYSTEM_ACTOR: Actor = { userId: null, name: "Sistema", role: "Siste
 
 export interface AuditEntry {
   area: AuditArea;
-  /** A stable code for filtering, e.g. "user.created", "security.login_failed". */
+  /** A stable code for filtering, e.g. "user.created", "payment.recorded". */
   action: string;
   /** The entry as the Historial reads it, without the date: "Ana (Presidente) creó la cuenta de…". */
   summary: string;
@@ -135,7 +133,10 @@ export function recordAudit(tx: Tx, actor: Actor, entry: AuditEntry): void {
     before: entry.before === undefined ? null : JSON.parse(JSON.stringify(entry.before)),
     after: entry.after === undefined ? null : JSON.parse(JSON.stringify(entry.after)),
     reason: entry.reason ?? null,
-    device: actor.device ? actor.device.slice(0, 300) : null,
+    // The phone's description is no longer kept (owner's decision of
+    // 9 November 2026). The column stays: older entries hold one, and their
+    // hashes cover it.
+    device: null,
   };
 
   tx.insert(auditLog)

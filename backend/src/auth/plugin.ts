@@ -54,13 +54,7 @@ export function actorOf(request: FastifyRequest): Actor {
     userId: user.id,
     name: user.name,
     role: user.roleName,
-    device: deviceOf(request),
   };
-}
-
-export function deviceOf(request: FastifyRequest): string | null {
-  const agent = request.headers["user-agent"];
-  return typeof agent === "string" && agent !== "" ? agent : null;
 }
 
 const authPlugin: FastifyPluginAsync<{ db: Db; secureCookies: boolean }> = async (app, options) => {

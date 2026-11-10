@@ -85,13 +85,15 @@ describe("signing in with phone number and password", () => {
     const stored = await t.db.select({ hash: accessTokens.tokenHash }).from(accessTokens);
     assert.ok(stored.every((s) => s.hash !== token));
 
+    // Signing in leaves no entry in Historial: the account keeps only its last sign-in.
     const actions = (
       await t.db.select({ action: auditLog.action }).from(auditLog).where(eq(auditLog.entityId, userId)).orderBy(asc(auditLog.id))
     ).map((r) => r.action);
-    assert.deepEqual(actions, ["user.created", "security.login"]);
+    assert.deepEqual(actions, ["user.created"]);
+    assert.ok(row!.lastLoginAt && Date.now() - row!.lastLoginAt.getTime() < 60_000);
   });
 
-  it("answers a wrong password and an unknown number with the same words, and never locks", async () => {
+  it("answers a wrong password and an unknown number with the same words, never locks, and fills no Historial", async () => {
     const { userId, phone } = await onboard("Carlos Lara", "segundo_vocal");
 
     const wrong = await login(phone, WRONG_PASSWORD);
@@ -107,8 +109,24 @@ describe("signing in with phone number and password", () => {
     // Nobody has to call the administrator: the right password still opens it.
     assert.equal((await login(phone, TEST_PASSWORD)).statusCode, 200);
 
+    // Nobody outside can fill Historial, whose entries are never deleted, by guessing.
     const log = await t.db.select({ action: auditLog.action }).from(auditLog).where(eq(auditLog.entityId, userId));
-    assert.equal(log.filter((e) => e.action === "security.login_failed").length, 8);
+    assert.deepEqual(log.map((e) => e.action), ["user.created"]);
+  });
+
+  it("keeps no phone description on new Historial entries", async () => {
+    const created = await t.app.inject({
+      method: "POST",
+      url: "/api/users",
+      headers: { cookie: admin.cookie, "user-agent": "Mozilla/5.0 (Linux; Android 14; SM-A145M) Chrome/130.0" },
+      payload: { name: "Delia Dispositivo", phone: nextPhone(), roleCode: "fiscal", password: madeUpPassword() },
+    });
+    assert.equal(created.statusCode, 201);
+    const [entry] = await t.db
+      .select({ device: auditLog.device })
+      .from(auditLog)
+      .where(eq(auditLog.entityId, created.json().user.id));
+    assert.equal(entry?.device, null);
   });
 
   it("holds back guessing with a per-minute limit on signing in", async () => {
@@ -294,7 +312,7 @@ describe("signing in with phone number and password", () => {
   it("leaves the history log chain intact through all of it", async () => {
     const check = await verifyChain(t.db);
     assert.equal(check.ok, true);
-    assert.ok(check.checked > 40);
+    assert.ok(check.checked > 15);
   });
 });
 
