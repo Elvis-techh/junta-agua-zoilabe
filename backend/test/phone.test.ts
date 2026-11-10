@@ -13,7 +13,7 @@ import { MIGRATIONS_FOLDER, runMigrations } from "../src/db/migrations.js";
 import { rolePermissions } from "../src/db/schema.js";
 import { maskPhone, PHONE_COUNTRIES, phoneSearchPatterns, readPhone } from "../src/lib/phone.js";
 import type { TestApp } from "./helpers.js";
-import { buildTestApp, signedInUser } from "./helpers.js";
+import { buildTestApp, madeUpPassword, signedInUser } from "./helpers.js";
 
 describe("reading a phone number", () => {
   it("keeps each country's number with its code", () => {
@@ -155,17 +155,18 @@ describe("phones on the census and on accounts", () => {
   });
 
   it("signs in an account with another country's number", async () => {
+    const chosen = madeUpPassword();
     const created = await call(admin.cookie, "POST", "/api/users", {
       name: "Carla Mejía",
       phone: "+12025550188",
       roleCode: "fiscal",
-      password: "carla2026",
+      password: chosen,
     });
     assert.equal(created.statusCode, 201);
     const signedIn = await t.app.inject({
       method: "POST",
       url: "/api/auth/login",
-      payload: { phone: "+12025550188", password: "carla2026" },
+      payload: { phone: "+12025550188", password: chosen },
     });
     assert.equal(signedIn.statusCode, 200);
 
@@ -174,7 +175,7 @@ describe("phones on the census and on accounts", () => {
       name: "Otra Persona",
       phone: "+12025550188",
       roleCode: "fiscal",
-      password: "otra2026",
+      password: madeUpPassword(),
     });
     assert.equal(again.statusCode, 409);
   });

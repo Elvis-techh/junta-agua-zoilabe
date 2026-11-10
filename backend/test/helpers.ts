@@ -19,7 +19,7 @@ import type { Db } from "../src/db/client.js";
 import { runMigrations } from "../src/db/migrations.js";
 import { rolePermissions, users } from "../src/db/schema.js";
 import { seedDatabase } from "../src/db/seeding.js";
-import { hashPassword } from "../src/lib/password.js";
+import { hashPassword, suggestPassword } from "../src/lib/password.js";
 import type { Permission, RoleCode } from "../src/lib/permissions.js";
 import { HONDURAS_TIME_ZONE } from "../src/lib/time.js";
 
@@ -108,7 +108,13 @@ export function nextPhone(): string {
   return `+504${phoneCounter}`;
 }
 
-export const TEST_PASSWORD = "bamu4827";
+/**
+ * A made-up password, new each time the tests run. Never written out in the
+ * code, so a secret scanner has nothing to mistake for a real one.
+ */
+export const madeUpPassword = suggestPassword;
+
+export const TEST_PASSWORD = madeUpPassword();
 
 /**
  * An active user of the given role, with TEST_PASSWORD, signed in on one phone.

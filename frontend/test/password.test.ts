@@ -13,14 +13,15 @@ describe("passwords on the screens", () => {
     };
     assert.equal(PASSWORD_MIN_LENGTH, server.PASSWORD_MIN_LENGTH);
     assert.equal(PASSWORD_MAX_LENGTH, server.PASSWORD_MAX_LENGTH);
-    for (const password of ["", "abc", "  abcde  ", "abcdef", "123456", "x".repeat(101)]) {
-      assert.equal(passwordProblem(password), server.passwordProblem(password), JSON.stringify(password));
+    for (const sample of ["", "x".repeat(3), `  ${"x".repeat(5)}  `, "x".repeat(6), "1".repeat(6), "x".repeat(101)]) {
+      assert.equal(passwordProblem(sample), server.passwordProblem(sample), JSON.stringify(sample));
     }
   });
 
   it("needs at least six letters or numbers", () => {
-    assert.match(passwordProblem("bamu4")!, /al menos 6/);
-    assert.equal(passwordProblem("bamu48"), null);
+    const five = "x".repeat(5);
+    assert.match(passwordProblem(five)!, /al menos 6/);
+    assert.equal(passwordProblem(`${five}y`), null);
   });
 
   it("suggests one that is easy to read aloud: two syllables, four digits, nothing that looks alike", () => {

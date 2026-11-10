@@ -13,7 +13,10 @@ import { MIGRATIONS_FOLDER, runMigrations } from "../src/db/migrations.js";
 import { accessTokens, auditLog, users } from "../src/db/schema.js";
 import { verifyChain } from "../src/lib/audit.js";
 import type { TestApp } from "./helpers.js";
-import { TEST_PASSWORD, buildTestApp, nextPhone, signedInUser, takeAway } from "./helpers.js";
+import { TEST_PASSWORD, buildTestApp, madeUpPassword, nextPhone, signedInUser, takeAway } from "./helpers.js";
+
+/** Not TEST_PASSWORD, whatever it is this run. */
+const WRONG_PASSWORD = `${TEST_PASSWORD}-no`;
 
 /** The cookie header a browser would send after this response. */
 function cookieFrom(response: LightMyRequestResponse): string {
@@ -51,9 +54,10 @@ describe("signing in with phone number and password", () => {
   }
 
   it("takes a new board member from a new account to signed in, with no link and no PIN", async () => {
+    const chosen = madeUpPassword();
     const created = await post(
       "/api/users",
-      { name: "Juan Pérez", phone: "98761234", roleCode: "tesorero", password: "pino2468" },
+      { name: "Juan Pérez", phone: "98761234", roleCode: "tesorero", password: chosen },
       admin.cookie,
     );
     assert.equal(created.statusCode, 201, created.body);
@@ -61,7 +65,7 @@ describe("signing in with phone number and password", () => {
     const userId = created.json().user.id;
 
     // The Honduran digits alone, as an older entry would send them, find the same account.
-    const signedIn = await login("98761234", "pino2468");
+    const signedIn = await login("98761234", chosen);
     assert.equal(signedIn.statusCode, 200, signedIn.body);
     const [cookie] = signedIn.cookies as Array<{ name: string; httpOnly?: boolean; maxAge?: number }>;
     assert.equal(cookie?.name, SESSION_COOKIE);
@@ -76,7 +80,7 @@ describe("signing in with phone number and password", () => {
     // Only fingerprints are stored: of the password, and of the session token.
     const [row] = await t.db.select().from(users).where(eq(users.id, userId));
     assert.match(row!.passwordHash!, /^scrypt\$/);
-    assert.ok(!row!.passwordHash!.includes("pino2468"));
+    assert.ok(!row!.passwordHash!.includes(chosen));
     const token = cookieFrom(signedIn).split("=")[1];
     const stored = await t.db.select({ hash: accessTokens.tokenHash }).from(accessTokens);
     assert.ok(stored.every((s) => s.hash !== token));
@@ -90,7 +94,7 @@ describe("signing in with phone number and password", () => {
   it("answers a wrong password and an unknown number with the same words, and never locks", async () => {
     const { userId, phone } = await onboard("Carlos Lara", "segundo_vocal");
 
-    const wrong = await login(phone, "equivocada");
+    const wrong = await login(phone, WRONG_PASSWORD);
     const unknown = await login(nextPhone(), TEST_PASSWORD);
     assert.equal(wrong.statusCode, 401);
     assert.equal(unknown.statusCode, 401);
@@ -98,7 +102,7 @@ describe("signing in with phone number and password", () => {
     assert.match(wrong.json().message, /no coinciden/);
 
     for (let attempt = 0; attempt < 7; attempt += 1) {
-      assert.equal((await login(phone, "equivocada")).statusCode, 401);
+      assert.equal((await login(phone, WRONG_PASSWORD)).statusCode, 401);
     }
     // Nobody has to call the administrator: the right password still opens it.
     assert.equal((await login(phone, TEST_PASSWORD)).statusCode, 200);
@@ -115,7 +119,7 @@ describe("signing in with phone number and password", () => {
         const response = await strict.app.inject({
           method: "POST",
           url: "/api/auth/login",
-          payload: { phone: nextPhone(), password: "adivinanza" },
+          payload: { phone: nextPhone(), password: madeUpPassword() },
         });
         statuses.push(response.statusCode);
       }
@@ -126,7 +130,7 @@ describe("signing in with phone number and password", () => {
   });
 
   it("refuses a short password and a bad number in plain Spanish", async () => {
-    const short = await post("/api/users", { name: "Ana López", phone: nextPhone(), roleCode: "fiscal", password: "abc" }, admin.cookie);
+    const short = await post("/api/users", { name: "Ana López", phone: nextPhone(), roleCode: "fiscal", password: TEST_PASSWORD.slice(0, 3) }, admin.cookie);
     assert.equal(short.statusCode, 400);
     assert.match(short.json().message, /al menos 6 letras o números/);
 
@@ -206,13 +210,14 @@ describe("signing in with phone number and password", () => {
     const member = await onboard("Mario Teléfono", "fiscal");
     const secondPhone = cookieFrom(await login(member.phone, TEST_PASSWORD));
 
-    const changed = await post(`/api/users/${member.userId}/password`, { password: "nuevo5555" }, admin.cookie);
+    const newOne = madeUpPassword();
+    const changed = await post(`/api/users/${member.userId}/password`, { password: newOne }, admin.cookie);
     assert.equal(changed.statusCode, 200, changed.body);
 
     assert.equal((await get("/api/auth/me", member.cookie)).statusCode, 401);
     assert.equal((await get("/api/auth/me", secondPhone)).statusCode, 401);
     assert.equal((await login(member.phone, TEST_PASSWORD)).statusCode, 401);
-    assert.equal((await login(member.phone, "nuevo5555")).statusCode, 200);
+    assert.equal((await login(member.phone, newOne)).statusCode, 200);
 
     const [entry] = await t.db
       .select({ summary: auditLog.summary })
@@ -220,14 +225,14 @@ describe("signing in with phone number and password", () => {
       .where(eq(auditLog.action, "user.password_changed"));
     assert.equal(entry?.summary, "Ana Admin (Administrador) cambió la contraseña de Mario Teléfono");
 
-    assert.equal((await post(`/api/users/${member.userId}/password`, { password: "abc" }, admin.cookie)).statusCode, 400);
+    assert.equal((await post(`/api/users/${member.userId}/password`, { password: newOne.slice(0, 3) }, admin.cookie)).statusCode, 400);
   });
 
   it("keeps you signed in on the phone where you change your own password", async () => {
     const own = await onboard("Olga Propia", "presidente");
     const otherPhone = cookieFrom(await login(own.phone, TEST_PASSWORD));
 
-    assert.equal((await post(`/api/users/${own.userId}/password`, { password: "propia7777" }, own.cookie)).statusCode, 200);
+    assert.equal((await post(`/api/users/${own.userId}/password`, { password: madeUpPassword() }, own.cookie)).statusCode, 200);
     assert.equal((await get("/api/auth/me", own.cookie)).statusCode, 200);
     assert.equal((await get("/api/auth/me", otherPhone)).statusCode, 401);
   });
@@ -257,7 +262,7 @@ describe("signing in with phone number and password", () => {
     assert.equal(refused.statusCode, 403);
     assert.match(refused.json().message, /no está activa/);
     // A wrong password is not told the account is suspended.
-    assert.equal((await login(member.phone, "equivocada")).statusCode, 401);
+    assert.equal((await login(member.phone, WRONG_PASSWORD)).statusCode, 401);
 
     assert.equal((await post(`/api/users/${member.userId}/reactivate`, {}, admin.cookie)).statusCode, 200);
     assert.equal((await login(member.phone, TEST_PASSWORD)).statusCode, 200);
