@@ -7,7 +7,7 @@ import ts from "typescript";
 const SOURCE = new URL("../src/", import.meta.url);
 
 /** These take a plain "should it focus" and ask `isTouchScreen` themselves, on their own input. */
-const DECIDE_FOR_THEMSELVES = new Set(["PinField", "CensusScreen"]);
+const DECIDE_FOR_THEMSELVES = new Set(["CensusScreen"]);
 
 /** Every `autoFocus` written in the screens: where, on which element, and with what value. */
 function autoFocusUses(): Array<{ where: string; element: string; value: string }> {

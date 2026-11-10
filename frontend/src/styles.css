@@ -271,11 +271,11 @@ select {
   cursor: pointer;
 }
 
-input.pin {
-  font-size: 2rem;
-  letter-spacing: 0.6em;
-  text-align: center;
-  padding-left: 0.6em;
+/* PasswordField.tsx: the password and "Ver" side by side. */
+.password-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
 }
 
 /* The computer's month and date fields (CalendarField.tsx). A phone keeps its own. */

@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api.ts";
 import { formatLempiras, parseLempiras } from "../census.ts";
 import { AmountInput } from "../components/AmountInput.tsx";
-import { ConfirmPin } from "../components/ConfirmPin.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import { MonthField } from "../components/CalendarField.tsx";
 import { Icon } from "../icons.tsx";
@@ -71,9 +70,9 @@ export function removalEffect(fee: Fee, rate: Rate): string {
 }
 
 /**
- * What is wrong with the form, said before the PIN is asked for, or null.
+ * What is wrong with the form, said before "¿Está correcto?", or null.
  * The server checks all of it again; a month already taken would otherwise
- * only show up after the PIN.
+ * only show up after "Sí, guardar".
  */
 export function feeFormProblem(
   { fee, rate }: Editing,
@@ -243,8 +242,8 @@ export function FeesSection() {
 
 /**
  * "Quitar": an amount the board did not mean, or no longer wants. It says
- * what its months go back to, asks why, then asks for the PIN. The server
- * keeps the amount, marked removed, and the history shows who and why.
+ * what its months go back to and asks why. The server keeps the amount,
+ * marked removed, and the history shows who and why.
  */
 function RemoveDialog({
   fee,
@@ -259,7 +258,6 @@ function RemoveDialog({
 }) {
   const title = FEES[fee.kind].title;
   const [reason, setReason] = useState("");
-  const [askPin, setAskPin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -268,8 +266,7 @@ function RemoveDialog({
       setError("Escriba por qué se quita.");
       return;
     }
-    setError(null);
-    setAskPin(true);
+    void remove();
   };
 
   const remove = async () => {
@@ -283,18 +280,6 @@ function RemoveDialog({
       setSaving(false);
     }
   };
-
-  if (askPin) {
-    return (
-      <ConfirmPin
-        onClose={() => setAskPin(false)}
-        onConfirmed={() => {
-          setAskPin(false);
-          void remove();
-        }}
-      />
-    );
-  }
 
   return (
     <Dialog title="Quitar este monto" onClose={onClose}>
@@ -311,7 +296,7 @@ function RemoveDialog({
           autoFocus={!isTouchScreen()}
         />
       </label>
-      <p className="muted">Queda en el historial y no se puede borrar. Para quitarlo se pide su PIN.</p>
+      <p className="muted">Queda en el historial y no se puede borrar.</p>
       {error && <p className="message error">{error}</p>}
       <div className="row">
         <button className="btn primary" disabled={saving} onClick={check}>
@@ -342,7 +327,7 @@ function FeeDialog({
   // The month field works with "YYYY-MM".
   const [month, setMonth] = useState((fee.earliestStart ?? today).slice(0, 7));
   const [reason, setReason] = useState("");
-  const [step, setStep] = useState<"form" | "confirm" | "pin">("form");
+  const [step, setStep] = useState<"form" | "confirm">("form");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -375,18 +360,6 @@ function FeeDialog({
     }
   };
 
-  if (step === "pin") {
-    return (
-      <ConfirmPin
-        onClose={() => setStep("confirm")}
-        onConfirmed={() => {
-          setStep("confirm");
-          void save();
-        }}
-      />
-    );
-  }
-
   return (
     <Dialog title={rate ? `Corregir ${title.toLowerCase()}` : title} onClose={onClose}>
       {step === "confirm" ? (
@@ -402,9 +375,9 @@ function FeeDialog({
               <strong>{formatMonth(startsOn!)}</strong>.
             </p>
           )}
-          <p className="muted">Queda en el historial y no se puede borrar. Para guardar se pide su PIN.</p>
+          <p className="muted">Queda en el historial y no se puede borrar.</p>
           <div className="row">
-            <button className="btn go" disabled={saving} onClick={() => setStep("pin")}>
+            <button className="btn go" disabled={saving} onClick={() => void save()}>
               <Icon name="check" /> Sí, guardar
             </button>
             <button className="btn" disabled={saving} onClick={() => setStep("form")}>

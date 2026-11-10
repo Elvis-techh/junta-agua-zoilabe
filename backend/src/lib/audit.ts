@@ -46,7 +46,7 @@ export const SYSTEM_ACTOR: Actor = { userId: null, name: "Sistema", role: "Siste
 
 export interface AuditEntry {
   area: AuditArea;
-  /** A stable code for filtering, e.g. "user.created", "security.pin_failed". */
+  /** A stable code for filtering, e.g. "user.created", "security.login_failed". */
   action: string;
   /** The entry as the Historial reads it, without the date: "Ana (Presidente) creó la cuenta de…". */
   summary: string;

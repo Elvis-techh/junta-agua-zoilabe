@@ -7,8 +7,7 @@
  * shows every price the board has ever set. Until a payment has been made at
  * an amount, it can be corrected if it was typed wrong, or removed ("Quitar")
  * if the board did not mean it or no longer wants it: the row stays, marked
- * removed, and the amount before it applies again. Both need a written reason;
- * every change asks for the PIN again.
+ * removed, and the amount before it applies again. Both need a written reason.
  */
 import { and, desc, eq, isNull } from "drizzle-orm";
 import type { FastifyPluginAsync } from "fastify";
@@ -83,7 +82,6 @@ function liveRate(tx: Tx, idParam: string) {
 
 export const feeRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app, options) => {
   const guard = { preHandler: app.requirePermission("settings:edit") };
-  const guardWithPin = { preHandler: [app.requirePermission("settings:edit"), app.requireRecentPin] };
   const today = () => businessToday(options.timeZone);
 
   app.get("/settings/fees", guard, async () => {
@@ -116,7 +114,7 @@ export const feeRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app, o
     return { today: day, fees };
   });
 
-  app.post("/settings/fees", guardWithPin, async (request, reply) => {
+  app.post("/settings/fees", guard, async (request, reply) => {
     const body = parse(createBody, request.body);
     const actor = actorOf(request);
     const day = today();
@@ -178,7 +176,7 @@ export const feeRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app, o
     return reply.code(201).send({ rate });
   });
 
-  app.patch<{ Params: { id: string } }>("/settings/fees/:id", guardWithPin, async (request) => {
+  app.patch<{ Params: { id: string } }>("/settings/fees/:id", guard, async (request) => {
     const body = parse(correctBody, request.body);
     const actor = actorOf(request);
 
@@ -219,7 +217,7 @@ export const feeRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app, o
    * counting, so its months go back to the amount before it. Refused once a
    * payment covers its month, like a correction: a paid month keeps its price.
    */
-  app.post<{ Params: { id: string } }>("/settings/fees/:id/remove", guardWithPin, async (request) => {
+  app.post<{ Params: { id: string } }>("/settings/fees/:id/remove", guard, async (request) => {
     const body = parse(removeBody, request.body);
     const actor = actorOf(request);
 

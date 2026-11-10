@@ -14,7 +14,7 @@ import { earliestFeeStart, firstOfMonth, monthAfter, paidFrom } from "../src/lib
 import { feeOn } from "../src/lib/settings.js";
 import { HONDURAS_TIME_ZONE, businessToday } from "../src/lib/time.js";
 import type { TestApp } from "./helpers.js";
-import { TEST_PIN, buildTestApp, rejectsWithDbError, signedInUser, takeAway } from "./helpers.js";
+import { buildTestApp, rejectsWithDbError, signedInUser, takeAway } from "./helpers.js";
 
 describe("the earliest month a fee may start", () => {
   it("is any month for the first amount, and this month after that", () => {
@@ -55,15 +55,6 @@ describe("Configuración → Cuotas", () => {
     t.app.inject({ method: "PATCH", url: `/api/settings/fees/${id}`, headers: { cookie }, payload });
   const remove = (cookie: string, id: number, payload: object) =>
     t.app.inject({ method: "POST", url: `/api/settings/fees/${id}/remove`, headers: { cookie }, payload });
-  const confirmPin = async (cookie: string) => {
-    const confirmed = await t.app.inject({
-      method: "POST",
-      url: "/api/auth/confirm-pin",
-      headers: { cookie },
-      payload: { pin: TEST_PIN },
-    });
-    assert.equal(confirmed.statusCode, 200);
-  };
   const baseRates = async () => {
     const list = await call(president.cookie, "GET");
     return list.json().fees.find((fee: { kind: string }) => fee.kind === "base_monthly");
@@ -86,14 +77,6 @@ describe("Configuración → Cuotas", () => {
       assert.equal(fee.currentId, null);
       assert.equal(fee.earliestStart, null);
     }
-  });
-
-  it("asks for the PIN again before saving", async () => {
-    const sent = await call(president.cookie, "POST", { kind: "base_monthly", amountCentavos: 7000, startsOn: lastYear });
-    assert.equal(sent.statusCode, 403);
-    assert.equal(sent.json().error, "pin_required");
-    assert.equal((await t.db.select().from(feeRates)).length, 0);
-    await confirmPin(president.cookie);
   });
 
   it("refuses amounts that are not whole centavos of zero or more, and starts that are not a month", async () => {
@@ -301,15 +284,6 @@ describe("Configuración → Cuotas", () => {
     assert.equal(reconnection.earliestStart, null);
   });
 
-  it("asks for the PIN again before removing", async () => {
-    const vice = await signedInUser(t, "vicepresidente");
-    const [upcoming] = (await baseRates()).rates;
-    const sent = await remove(vice.cookie, upcoming.id, { reason: "La junta no lo aprobó" });
-    assert.equal(sent.statusCode, 403);
-    assert.equal(sent.json().error, "pin_required");
-    assert.equal(feeOn(t.db, "base_monthly", nextMonth), 9000);
-  });
-
   it("refuses a removed amount with no reason, even from outside the app", async () => {
     const [current] = await t.db.select().from(feeRates).where(eq(feeRates.amountCentavos, 7500));
     await rejectsWithDbError(
@@ -337,13 +311,6 @@ describe("a fee set for a later month", () => {
     president = await signedInUser(t, "presidente", "Ana Presidenta");
     secretary = await signedInUser(t, "secretario");
 
-    const confirmed = await t.app.inject({
-      method: "POST",
-      url: "/api/auth/confirm-pin",
-      headers: { cookie: president.cookie },
-      payload: { pin: TEST_PIN },
-    });
-    assert.equal(confirmed.statusCode, 200);
     for (const [amountCentavos, startsOn] of [[10000, "2026-11-01"], [7000, "2027-01-01"]] as const) {
       const sent = await t.app.inject({
         method: "POST",

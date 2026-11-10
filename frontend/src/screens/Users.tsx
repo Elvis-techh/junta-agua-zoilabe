@@ -1,26 +1,28 @@
 import { useCallback, useEffect, useState } from "react";
 
-import type { Invitation, Me, StaffUser } from "../api.ts";
+import type { Me, StaffUser } from "../api.ts";
 import { api } from "../api.ts";
-import { ConfirmPin } from "../components/ConfirmPin.tsx";
 import { Dialog } from "../components/Dialog.tsx";
+import { PasswordField } from "../components/PasswordField.tsx";
 import { PhoneField } from "../components/PhoneField.tsx";
 import { Icon } from "../icons.tsx";
+import { passwordProblem, suggestPassword } from "../password.ts";
 import { EMPTY_PHONE, formatPhone, phoneProblem, wholePhone } from "../phone.ts";
 import { ROLES, roleName } from "../roles.ts";
-import { formatDate, formatDateTime } from "../time.ts";
+import { formatDateTime } from "../time.ts";
 import { isTouchScreen } from "../viewport.ts";
 
 /** Status as word + icon + color together, never color alone. */
 function StatusBadge({ user }: { user: StaffUser }) {
-  if (user.locked) {
-    return <span className="status danger"><Icon name="lock" size={18} /> Bloqueada</span>;
-  }
   switch (user.status) {
     case "active":
-      return <span className="status ok"><Icon name="check" size={18} /> Activa</span>;
     case "invited":
-      return <span className="status warn"><Icon name="clock" size={18} /> Invitada</span>;
+      // An account from before passwords cannot sign in until it gets one.
+      return user.hasPassword ? (
+        <span className="status ok"><Icon name="check" size={18} /> Activa</span>
+      ) : (
+        <span className="status warn"><Icon name="lock" size={18} /> Sin contraseña</span>
+      );
     case "suspended":
       return <span className="status danger"><Icon name="x" size={18} /> Suspendida</span>;
     case "deactivated":
@@ -33,6 +35,7 @@ export function UsersScreen({ me }: { me: Me }) {
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<StaffUser | null>(null);
+  const [created, setCreated] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -82,9 +85,10 @@ export function UsersScreen({ me }: { me: Me }) {
       {creating && (
         <CreateUser
           onClose={() => setCreating(false)}
-          onCreated={(id) => {
+          onCreated={(id, message) => {
             setCreating(false);
-            // Open the new account straight away: the next step is its invitation.
+            // Open the new account straight away, with the number and password to give the person.
+            setCreated(message);
             void api<{ users: StaffUser[] }>("GET", "/users").then((data) => {
               setUsers(data.users);
               setSelected(data.users.find((u) => u.id === id) ?? null);
@@ -94,27 +98,50 @@ export function UsersScreen({ me }: { me: Me }) {
       )}
 
       {selected && (
-        <UserActions user={selected} isSelf={selected.id === me.id} onClose={() => setSelected(null)} onChanged={load} />
+        <UserActions
+          user={selected}
+          isSelf={selected.id === me.id}
+          firstMessage={created}
+          onClose={() => {
+            setSelected(null);
+            setCreated(null);
+          }}
+          onChanged={load}
+        />
       )}
     </main>
   );
 }
 
-/** Nueva cuenta: name, WhatsApp, role, then "¿Está correcto?". */
-function CreateUser({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
+/** What to tell the person, so they can sign in. */
+function signInWords(phone: string, password: string): string {
+  return `Para entrar: el número ${formatPhone(phone)} y la contraseña ${password}`;
+}
+
+/** Nueva cuenta: name, WhatsApp, role and password, then "¿Está correcto?". */
+function CreateUser({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string, message: string) => void }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState(EMPTY_PHONE);
   const [roleCode, setRoleCode] = useState("");
+  // Offered ready to use; the administrator can type another.
+  const [password, setPassword] = useState(suggestPassword);
   const [reviewing, setReviewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const review = () => {
+    const problem = passwordProblem(password);
+    setError(problem);
+    if (!problem) setReviewing(true);
+  };
 
   const save = async () => {
     setBusy(true);
     setError(null);
     try {
-      const { user } = await api<{ user: { id: string } }>("POST", "/users", { name, phone: wholePhone(phone), roleCode });
-      onCreated(user.id);
+      const whole = wholePhone(phone);
+      const { user } = await api<{ user: { id: string } }>("POST", "/users", { name, phone: whole, roleCode, password });
+      onCreated(user.id, `Cuenta creada. ${signInWords(whole, password)}.`);
     } catch (err) {
       setError((err as Error).message);
       setReviewing(false);
@@ -146,11 +173,13 @@ function CreateUser({ onClose, onCreated }: { onClose: () => void; onCreated: (i
               ))}
             </select>
           </label>
+          {/* Offered ready to use. No line under it: "Siguiente" must still fit on a phone's screen. */}
+          <PasswordField label="Contraseña para entrar" value={password} onChange={setPassword} isNew />
           {error && <p className="message error">{error}</p>}
           <button
             className="btn go block"
             disabled={name.trim().length < 3 || phoneProblem(phone) !== null || !roleCode}
-            onClick={() => setReviewing(true)}
+            onClick={review}
           >
             Siguiente
           </button>
@@ -162,7 +191,9 @@ function CreateUser({ onClose, onCreated }: { onClose: () => void; onCreated: (i
             <strong>{name.trim()}</strong>
             <div>WhatsApp: {formatPhone(wholePhone(phone))}</div>
             <div>Cargo: {roleName(roleCode)}</div>
+            <div>Contraseña: {password}</div>
           </div>
+          <p>Désela a la persona: con su número y esta contraseña entra a la app.</p>
           <button className="btn go block" disabled={busy} onClick={() => void save()}>
             <Icon name="check" /> Sí, crear la cuenta
           </button>
@@ -178,19 +209,21 @@ function CreateUser({ onClose, onCreated }: { onClose: () => void; onCreated: (i
 function UserActions({
   user,
   isSelf,
+  firstMessage,
   onClose,
   onChanged,
 }: {
   user: StaffUser;
   isSelf: boolean;
+  firstMessage: string | null;
   onClose: () => void;
   onChanged: () => Promise<void>;
 }) {
-  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
-  const [invitation, setInvitation] = useState<Invitation | null>(null);
+  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(
+    firstMessage ? { kind: "ok", text: firstMessage } : null,
+  );
   const [newRole, setNewRole] = useState(user.roleCode);
-  const [askPin, setAskPin] = useState(false);
-  const [devices, setDevices] = useState<Array<{ id: string; label: string | null; lastUsedAt: string | null }> | null>(null);
+  const [newPassword, setNewPassword] = useState<string | null>(null);
 
   const run = async (action: () => Promise<unknown>, done: string) => {
     setMessage(null);
@@ -203,20 +236,20 @@ function UserActions({
     }
   };
 
-  const invite = () =>
-    run(async () => {
-      setInvitation(await api<Invitation>("POST", `/users/${user.id}/invitation`));
-    }, "Invitación lista. Envíela por WhatsApp.");
-
-  const loadDevices = async () => {
-    const data = await api<{ devices: Array<{ id: string; label: string | null; lastUsedAt: string | null }> }>(
-      "GET",
-      `/users/${user.id}/devices`,
+  const savePassword = async (password: string) => {
+    const problem = passwordProblem(password);
+    if (problem) {
+      setMessage({ kind: "error", text: problem });
+      return;
+    }
+    await run(
+      () => api("POST", `/users/${user.id}/password`, { password }),
+      isSelf
+        ? `Su contraseña nueva es ${password}.`
+        : `Contraseña cambiada. ${signInWords(user.phone, password)}. Si tenía la app abierta en otro teléfono, ahí tendrá que entrar otra vez.`,
     );
-    setDevices(data.devices);
+    setNewPassword(null);
   };
-
-  const canInvite = user.status === "invited" || user.status === "active";
 
   return (
     <Dialog title={user.name} onClose={onClose}>
@@ -227,35 +260,31 @@ function UserActions({
 
       {message && <p className={`message ${message.kind}`}>{message.text}</p>}
 
-      {invitation ? (
-        <div className="card stack">
-          <p>El enlace sirve una sola vez, hasta el {formatDateTime(invitation.expiresAt)}</p>
-          <a className="btn go block" href={invitation.whatsappUrl} target="_blank" rel="noreferrer">
-            <Icon name="whatsapp" /> Enviar por WhatsApp
-          </a>
-          <button
-            className="btn block"
-            onClick={() => void navigator.clipboard?.writeText(invitation.message).then(() => setMessage({ kind: "ok", text: "Mensaje copiado." }))}
-          >
-            Copiar el mensaje
+      {user.status !== "deactivated" &&
+        (newPassword === null ? (
+          <button className="btn primary block" onClick={() => setNewPassword(suggestPassword())}>
+            <Icon name="lock" /> {user.hasPassword ? "Cambiar contraseña" : "Poner contraseña"}
           </button>
-        </div>
-      ) : (
-        canInvite && (
-          <button className="btn primary block" onClick={() => void invite()}>
-            <Icon name="whatsapp" /> {user.status === "invited" ? "Enviar invitación" : "Enviar invitación nueva (PIN nuevo)"}
-          </button>
-        )
-      )}
-
-      {user.locked && (
-        <button
-          className="btn primary block"
-          onClick={() => void run(() => api("POST", `/users/${user.id}/unlock`), "Cuenta desbloqueada.")}
-        >
-          <Icon name="lock" /> Desbloquear (después de llamarle por teléfono)
-        </button>
-      )}
+        ) : (
+          <div className="card stack">
+            <PasswordField
+              label="Contraseña nueva"
+              value={newPassword}
+              onChange={setNewPassword}
+              onEnter={() => void savePassword(newPassword)}
+              isNew
+            />
+            <p className="muted">
+              {isSelf ? "Puede dejar esta o escribir otra." : "Puede dejar esta o escribir otra. Désela a la persona."}
+            </p>
+            <button className="btn go block" onClick={() => void savePassword(newPassword)}>
+              <Icon name="check" /> Guardar contraseña
+            </button>
+            <button className="btn block" onClick={() => setNewPassword(null)}>
+              <Icon name="back" /> Volver
+            </button>
+          </div>
+        ))}
 
       {!isSelf && user.status !== "deactivated" && (
         <>
@@ -267,39 +296,19 @@ function UserActions({
               </option>
             ))}
           </select>
-          <button className="btn block" disabled={newRole === user.roleCode} onClick={() => setAskPin(true)}>
+          <button
+            className="btn block"
+            disabled={newRole === user.roleCode}
+            onClick={() =>
+              void run(
+                () => api("PATCH", `/users/${user.id}/role`, { roleCode: newRole }),
+                `Cargo cambiado a ${roleName(newRole)}.`,
+              )
+            }
+          >
             <Icon name="check" /> Cambiar cargo a {roleName(newRole)}
           </button>
         </>
-      )}
-
-      <h2>Teléfonos registrados</h2>
-      {devices === null ? (
-        <button className="btn block" onClick={() => void loadDevices()}>
-          <Icon name="phone" /> Ver teléfonos ({user.devices})
-        </button>
-      ) : devices.length === 0 ? (
-        <p className="muted">Ningún teléfono registrado.</p>
-      ) : (
-        devices.map((device) => (
-          <div key={device.id} className="card row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-            <div>
-              <strong>{device.label ?? "Teléfono"}</strong>
-              <div className="muted">{device.lastUsedAt ? `Usado: ${formatDate(device.lastUsedAt)}` : "Sin usar todavía"}</div>
-            </div>
-            <button
-              className="btn danger"
-              onClick={() =>
-                void run(async () => {
-                  await api("POST", `/users/${user.id}/devices/${device.id}/remove`);
-                  await loadDevices();
-                }, "Teléfono quitado. Envíe una invitación nueva para el teléfono nuevo.")
-              }
-            >
-              <Icon name="x" /> Quitar
-            </button>
-          </div>
-        ))
       )}
 
       {!isSelf && (
@@ -308,7 +317,7 @@ function UserActions({
           {(user.status === "active" || user.status === "invited") && (
             <button
               className="btn danger block"
-              onClick={() => void run(() => api("POST", `/users/${user.id}/suspend`, {}), "Cuenta suspendida.")}
+              onClick={() => void run(() => api("POST", `/users/${user.id}/suspend`, {}), "Cuenta suspendida. Ya no puede entrar.")}
             >
               Suspender
             </button>
@@ -316,7 +325,7 @@ function UserActions({
           {user.status === "suspended" && (
             <button
               className="btn block"
-              onClick={() => void run(() => api("POST", `/users/${user.id}/reactivate`), "Cuenta reactivada. Envíe una invitación nueva.")}
+              onClick={() => void run(() => api("POST", `/users/${user.id}/reactivate`), "Cuenta reactivada. Entra con la misma contraseña.")}
             >
               Reactivar
             </button>
@@ -333,19 +342,6 @@ function UserActions({
             </button>
           )}
         </>
-      )}
-
-      {askPin && (
-        <ConfirmPin
-          onClose={() => setAskPin(false)}
-          onConfirmed={() => {
-            setAskPin(false);
-            void run(
-              () => api("PATCH", `/users/${user.id}/role`, { roleCode: newRole }),
-              `Cargo cambiado a ${roleName(newRole)}.`,
-            );
-          }}
-        />
       )}
     </Dialog>
   );

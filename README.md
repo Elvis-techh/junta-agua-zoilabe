@@ -19,8 +19,15 @@ changing how money, permissions or the history log work.
 
 ## Status
 
-- **Phase 0 (Foundation): merged.** Invitation and PIN login, roles and
-  permissions, the history log, and backup and restore scripts.
+- **Phase 0 (Foundation): merged.** Signing in, roles and permissions, the
+  history log, and backup and restore scripts.
+- **Signing in: phone number and password** (owner decision of 9 November
+  2026). The invitation link and the 6-digit PIN were too much for the
+  board's older members, so they are gone, along with the PIN asked again
+  before sensitive actions and the lock after 5 wrong PINs. An administrator
+  creates each account with a password; the person types their WhatsApp
+  number and that password once, and the phone stays signed in until
+  **Salir**, or for 90 days without use. See "Accounts and passwords" below.
 - **Phase 1 (Census): merged.** Registrar familia (one question per screen,
   with the fee question), paper entry mode, duplicate check, search and
   list, household file, offline queue, inactive status, and Configuración →
@@ -35,8 +42,8 @@ changing how money, permissions or the history log work.
     census shows the base price's amount once one is set. See "Trying the
     fees" below. Owner decisions of 2 November 2026: a change may start in
     the current month; an amount typed wrong may be corrected with a reason
-    until a payment is made at it; an amount may be zero; saving asks for
-    the PIN. Owner decision of 6 November 2026: until a payment is made at
+    until a payment is made at it; an amount may be zero. Owner decision of
+    6 November 2026: until a payment is made at
     it, an amount may also be removed ("Quitar"), with a reason; it stays in
     the database, marked removed, and its months go back to the amount
     before it.
@@ -47,7 +54,7 @@ changing how money, permissions or the history log work.
     oldest first; a payment larger than those months owe is refused; a month
     keeps the price it had when its first money arrived.
   - **Removing a fee amount (Quitar): built.** Until a payment covers its
-    month, with a reason and the PIN (owner decision of 6 November 2026).
+    month, with a reason (owner decision of 6 November 2026).
   - **Every role holds every permission: built.** Owner decision of
     6 November 2026: the board does not always meet in full, and a task only
     one or two people could do would wait for them. Roles stay, so Historial
@@ -58,7 +65,7 @@ changing how money, permissions or the history log work.
     month close still takes two different people: the database refuses an
     approval by whoever prepared it.
   - **Corrections (Anular pago): built.** A payment recorded by mistake is
-    undone from the household's file with a reason and the PIN: a reversal
+    undone from the household's file with a reason: a reversal
     entry with the opposite amount that points to the original. See step 7
     of "Trying Cobrar" below. Owner decisions of 7 November 2026: only a
     whole payment is reversed (a wrong amount or month is reversed and
@@ -124,14 +131,46 @@ npm run user:first-admin -- --name "Nombre Apellido" --phone 99998888
 Digits alone are a Honduran number; another country's starts with its code,
 as in `--phone +12025550123`.
 
-It prints an invitation link. Open it, choose a 6-digit PIN, and you are in.
-Every other account is created from Usuarios. The command refuses to run
-once an administrator exists.
+It prints the administrator's password, once. Open the app and sign in with
+that number and password. Every other account is created from Usuarios. The
+command refuses to run once an administrator exists.
+
+### Accounts and passwords
+
+In **Usuarios**, **Nueva cuenta** asks for the name, the WhatsApp number, the
+cargo and a password. The app offers an easy one to read aloud (two syllables
+and four digits, such as `bamu4827`); keep it or type another of at least 6
+letters or numbers, and give it to the person. The account can sign in at
+once: there is no link to send.
+
+- **Signing in.** "Su número de WhatsApp" and "Su contraseña", once on each
+  phone. **Ver** shows what was typed. The phone then stays signed in until
+  **Salir**, or for 90 days without use; using the app pushes the 90 days
+  forward (`src/auth/session.ts`).
+- **A forgotten password, or a lost phone.** Open the account in Usuarios and
+  tap **Cambiar contraseña**. Every phone signed in to that account signs out;
+  the person signs in again with the new one. Changing your own keeps you
+  signed in on the phone you changed it on.
+- **Wrong passwords.** Nothing locks. Sign-in tries are limited per minute
+  for each address (`LOGIN_ATTEMPTS_PER_MINUTE`, 10 by default), and each
+  wrong password for an account is written to Historial (Seguridad).
+- **Accounts from before 9 November 2026** have no password and show "Sin
+  contraseña": tap **Poner contraseña**. If nobody can sign in at all (the
+  only administrator forgot theirs, or every account is from before), give
+  one a password from the server's console:
+
+  ```bash
+  npm run user:password -- --phone 99998888
+  ```
+
+  It prints a new password once and signs that account out everywhere.
+
+No action asks for a PIN or a password again: Quitar and Anular pago ask for
+a written reason, and a month close still takes two different people.
 
 ### Trying the fees
 
 As the administrator or the president, open **Configuración** → **Cuotas**.
-Saving any amount asks for the PIN again.
 On a computer, month and date fields open the app's own calendar, in Spanish;
 a phone keeps its own picker.
 
@@ -140,22 +179,22 @@ a phone keeps its own picker.
    already owe from the paper book can be counted. `0` is allowed, for a
    fee the board does not charge.
    Amounts get their thousands commas as they are typed: `1250.5` shows as
-   `1,250.5`. Identity numbers, phones and PINs never do.
-2. Tap **Seguir**, read the summary, tap **Sí, guardar** and type the PIN.
+   `1,250.5`. Identity numbers and phones never do.
+2. Tap **Seguir**, read the summary and tap **Sí, guardar**.
    The card shows L 70.00 "en uso", and **Registrar familia** now says
    "Precio base: L 70.00 al mes".
 3. Tap **Cambiar detalles**. The month picker starts at this month: a change
    may start now or later, never in a past month. An amount for a later
    month shows as "Todavía no empieza" until its month comes, then takes over
    by itself on that month's first day, Honduras time. A month that already
-   has an amount is refused before the PIN is asked for.
+   has an amount is refused before the summary.
 4. Each saved amount sits in its own box. An amount typed wrong is fixed with
    the **Corregir** in its box, which asks for the right amount and the
    reason. Once a payment has been made at an amount, the button is gone:
    correcting it would change a month already paid.
 5. An amount the board did not mean, or no longer wants, goes with the
    **Quitar** in its box. The panel says what its months go back to (the
-   amount before it, or none), asks why, then asks for the PIN. The box
+   amount before it, or none) and asks why. The box
    disappears, and its month is free for another amount. Like **Corregir**,
    it is gone once a payment has been made at the amount.
 6. Nothing here is deleted, not even a removed amount: the database keeps it,
@@ -163,8 +202,8 @@ a phone keeps its own picker.
    **Historial**, with the amount and the reason.
 
 Every role may do this now (6 November 2026), but the server still checks the
-"Cambiar la configuración" permission and the PIN on every change, whatever
-the screen shows.
+"Cambiar la configuración" permission on every change, whatever the screen
+shows.
 
 While a panel like these is open, the screen behind it stays still, on a
 computer and on a phone, and it is back where it was when the panel closes.
@@ -196,7 +235,7 @@ household's file. A payment needs signal: it is not kept on the phone.
    **Historial** (Finanzas): "Tina (Tesorero/a) registró un pago de L 100.00
    de María López por noviembre y diciembre de 2026 …".
 7. A payment recorded by mistake: on the household's file, tap **Anular
-   pago** on its card, write why, tap **Anular pago** and type the PIN. The
+   pago** on its card, write why and tap **Anular pago**. The
    whole payment is undone with today's date, and its months go back to how
    they were before it (a month whose only money it was costs today's price
    again). The card stays, crossed out and marked "Anulado", with when, who
@@ -220,8 +259,9 @@ all three.
 
 1. As the administrator, open **Configuración** and add the village's
    sectors. Registration cannot start without at least one.
-2. In **Usuarios**, create an account for the secretary and open its
-   invitation in a private browser window (or on a phone).
+2. In **Usuarios**, create an account for the secretary, note the password
+   the app offers, and sign in with that number and password in a private
+   browser window (or on a phone).
 3. As the secretary, tap **Registrar familia**. "Estoy en la vivienda" is the
    normal flow; "Copiar una hoja de papel" is paper entry mode, which asks
    first for the date and number written on the paper form.
@@ -304,8 +344,8 @@ was set up: [docs/test-copy.md](docs/test-copy.md).
 
 On the same Wi-Fi as the computer, the local app can be opened from a phone
 too: set `APP_URL=http://<the computer's address>:5173` in `backend/.env`
-(`hostname -I`, the first number), restart `npm run dev`, and open an
-invitation on the phone. Installing on the home screen, opening with no
+(`hostname -I`, the first number), restart `npm run dev`, and sign in on the
+phone. Installing on the home screen, opening with no
 signal and the GPS button need the https address only the test copy has.
 Tailscale was tried and dropped (30 October 2026): it works only while the
 computer is on.

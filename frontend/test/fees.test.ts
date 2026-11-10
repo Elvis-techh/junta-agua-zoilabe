@@ -84,7 +84,7 @@ describe("removing an amount", () => {
   });
 });
 
-describe("the fee form, before the PIN is asked for", () => {
+describe("the fee form, before \"¿Está correcto?\"", () => {
   const good = { amountCentavos: 8000, startsOn: "2026-12-01", reason: "" };
 
   it("accepts a new amount from this month or a later one", () => {

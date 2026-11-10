@@ -154,14 +154,28 @@ describe("phones on the census and on accounts", () => {
     assert.equal((await call(admin.cookie, "PATCH", url, { phone: "+3461234" })).statusCode, 400);
   });
 
-  it("opens WhatsApp on the right country for an account's invitation", async () => {
-    const created = await call(admin.cookie, "POST", "/api/users", { name: "Carla Mejía", phone: "+12025550188", roleCode: "fiscal" });
+  it("signs in an account with another country's number", async () => {
+    const created = await call(admin.cookie, "POST", "/api/users", {
+      name: "Carla Mejía",
+      phone: "+12025550188",
+      roleCode: "fiscal",
+      password: "carla2026",
+    });
     assert.equal(created.statusCode, 201);
-    const invite = await call(admin.cookie, "POST", `/api/users/${created.json().user.id}/invitation`, {});
-    assert.match(invite.json().whatsappUrl, /^https:\/\/wa\.me\/12025550188\?text=/);
+    const signedIn = await t.app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: { phone: "+12025550188", password: "carla2026" },
+    });
+    assert.equal(signedIn.statusCode, 200);
 
-    // The same number written the other way is still the same account.
-    const again = await call(admin.cookie, "POST", "/api/users", { name: "Otra Persona", phone: "+12025550188", roleCode: "fiscal" });
+    // The same number again is still the same account.
+    const again = await call(admin.cookie, "POST", "/api/users", {
+      name: "Otra Persona",
+      phone: "+12025550188",
+      roleCode: "fiscal",
+      password: "otra2026",
+    });
     assert.equal(again.statusCode, 409);
   });
 });

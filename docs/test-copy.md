@@ -102,7 +102,7 @@ The phases, and what "done" means for each, are in the table at the end of the
 
 - **Not for real data.** It is open to the internet behind the same sign-in
   as the real app, but it has no backups and nobody looks after its history.
-  Use a different PIN there from the real app's.
+  Use a different password there from the real app's.
 - **Not the real app.** Its own user (`zoilabe-test`), folder
   (`/opt/zoilabe-test`), database file and port (3003). It cannot read the
   real app's database, and the real app cannot read its.
@@ -207,8 +207,8 @@ curl -s https://$SUB/api/health      # {"status":"ok",…}, the API answers
 curl -s https://$SUB/version.json    # {"branch":"main","commit":"…"}, nginx can read the app
 ```
 
-**6. An administrator on the test copy.** It prints an invitation link: send
-it to your phone (by WhatsApp, for example) and open it there.
+**6. An administrator on the test copy.** It prints a password, once: open
+the test copy on your phone and sign in with that number and password.
 
 ```bash
 cd /opt/zoilabe-test/app/backend
@@ -217,6 +217,18 @@ sudo -u zoilabe-test /opt/node22/bin/node --env-file=/opt/zoilabe-test/env dist/
 
 The phone number can be made up. Other test accounts (a secretary, a
 treasurer) are made from **Usuarios** on the test copy, as on the real app.
+
+An administrator made before 9 November 2026 signed in with a PIN, and has no
+password since then. It refuses to make a second administrator, so give the
+existing one a password instead (the same number it was made with):
+
+```bash
+cd /opt/zoilabe-test/app/backend
+sudo -u zoilabe-test /opt/node22/bin/node --env-file=/opt/zoilabe-test/env dist/scripts/new-password.js --phone 99998888
+```
+
+It prints the new password once. Every other old test account then gets one
+from **Usuarios** → the account → **Poner contraseña**.
 
 **7. Tell GitHub the address**, so the **Test copy** check waits for each
 build to go live. Only once step 6 worked: from this moment a droplet that
