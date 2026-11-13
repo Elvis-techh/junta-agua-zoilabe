@@ -3,11 +3,14 @@
  * reconnection fee, each from the month it starts.
  *
  * A rate is never deleted. A new amount is a new row from the month it
- * starts, so every month keeps the price it was charged at, and the list
- * shows every price the board has ever set. Until a payment has been made at
- * an amount, it can be corrected if it was typed wrong, or removed ("Quitar")
- * if the board did not mean it or no longer wants it: the row stays, marked
- * removed, and the amount before it applies again. Both need a written reason.
+ * starts, covering the months up to the next amount, and the list shows every
+ * price the board has ever set. A new amount may start in a past month, so the
+ * fees of the years in the paper book can be entered, but not once a payment
+ * falls in the months it would cover (owner, 12 November 2026). Until a
+ * payment has been made in its months, an amount can be corrected if it was
+ * typed wrong, or removed ("Quitar") if the board did not mean it or no longer
+ * wants it: the row stays, marked removed, and the amount before it applies
+ * again. Both need a written reason.
  */
 import { and, desc, eq, isNull } from "drizzle-orm";
 import type { FastifyPluginAsync } from "fastify";
@@ -19,7 +22,7 @@ import { inTransaction } from "../db/client.js";
 import { feeRates, users } from "../db/schema.js";
 import { formatLempiras } from "../lib/census.js";
 import { recordAudit } from "../lib/audit.js";
-import { earliestFeeStart, monthName, paidFrom } from "../lib/fees.js";
+import { firstOfMonth, monthAfter, monthName, paidMonthsAt } from "../lib/fees.js";
 import { HttpError, parse } from "../lib/http.js";
 import type { FeeKind } from "../lib/settings.js";
 import { FEE_KINDS, feeOn } from "../lib/settings.js";
@@ -107,8 +110,7 @@ export const feeRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app, o
       return {
         kind,
         currentId: current?.id ?? null,
-        earliestStart: earliestFeeStart(rates.length > 0, day),
-        rates: rates.map(({ kind: _kind, ...rate }) => ({ ...rate, correctable: !paidFrom(app.db, rate.startsOn) })),
+        rates: rates.map(({ kind: _kind, ...rate }) => ({ ...rate, correctable: !paidMonthsAt(app.db, kind, rate.startsOn) })),
       };
     });
     return { today: day, fees };
@@ -127,20 +129,31 @@ export const feeRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app, o
         .orderBy(desc(feeRates.startsOn))
         .all();
 
-      const earliest = earliestFeeStart(existing.length > 0, day);
-      if (earliest && body.startsOn < earliest) {
-        throw new HttpError(
-          409,
-          "starts_too_early",
-          `Un cambio empieza en ${monthName(earliest)} o después: los meses pasados se cobran con el monto que tenían.`,
-          { earliestStart: earliest },
-        );
-      }
       if (existing.some((row) => row.startsOn === body.startsOn)) {
         throw new HttpError(
           409,
           "month_taken",
           `Ya hay un monto que empieza en ${monthName(body.startsOn)}. Si está mal, corríjalo.`,
+        );
+      }
+      // From this month on a change is always allowed: a paid month keeps the
+      // price its first payment fixed (src/lib/payments.ts). A change that
+      // starts in a past month is refused once its months hold a payment.
+      const thisMonth = firstOfMonth(day);
+      const paid = body.startsOn < thisMonth ? paidMonthsAt(tx, body.kind, body.startsOn) : null;
+      if (paid) {
+        // The earliest it could start instead: after the last paid month (or
+        // this month, if sooner), unless the next amount begins by then.
+        const after = monthAfter(paid.last) < thisMonth ? monthAfter(paid.last) : thisMonth;
+        const earliestStart = existing.some((row) => row.startsOn > body.startsOn && row.startsOn <= after) ? null : after;
+        const paidName = monthName(paid.first).replace(/^./, (letter) => letter.toUpperCase());
+        throw new HttpError(
+          409,
+          "months_paid",
+          earliestStart
+            ? `${paidName} ya tiene pagos. Lo más pronto que puede empezar es ${monthName(earliestStart)}.`
+            : `${paidName} ya tiene pagos, así que este cambio no puede empezar en ${monthName(body.startsOn)}.`,
+          { firstPaidMonth: paid.first, earliestStart },
         );
       }
 
@@ -182,7 +195,7 @@ export const feeRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app, o
 
     inTransaction(app.db, (tx) => {
       const rate = liveRate(tx, request.params.id);
-      if (paidFrom(tx, rate.startsOn)) {
+      if (paidMonthsAt(tx, rate.kind, rate.startsOn)) {
         throw new HttpError(
           409,
           "already_paid",
@@ -215,7 +228,7 @@ export const feeRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app, o
    * "Quitar": an amount the board did not mean, or no longer wants. Nothing
    * is deleted: the row is marked removed, with who and why, and stops
    * counting, so its months go back to the amount before it. Refused once a
-   * payment covers its month, like a correction: a paid month keeps its price.
+   * payment falls in its months, like a correction: a paid month keeps its price.
    */
   app.post<{ Params: { id: string } }>("/settings/fees/:id/remove", guard, async (request) => {
     const body = parse(removeBody, request.body);
@@ -223,7 +236,7 @@ export const feeRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app, o
 
     inTransaction(app.db, (tx) => {
       const rate = liveRate(tx, request.params.id);
-      if (paidFrom(tx, rate.startsOn)) {
+      if (paidMonthsAt(tx, rate.kind, rate.startsOn)) {
         throw new HttpError(
           409,
           "already_paid",

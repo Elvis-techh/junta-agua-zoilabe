@@ -80,7 +80,7 @@ c6aa10c:<path>`), the last `main` before the switch.
 | 2 | One write at a time | `inTransaction` (27 call sites): synchronous IMMEDIATE, nothing else runs inside it | async transactions run side by side: the locks in the list below come back | M, and the riskiest |
 | 3 | Nothing deleted, history unchanged | triggers (`src/db/guards.ts`), `recursive_triggers` on | two logins and their grants (history: `backend/src/db/roles.ts`). Triggers can stay as a second layer | M |
 | 4 | Accent-blind search | `search_text()`, a JavaScript function on the connection | history: `translate(lower(x), 'áéíóúüñ', 'aeiouun')`, or the `unaccent` extension | S |
-| 5 | Raw SQL | 16 fragments, list below | translations below | S |
+| 5 | Raw SQL | 17 fragments, list below | translations below | S |
 | 6 | Schema | `sqliteTable` with helpers named after PostgreSQL types (`uuid`, `date`, `boolean`, `bigint`, `serial`, `json`, `instant`) | `pgTable` and the real types (history: `backend/src/db/schema.ts`). `instant` becomes `timestamp(…, { withTimezone: true })` | S |
 | 7 | Migrations | the API applies them at start | a new PostgreSQL baseline migration in a fresh folder, applied by the admin login (the app login cannot create tables) | S |
 | 8 | Backups and restore | `VACUUM INTO`, then encrypt (`src/lib/snapshot.ts`) | `pg_dump -Fc`, then the same encryption; restore with `pg_restore` (history: `backend/src/lib/pgTools.ts`, `docs/restore.md`) | M |
@@ -101,7 +101,7 @@ history version had:
 | Person edit (`PATCH /census/people/:id`) | the same | `FOR UPDATE` |
 | `lockUser` (`src/routes/users.ts`: role, password, suspend…) | the same, on a user | `FOR UPDATE` |
 | Sector edit (`PATCH /settings/sectors/:id`) | the same, on a sector | `FOR UPDATE` |
-| Fee change (`POST /settings/fees`) | two first amounts of the same fee both start in the past, or a log entry names the wrong amount it replaced | `LOCK TABLE fee_rates IN SHARE ROW EXCLUSIVE MODE` |
+| Fee change (`POST /settings/fees`) | a payment is recorded between the "no payment in its months" check and a change that starts in a past month, which then covers a paid month; or a log entry names the wrong amount it replaced | `LOCK TABLE fee_rates IN SHARE ROW EXCLUSIVE MODE`, and the payment route takes the same lock |
 | Fee correction (`PATCH /settings/fees/:id`) | a payment is recorded between the "nothing paid yet" check and the correction, which then rewrites a paid month | `FOR UPDATE` on the rate, and the payment route takes the same lock |
 | Fee removal (`POST /settings/fees/:id/remove`) | a payment is recorded between the "nothing paid yet" check and the removal, so a month is paid at an amount that is then removed; or two removals of one fee each log the wrong amount the months go back to | `FOR UPDATE` on the rate, plus the fee-change table lock, and the payment route takes the same lock |
 | Cobrar (`POST /finance/payments`, `src/routes/payments.ts`) | two payments of one house are shared out from the same "already paid" and together pay a month twice; two payments with the same paper receipt number both pass the "repeated?" check; a retried send is saved twice; two entries make the same month's row | advisory lock `7_311_004` for the whole payment (house, receipt number and month row at once), plus the fee-correction lock above |
@@ -122,7 +122,8 @@ the tests may not notice.
 |---|---|
 | `strftime('%Y-%m-%dT%H:%M:%fZ', 'now')` (`schema.ts`, every `created_at`) | `now()` (`.defaultNow()`) |
 | `max(CAST(substr(code, 3) AS INTEGER))` (household code) | `max(substring(code from 3)::int)` |
-| `json_each(t.months_covered)` (`lastPaidMonth` and `paidFrom`, `src/lib/fees.ts`) | `unnest(t.months_covered)` |
+| `json_each(t.months_covered)` (`lastPaidMonth` and `paidMonthsAt`, `src/lib/fees.ts`) | `unnest(t.months_covered)` |
+| `substr(t.occurred_on, 1, 7) \|\| '-01'` (a reconnection's month, `paidMonthsAt`) | `date_trunc('month', t.occurred_on)::date` |
 | `GLOB '+*'`, `NOT GLOB '*[^0-9]*'` (phone and ID checks) | `~ '^\+[0-9]{8,15}$'`, `~ '^[0-9]{13}$'` |
 | `IS NOT 'transfer'` (transfer needs a bank reference) | `IS DISTINCT FROM 'transfer'` |
 | `substr(month, 9, 2) = '01'` (months start on day 1) | `extract(day from month) = 1` |

@@ -16,15 +16,13 @@ export interface Rate {
   startsOn: string;
   createdAt: string;
   createdByName: string | null;
-  /** False once a payment has been made at this amount: it can then be neither corrected nor removed. */
+  /** False once a payment falls in this amount's months: it can then be neither corrected nor removed. */
   correctable: boolean;
 }
 
 export interface Fee {
   kind: FeeKind;
   currentId: number | null;
-  /** "YYYY-MM-01", or null when the first amount may start in any month. */
-  earliestStart: string | null;
   /** Newest start first. */
   rates: Rate[];
 }
@@ -53,6 +51,28 @@ function formatMonth(firstDay: string): string {
 
 /** A new amount for a fee, or a correction of one already saved. */
 type Editing = { fee: Fee; rate: null } | { fee: Fee; rate: Rate };
+
+/** "2027-01-01" → "2026-12-01". */
+function monthBefore(firstDay: string): string {
+  const year = Number(firstDay.slice(0, 4));
+  const month = Number(firstDay.slice(5, 7));
+  return month === 1 ? `${year - 1}-12-01` : `${year}-${String(month - 1).padStart(2, "0")}-01`;
+}
+
+/**
+ * What a new amount starting in a past month does, in the words the summary
+ * shows: the unpaid months from then until the next amount cost it. Null for
+ * a change from this month on, which needs no warning.
+ */
+export function pastStartEffect(fee: Fee, startsOn: string, today: string): string | null {
+  if (startsOn >= `${today.slice(0, 7)}-01`) {
+    return null;
+  }
+  // Newest start first: the last later one is the amount right after it.
+  const next = fee.rates.filter((other) => other.startsOn > startsOn).at(-1);
+  const until = next ? ` hasta ${formatMonth(monthBefore(next.startsOn))}` : " en adelante";
+  return `Empieza en un mes pasado: los meses sin pagar desde ${formatMonth(startsOn)}${until} se cobran con este monto.`;
+}
 
 /**
  * What removing `rate` does to its months, in the words the dialog shows:
@@ -86,9 +106,6 @@ export function feeFormProblem(
   }
   if (rate) {
     return form.reason.trim().length < 5 ? "Escriba por qué se corrige." : null;
-  }
-  if (fee.earliestStart && form.startsOn < fee.earliestStart) {
-    return `Un cambio empieza en ${formatMonth(fee.earliestStart)} o después.`;
   }
   if (fee.rates.some((existing) => existing.startsOn === form.startsOn)) {
     return `Ya hay un monto que empieza en ${formatMonth(form.startsOn)}. Si está mal, use «Corregir» en ese monto.`;
@@ -165,9 +182,11 @@ export function FeeCard({
 
 /**
  * Configuración → Cuotas. A new amount never replaces an old one: it is added
- * from the month it starts, so past months keep the price they were charged
- * at. Until a payment has been made at an amount, it can be corrected if it
- * was typed wrong, or removed if the board did not mean it, with a reason.
+ * from the month it starts, up to the next amount. It may start in a past
+ * month, for the fees of the years in the paper book, unless a payment falls
+ * in the months it would cover; the server says so. Until a payment falls in
+ * its months, an amount can be corrected if it was typed wrong, or removed if
+ * the board did not mean it, with a reason.
  */
 export function FeesSection() {
   const [fees, setFees] = useState<Fee[] | null>(null);
@@ -194,7 +213,8 @@ export function FeesSection() {
     <section className="stack">
       <h2>Cuotas</h2>
       <p className="muted">
-        La junta decide los montos. Un cambio empieza el mes que se elija y no cambia los meses pasados.
+        La junta decide los montos. Cada monto cuenta desde el mes que se elija hasta que empiece el siguiente. Un
+        mes que ya tiene pagos no cambia de monto.
       </p>
 
       {message && <p className={`message ${message.kind}`}>{message.text}</p>}
@@ -325,7 +345,7 @@ function FeeDialog({
   const title = FEES[fee.kind].title;
   const [amountText, setAmountText] = useState("");
   // The month field works with "YYYY-MM".
-  const [month, setMonth] = useState((fee.earliestStart ?? today).slice(0, 7));
+  const [month, setMonth] = useState(today.slice(0, 7));
   const [reason, setReason] = useState("");
   const [step, setStep] = useState<"form" | "confirm">("form");
   const [error, setError] = useState<string | null>(null);
@@ -370,10 +390,13 @@ function FeeDialog({
               <strong>{formatLempiras(amountCentavos!)}</strong>.
             </p>
           ) : (
-            <p>
-              {title} será <strong>{formatLempiras(amountCentavos!)}</strong> desde{" "}
-              <strong>{formatMonth(startsOn!)}</strong>.
-            </p>
+            <>
+              <p>
+                {title} será <strong>{formatLempiras(amountCentavos!)}</strong> desde{" "}
+                <strong>{formatMonth(startsOn!)}</strong>.
+              </p>
+              {pastStartEffect(fee, startsOn!, today) && <p>{pastStartEffect(fee, startsOn!, today)}</p>}
+            </>
           )}
           <p className="muted">Queda en el historial y no se puede borrar.</p>
           <div className="row">
@@ -406,13 +429,9 @@ function FeeDialog({
             <>
               <label>
                 Desde el mes
-                <MonthField value={month} min={fee.earliestStart?.slice(0, 7)} onChange={setMonth} />
+                <MonthField value={month} onChange={setMonth} />
               </label>
-              <p className="muted">
-                {fee.earliestStart
-                  ? `Los meses pasados se quedan con el monto que tenían, así que el cambio empieza en ${formatMonth(fee.earliestStart)} o después.`
-                  : "Es el primer monto. Puede empezar en un mes pasado, para contar lo que las viviendas ya deben según el cuaderno de recibos."}
-              </p>
+              <p className="muted">Puede ser un mes pasado, para los montos de años anteriores.</p>
             </>
           )}
           {error && <p className="message error">{error}</p>}

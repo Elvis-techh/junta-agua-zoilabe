@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import type { Fee, Rate } from "../src/screens/SettingsFees.tsx";
-import { FeeCard, feeFormProblem, removalEffect } from "../src/screens/SettingsFees.tsx";
+import { FeeCard, feeFormProblem, pastStartEffect, removalEffect } from "../src/screens/SettingsFees.tsx";
 
 const rate = (id: number, amountCentavos: number, startsOn: string, correctable = true): Rate => ({
   id,
@@ -19,7 +19,6 @@ const rate = (id: number, amountCentavos: number, startsOn: string, correctable 
 const fee: Fee = {
   kind: "base_monthly",
   currentId: 1,
-  earliestStart: "2026-11-01",
   rates: [rate(2, 7000, "2027-01-01"), rate(1, 10000, "2026-11-01")],
 };
 
@@ -91,14 +90,14 @@ describe("the fee form, before \"¿Está correcto?\"", () => {
     assert.equal(feeFormProblem({ fee, rate: null }, good), null);
   });
 
-  it("refuses a past month, and a month that already has an amount", () => {
-    assert.match(feeFormProblem({ fee, rate: null }, { ...good, startsOn: "2026-10-01" })!, /noviembre de 2026 o después/);
-    assert.match(feeFormProblem({ fee, rate: null }, { ...good, startsOn: "2027-01-01" })!, /Ya hay un monto que empieza en enero de 2027/);
+  it("accepts a past month too: whether its months hold a payment is the server's to say", () => {
+    assert.equal(feeFormProblem({ fee, rate: null }, { ...good, startsOn: "2026-10-01" }), null);
+    const first: Fee = { ...fee, rates: [], currentId: null };
+    assert.equal(feeFormProblem({ fee: first, rate: null }, { ...good, startsOn: "2020-01-01" }), null);
   });
 
-  it("lets the first amount start in any month", () => {
-    const first: Fee = { ...fee, earliestStart: null, rates: [], currentId: null };
-    assert.equal(feeFormProblem({ fee: first, rate: null }, { ...good, startsOn: "2020-01-01" }), null);
+  it("refuses a month that already has an amount", () => {
+    assert.match(feeFormProblem({ fee, rate: null }, { ...good, startsOn: "2027-01-01" })!, /Ya hay un monto que empieza en enero de 2027/);
   });
 
   it("asks for a reason when correcting, and not for a free month", () => {
@@ -109,5 +108,24 @@ describe("the fee form, before \"¿Está correcto?\"", () => {
 
   it("asks for an amount first", () => {
     assert.match(feeFormProblem({ fee, rate: null }, { ...good, amountCentavos: null })!, /Escriba el monto/);
+  });
+});
+
+describe("a new amount that starts in a past month", () => {
+  it("says, before it is saved, which unpaid months it prices, up to the next amount", () => {
+    assert.equal(
+      pastStartEffect(fee, "2024-03-01", "2026-11-12"),
+      "Empieza en un mes pasado: los meses sin pagar desde marzo de 2024 hasta octubre de 2026 se cobran con este monto.",
+    );
+    const alone: Fee = { ...fee, rates: [rate(1, 10000, "2026-11-01")] };
+    assert.match(pastStartEffect(alone, "2027-02-01", "2027-03-05")!, /desde febrero de 2027 en adelante se cobran/);
+    // Across a new year, the month before January is December.
+    const later: Fee = { ...fee, rates: [rate(3, 9000, "2025-01-01")] };
+    assert.match(pastStartEffect(later, "2024-06-01", "2026-11-12")!, /desde junio de 2024 hasta diciembre de 2024 se cobran/);
+  });
+
+  it("says nothing more for a change from this month on", () => {
+    assert.equal(pastStartEffect(fee, "2026-11-01", "2026-11-12"), null);
+    assert.equal(pastStartEffect(fee, "2026-12-01", "2026-11-12"), null);
   });
 });
