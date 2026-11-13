@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 151, taken 2026-11-09.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 158, taken 2026-11-09.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -153,7 +153,7 @@ Each account holds a name, WhatsApp number, role, status, who created it and whe
 2. The person opens the app's address on their own phone, types their WhatsApp number and that password, and adds the app to the home screen. There is no link to open.
 3. The phone stays signed in until they tap "Salir", or for 90 days without use. Using the app pushes the 90 days forward.
 4. No action asks for the password again. Corrections and removals ask for a written reason, and a month close takes two different people.
-5. No account locks after wrong passwords. Sign-in attempts are limited per minute, and each wrong password is written to the history log.
+5. No account locks after wrong passwords. Sign-in attempts are limited per minute; a wrong password is noted only in the server's own log, which is cleared over time.
 6. If a password is forgotten or a phone is lost, a board member sets a new password in Usuarios. Every phone signed in to that account signs out.
 
 **Guest invitations** give an outsider, such as municipal staff, temporary view-only access without an account.
@@ -189,7 +189,7 @@ The history log, users and settings can never be included in an invitation.
 
 Every creation, change, approval and failed login is written to a log that nobody, including administrators, can edit or delete.
 
-Each entry records who acted (name and role), when (date and time in Honduras time), what they did in plain words, which record it touched, the values before and after, the reason when one is required, and the device used.
+Each entry records who acted (name and role), when (date and time in Honduras time), what they did in plain words, which record it touched, the values before and after, and the reason when one is required.
 
 | Area | Events recorded |
 |---|---|
@@ -197,7 +197,7 @@ Each entry records who acted (name and role), when (date and time in Honduras ti
 | Finances | Payment or expense recorded, reversal made, month prepared, month approved, opening balance entered |
 | Users | Account created, role changed, suspended, password changed, guest invitation created, used, revoked or expired |
 | Settings | Base fee, late fee or reconnection fee changed or corrected, different fee set for a house, category added, permission matrix edited |
-| Security | Login, wrong password |
+| Security | Nothing since 9 November 2026: signing in and wrong passwords leave no entry, and each account keeps only its last sign-in |
 | Exports | Report printed or exported, with the filters used |
 
 Page views are not logged. Exports are, because they are how data leaves the system.
@@ -382,9 +382,9 @@ Phases 1 to 3 are built and tested on the builder's computer before anything cha
 | 3. Close, reports and guests | Not started | Everything, including print layouts and guest invitations | A guest signing in from a municipal phone at the real address |
 | 4. Handover | Not started | A first draft of the runbook | The restore test, board-owned accounts, training and installing on every director's phone |
 
-**Done so far (as of 7 November 2026)**
+**Done so far (as of 9 November 2026)**
 
-Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fees can be set and removed in Configuración, monthly fee payments can be recorded, and a payment recorded by mistake can be reversed.
+Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fees can be set and removed in Configuración, monthly fee payments can be recorded, and a payment recorded by mistake can be reversed. Board members sign in with their phone number and a password.
 
 - [x] Test copy running at [prueba-agua.basculacentral.com](https://prueba-agua.basculacentral.com) with made-up data only, set up on 1 November 2026 (PRs #11 to #13). Every pull request now goes there for a phone check. Its own separation check passed; the real app's is still open below.
 - [x] Database moved to SQLite (PR #8).
@@ -406,12 +406,13 @@ Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fee
 - [x] Removing a fee amount, "Quitar": until a payment covers its month, with a written reason and the PIN (PR #25, merged on 6 November 2026).
 - [x] Every role holds every permission; a month close still takes two different people, and the database refuses an approval by whoever prepared the month (PR #26, merged on 6 November 2026).
 - [x] Corrections, "Anular pago": a whole payment is reversed from the household's file with a reason and the PIN, dated the day it is made; the original stays, marked "Anulado", and can be recorded again with its details filled in (PR #27, merged on 7 November 2026).
+- [x] Signing in with phone number and password, replacing the invitation link and the PIN (PR #28, merged on 9 November 2026).
 
 **What comes next**
 
 Phase 2 is under way: the app sets fees, records monthly fee payments and reverses a payment recorded by mistake. Next is what each house already owes, entered month by month before its first payment. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
 
-Finished, waiting to be merged: phone number and password sign-in, replacing the invitation link and the PIN (PR #28), on the test copy for the owner to try.
+Finished, waiting to be merged: the history log keeps changes, not visits (PR #29), on the test copy for the owner to try. PR #28 is merged.
 
 Needs people, not code:
 
@@ -517,6 +518,8 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - No action asks for the PIN or the password again. Quitar and Anular pago keep their written reason, and a month close still takes two different people.
 - No account locks after wrong passwords; sign-in attempts are limited per minute instead. Changing a password signs every phone of that account out, which is also what to do when a phone is lost.
 - Guest invitations for outsiders (Phase 3) do not change: they were planned with an email and a temporary password, not a link.
+- The history log keeps changes, not visits. Signing in and wrong passwords leave no entry: each account keeps only its last sign-in, replaced each time, and a wrong password is noted only in the server's own log, so nobody outside can fill the history log by guessing.
+- New history entries no longer save the phone's description. Entries already saved keep theirs, because the history log is never changed.
 
 **Still open**
 

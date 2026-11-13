@@ -12,7 +12,6 @@ const AREAS = [
   { code: "finances", name: "Finanzas" },
   { code: "users", name: "Usuarios" },
   { code: "settings", name: "Configuración" },
-  { code: "security", name: "Seguridad" },
   { code: "exports", name: "Impresiones" },
 ];
 

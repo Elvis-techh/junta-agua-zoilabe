@@ -9,18 +9,22 @@
  *
  * Wrong passwords are held back by a per-minute limit on this route alone;
  * no account locks, so nobody has to call the administrator to get back in.
+ *
+ * Signing in leaves no entry in Historial (owner's decision of 9 November
+ * 2026): the account keeps only its last sign-in, replaced each time, as
+ * Lindero does. A wrong password goes to the server's own log, which the
+ * droplet clears over time, so nobody outside can fill Historial, whose
+ * entries are never deleted.
  */
 import { eq } from "drizzle-orm";
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 
-import { deviceOf, sessionCookieOptions } from "../auth/plugin.js";
+import { sessionCookieOptions } from "../auth/plugin.js";
 import type { SessionUser } from "../auth/session.js";
 import { SESSION_COOKIE, endSessions, openSession } from "../auth/session.js";
 import { inTransaction } from "../db/client.js";
-import { roles, users } from "../db/schema.js";
-import type { Actor } from "../lib/audit.js";
-import { recordAudit } from "../lib/audit.js";
+import { users } from "../db/schema.js";
 import { HttpError, parse } from "../lib/http.js";
 import { NO_ACCOUNT_HASH, PASSWORD_MAX_LENGTH, verifyPassword } from "../lib/password.js";
 import { phoneSchema } from "../lib/phone.js";
@@ -57,15 +61,8 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (app, options) 
       const body = parse(loginBody, request.body);
 
       const user = app.db
-        .select({
-          id: users.id,
-          name: users.name,
-          status: users.status,
-          passwordHash: users.passwordHash,
-          roleName: roles.name,
-        })
+        .select({ id: users.id, status: users.status, passwordHash: users.passwordHash })
         .from(users)
-        .innerJoin(roles, eq(roles.code, users.roleCode))
         .where(eq(users.phone, body.phone))
         .get();
 
@@ -78,18 +75,8 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (app, options) 
         throw WRONG;
       }
 
-      const actor: Actor = { userId: user.id, name: user.name, role: user.roleName, device: deviceOf(request) };
-
       if (!matches || !user.passwordHash) {
-        inTransaction(app.db, (tx) =>
-          recordAudit(tx, actor, {
-            area: "security",
-            action: "security.login_failed",
-            summary: `Contraseña equivocada para ${user.name}`,
-            entityType: "user",
-            entityId: user.id,
-          }),
-        );
+        request.log.warn({ userId: user.id }, "Wrong password");
         throw WRONG;
       }
 
@@ -100,16 +87,9 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (app, options) 
       }
 
       const session = inTransaction(app.db, (tx) => {
+        // Replaced each time: Usuarios shows "Último ingreso", and nothing more is kept.
         tx.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id)).run();
-        const opened = openSession(tx, user.id);
-        recordAudit(tx, actor, {
-          area: "security",
-          action: "security.login",
-          summary: `${user.name} (${user.roleName}) entró a la app`,
-          entityType: "user",
-          entityId: user.id,
-        });
-        return opened;
+        return openSession(tx, user.id);
       });
 
       reply.setCookie(SESSION_COOKIE, session.token, sessionCookieOptions(options.secureCookies));

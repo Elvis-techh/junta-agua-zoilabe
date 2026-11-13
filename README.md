@@ -28,6 +28,11 @@ changing how money, permissions or the history log work.
   creates each account with a password; the person types their WhatsApp
   number and that password once, and the phone stays signed in until
   **Salir**, or for 90 days without use. See "Accounts and passwords" below.
+- **Historial keeps changes, not visits** (owner decision of 9 November
+  2026). Signing in and wrong passwords leave no entry there (Usuarios shows
+  each account's "Último ingreso", replaced each time), and new entries no
+  longer save the phone's description. Entries already saved stay as they
+  are: the history log is never changed.
 - **Phase 1 (Census): merged.** Registrar familia (one question per screen,
   with the fee question), paper entry mode, duplicate check, search and
   list, household file, offline queue, inactive status, and Configuración →
@@ -152,8 +157,9 @@ once: there is no link to send.
   the person signs in again with the new one. Changing your own keeps you
   signed in on the phone you changed it on.
 - **Wrong passwords.** Nothing locks. Sign-in tries are limited per minute
-  for each address (`LOGIN_ATTEMPTS_PER_MINUTE`, 10 by default), and each
-  wrong password for an account is written to Historial (Seguridad).
+  for each address (`LOGIN_ATTEMPTS_PER_MINUTE`, 10 by default). A wrong
+  password is noted in the server's own log, which the droplet clears over
+  time, not in Historial, so nobody outside can fill Historial by guessing.
 - **Accounts from before 9 November 2026** have no password and show "Sin
   contraseña": tap **Poner contraseña**. If nobody can sign in at all (the
   only administrator forgot theirs, or every account is from before), give
