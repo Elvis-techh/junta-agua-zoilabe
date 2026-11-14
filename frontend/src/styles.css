@@ -834,6 +834,11 @@ textarea:focus-visible {
   line-height: 1.2;
 }
 
+/* Deuda anterior: a whole year of months in four rows of three ("Ene", "Feb"…). */
+.choice-grid.three {
+  grid-template-columns: repeat(3, 1fr);
+}
+
 /* Cobrar: a month's name, and under it what it owes ("L 70.00", "Faltan L 40.00", "Pagado"). */
 .btn.month-choice {
   flex-direction: column;

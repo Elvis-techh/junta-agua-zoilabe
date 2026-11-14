@@ -7,10 +7,10 @@
  * months"). A house with no payment recorded yet, such as one being
  * registered, starts with the month the fee is set in.
  */
-import { and, asc, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, gt, gte, isNotNull, isNull, lt, max, min, sql } from "drizzle-orm";
 
 import type { DbOrTx } from "../db/client.js";
-import { feeRates } from "../db/schema.js";
+import { feeRates, owedMonths } from "../db/schema.js";
 import type { FeeKind } from "./settings.js";
 
 const MONTH_NAMES = [
@@ -69,32 +69,55 @@ const FEE_CATEGORIES: Record<FeeKind, string> = {
   reconnection: "Reconexión",
 };
 
-/** The first and last month a payment of a fee covers among an amount's months. */
+/**
+ * The first and last month already counted at a fee among an amount's months,
+ * and what holds the first of them: a payment, or a month entered as owed
+ * from the paper book ("Deuda anterior").
+ */
 export interface PaidMonths {
   first: string;
   last: string;
+  firstHolds: "payment" | "owed";
 }
 
 /**
- * Which months a payment of this fee covers among those an amount starting in
- * `startsOn` would cover: from that month up to the start of the next amount
- * of the same fee, or with no end when none follows. Null when none.
+ * Which months already counted at this fee fall among those an amount
+ * starting in `startsOn` would cover: from that month up to the start of the
+ * next amount of the same fee, or with no end when none follows. Null when
+ * none. A month counts once a payment of that fee covers it, or once it is
+ * entered as owed: for the monthly fee, any month entered; for the late fee,
+ * one entered with its late fee.
  *
  * The owner decided on 2026-11-02 that an amount may be corrected, and on
  * 2026-11-06 removed, only while no payment has been made at it, and on
  * 2026-11-12 that an amount starting in a past month is refused once a
- * payment falls in the months it would cover. All three ask about exactly
- * those months, and only about payments of that fee: a monthly fee payment
- * says nothing about the late fee's amount.
+ * payment or an entered old month falls in the months it would cover. All
+ * three ask about exactly those months, and only about that fee: a monthly
+ * fee payment says nothing about the late fee's amount.
  *
  * A monthly fee or a late fee pays for months (`months_covered`, as Cobrar
  * records it); a reconnection fee is charged on the day it is paid. Nothing
  * records late fees or reconnections yet: "Other income" must record them
  * under their categories, a late fee with its month in `months_covered`, for
- * this to see them. A reversed payment and the reversal itself do not count.
+ * this to see them. A reversed payment and the reversal itself do not count,
+ * nor does a month entered as owed and then removed.
  */
 export function paidMonthsAt(db: DbOrTx, kind: FeeKind, startsOn: string): PaidMonths | null {
   const until = nextFeeStart(db, kind, startsOn);
+  const paid = paymentsAt(db, kind, startsOn, until);
+  const owed = owedAt(db, kind, startsOn, until);
+  if (!paid || !owed) {
+    return paid ? { ...paid, firstHolds: "payment" } : owed ? { ...owed, firstHolds: "owed" } : null;
+  }
+  return {
+    first: owed.first < paid.first ? owed.first : paid.first,
+    last: owed.last > paid.last ? owed.last : paid.last,
+    firstHolds: owed.first < paid.first ? "owed" : "payment",
+  };
+}
+
+/** The first and last month a payment of this fee covers in [startsOn, until), or null. */
+function paymentsAt(db: DbOrTx, kind: FeeKind, startsOn: string, until: string | null): { first: string; last: string } | null {
   const category = FEE_CATEGORIES[kind];
   // `months_covered` is a JSON list of "YYYY-MM-01" dates, which sort as text.
   const row =
@@ -115,6 +138,30 @@ export function paidMonthsAt(db: DbOrTx, kind: FeeKind, startsOn: string): PaidM
             AND t.reverses_id IS NULL
             AND NOT EXISTS (SELECT 1 FROM transactions r WHERE r.reverses_id = t.id)
         `);
+  return row?.first && row.last ? { first: row.first, last: row.last } : null;
+}
+
+/**
+ * The first and last month entered as owed in [startsOn, until) that this fee
+ * prices, or null: any such month for the monthly fee, one with its late fee
+ * for the late fee, none for reconnection.
+ */
+function owedAt(db: DbOrTx, kind: FeeKind, startsOn: string, until: string | null): { first: string; last: string } | null {
+  if (kind === "reconnection") {
+    return null;
+  }
+  const row = db
+    .select({ first: min(owedMonths.month), last: max(owedMonths.month) })
+    .from(owedMonths)
+    .where(
+      and(
+        isNull(owedMonths.removedAt),
+        gte(owedMonths.month, startsOn),
+        until === null ? undefined : lt(owedMonths.month, until),
+        kind === "late_fee" ? isNotNull(owedMonths.lateFeeCentavos) : undefined,
+      ),
+    )
+    .get();
   return row?.first && row.last ? { first: row.first, last: row.last } : null;
 }
 

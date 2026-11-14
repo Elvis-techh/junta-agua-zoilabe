@@ -81,12 +81,28 @@ changing how money, permissions or the history log work.
   - **Past fee changes: built.** Owner decision of 12 November 2026: a fee
     may also take a change that starts in a past month, so the fees of the
     years in the paper book can be entered before what houses already owe
-    is counted. It is refused once a payment of that fee falls in the months
-    it would cover (from its month up to the next amount). The same months
-    decide whether an amount may still be corrected or removed, so an old
-    amount stays correctable while its own months hold no payment. See steps
-    3 and 4 of "Trying the fees" below.
-  - Next: what each house already owes, entered month by month.
+    is counted. It is refused once a payment of that fee, or a month entered
+    as owed (next item), falls in the months it would cover (from its month
+    up to the next amount). The same months decide whether an amount may
+    still be corrected or removed, so an old amount stays correctable while
+    its own months hold no payment. See steps 3 and 4 of "Trying the fees"
+    below.
+  - **Start month and what each house already owes (Deuda anterior):
+    built.** The app takes over from the paper book at one start month,
+    the same for every house, saved once in Configuración → **Mes de
+    inicio**. From it on, every month counts as owed until it is paid.
+    Before it, a house owes only the months the treasurer copies from the
+    paper receipt book into its file, each at the fee in Configuración for
+    that month (or the house's different amount), with mora only where the
+    book shows one. See "Trying Deuda anterior" below. Board decisions of 6
+    and 7 November 2026; owner decisions of 12 November (a different amount
+    prices old months too, even before it was entered) and 13 November 2026:
+    the start month cannot be changed once saved; Cobrar offers a month
+    before it only if it was entered as owed; a month entered by mistake is
+    removed ("Quitar") with a reason, until a payment covers it. The month
+    itself is still to be chosen by the board.
+  - Next: other income (late fee, reconnection, connection fee, donation).
+    It must record a late fee under the "Mora" category, with its month.
 
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
@@ -239,7 +255,10 @@ household's file. A payment needs signal: it is not kept on the phone.
 2. **¿Qué meses paga?** Each month shows what it still owes ("L 70.00",
    "Faltan L 40.00") or "Pagado". The list starts three months back and runs
    a year ahead; **Ver meses anteriores** adds older ones. Tap the months
-   written on the paper receipt.
+   written on the paper receipt. Once a start month is saved, a month
+   before it shows "No debe" and cannot be tapped, unless it was entered as
+   Deuda anterior: those come first, under **Deuda anterior**, at the price
+   they were entered at.
 3. **¿Cuánto pagó?** starts on the full amount. Paying less fills the
    chosen months oldest first, so only the last one is left partly paid. More
    than they owe is refused, as is an amount that does not reach every month
@@ -275,6 +294,51 @@ it is never saved twice. Only roles with "Registrar pagos y gastos" may
 save, only those with "Ver finanzas" see the months and payments, and only
 those with "Corregir un registro de dinero" may anular; the server checks
 all three.
+
+### Trying Deuda anterior
+
+What each house already owed when the app took over, copied from the paper
+receipt book. It needs fees in Configuración → Cuotas for those years (a
+fee may start in a past month: see "Trying the fees").
+
+1. As the administrator or the president, open **Configuración**. Under
+   **Mes de inicio**, pick the month the app takes over and tap **Seguir**.
+   The panel says that it cannot be changed once saved; **Sí, guardar**. The
+   card then shows "Desde … · Guardado", with who saved it and when, and
+   Historial (Configuración) has "… fijó el mes de inicio en …". A second
+   save is refused, by the server and by the database itself.
+2. As the treasurer, open a household's file. Under **Deuda anterior**, tap
+   **Anotar deuda anterior**.
+3. **¿Qué meses debía?** One year at a time, three months to a row, from the
+   year of the start month back (the arrows change the year). Each month
+   shows what it would cost: the base fee in Configuración for that month,
+   or the house's different amount. A month already entered says "Ya
+   anotado", one paid in the app "Tiene pagos", one with no fee set "Sin
+   cuota". Tap the months the book shows unpaid; they stay chosen when the
+   year changes.
+4. **¿Cuáles tienen mora?** Tap only the months the book shows with a late
+   fee. Each costs the late fee in Configuración for that month; a month
+   with none says so and cannot be tapped.
+5. **¿Está correcto?** shows each month, the total and the mora apart.
+   **Sí, guardar**. Each month's price, and its mora, are fixed now: a later
+   change in Configuración does not touch them (a past fee change over them
+   is refused, as for a paid month).
+6. The file lists the months, with "Debe L … de cuotas anteriores, más L …
+   de mora". In **Cobrar**, those months come first, under **Deuda
+   anterior**. Historial (Finanzas) has "… anotó deuda anterior de la
+   vivienda Z-0001: marzo y abril de 2024 (L 140.00), con mora en marzo de
+   2024 (L 20.00)".
+7. A month entered by mistake: **Quitar** beside it, write why and tap
+   **Quitar mes**. It stays in the database, marked removed, and in
+   Historial with the reason; the month can then be entered again (to
+   change its mora, quitar it and enter it again). Once a payment covers
+   the month, **Quitar** is gone; reverse the payment first if it was wrong.
+
+Sending the same months again (a second tap, or a retry on weak signal)
+changes nothing. Only roles with "Registrar pagos y gastos" may enter
+months, and only those with "Corregir un registro de dinero" may quitar
+them; only roles with "Cambiar la configuración" may save the start month.
+A late fee cannot be paid in the app yet: that comes with "Other income".
 
 ### Trying the census
 

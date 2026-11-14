@@ -15,6 +15,10 @@
  *    change of fee does not change what is still owed for it (owner,
  *    6 November 2026). Until then a month costs the house's different amount
  *    in force for it, or else the base monthly fee in force for it.
+ *  - Before the start month, a house owes only the months entered from the
+ *    paper book ("Deuda anterior", board, 7 November 2026), at the price
+ *    fixed when each was entered, and Cobrar offers no other month from
+ *    before it (owner, 13 November 2026).
  *
  * A payment that has been reversed does not count, and a reversal carries no
  * shares of its own, so undoing a payment gives its months back as they were.
@@ -22,10 +26,10 @@
 import { and, desc, eq, isNull, lte, or, gte, sql } from "drizzle-orm";
 
 import type { DbOrTx } from "../db/client.js";
-import { householdFees } from "../db/schema.js";
+import { householdFees, owedMonths } from "../db/schema.js";
 import { formatLempiras } from "./census.js";
 import { monthName } from "./fees.js";
-import { feeOn } from "./settings.js";
+import { feeOn, startMonth } from "./settings.js";
 
 /** "2026-11-01" moved by `by` months: "2026-11-01", 3 → "2027-02-01". */
 export function addMonths(month: string, by: number): string {
@@ -59,6 +63,10 @@ export interface MonthState {
   month: string;
   priceCentavos: number | null;
   paidCentavos: number;
+  /** Whether it comes before the start month, so it is owed only if it was entered as owed. Absent: no. */
+  beforeStart?: boolean;
+  /** The month as entered from the paper book ("Deuda anterior"), if it was. */
+  owed?: { id: string; lateFeeCentavos: number | null } | null;
 }
 
 export interface Share {
@@ -88,6 +96,12 @@ export function allocatePayment(selected: readonly MonthState[], amountCentavos:
   }
 
   for (const state of months) {
+    if (state.beforeStart && !state.owed) {
+      return {
+        code: "not_owed",
+        problem: `${capitalize(monthName(state.month))} es de antes del mes de inicio y no está anotado como deuda anterior. Quítelo de la lista.`,
+      };
+    }
     if (state.priceCentavos === null) {
       return {
         code: "no_fee",
@@ -168,13 +182,31 @@ export function listPrice(db: DbOrTx, householdId: string, month: string): numbe
 
 /**
  * Each month's state for this house: the price it was fixed at by its first
- * payment (or its list price while nothing has been paid), and how much has
- * been paid towards it. Reversed payments are left out.
+ * payment (or, while nothing has been paid, the price it was entered at as
+ * owed, or its list price), how much has been paid towards it, and whether
+ * it comes before the start month. Reversed payments and months entered as
+ * owed and then removed are left out.
  */
 export function monthStates(db: DbOrTx, householdId: string, months: readonly string[]): MonthState[] {
   if (months.length === 0) {
     return [];
   }
+  const start = startMonth(db)?.month ?? null;
+  const owed = new Map(
+    db
+      .select({ id: owedMonths.id, month: owedMonths.month, price: owedMonths.priceCentavos, lateFee: owedMonths.lateFeeCentavos })
+      .from(owedMonths)
+      .where(
+        and(
+          eq(owedMonths.householdId, householdId),
+          isNull(owedMonths.removedAt),
+          gte(owedMonths.month, months[0]!),
+          lte(owedMonths.month, months.at(-1)!),
+        ),
+      )
+      .all()
+      .map((row) => [row.month, row]),
+  );
   const rows = db.all<{ month: string; paid: number; price: number }>(sql`
     SELECT pm.month AS month, sum(pm.amount_centavos) AS paid, min(pm.price_centavos) AS price
     FROM payment_months pm
@@ -186,8 +218,13 @@ export function monthStates(db: DbOrTx, householdId: string, months: readonly st
   const paid = new Map(rows.map((row) => [row.month, row]));
   return months.map((month) => {
     const row = paid.get(month);
-    return row
-      ? { month, priceCentavos: row.price, paidCentavos: row.paid }
-      : { month, priceCentavos: listPrice(db, householdId, month), paidCentavos: 0 };
+    const entered = owed.get(month);
+    return {
+      month,
+      priceCentavos: row ? row.price : entered ? entered.price : listPrice(db, householdId, month),
+      paidCentavos: row ? row.paid : 0,
+      beforeStart: start !== null && month < start,
+      owed: entered ? { id: entered.id, lateFeeCentavos: entered.lateFee } : null,
+    };
   });
 }

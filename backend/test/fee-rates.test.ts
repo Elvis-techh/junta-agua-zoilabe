@@ -176,7 +176,7 @@ describe("Configuración → Cuotas", () => {
       paymentMethod: "cash",
       createdBy: president.id,
     });
-    assert.deepEqual(paidMonthsAt(t.db, "base_monthly", thisMonth), { first: thisMonth, last: thisMonth });
+    assert.deepEqual(paidMonthsAt(t.db, "base_monthly", thisMonth), { first: thisMonth, last: thisMonth, firstHolds: "payment" });
     assert.equal(paidMonthsAt(t.db, "base_monthly", nextMonth), null);
     // The first amount's months end where the current one starts.
     assert.equal(paidMonthsAt(t.db, "base_monthly", lastYear), null);

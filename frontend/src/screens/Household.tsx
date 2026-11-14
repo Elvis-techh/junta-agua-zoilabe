@@ -9,8 +9,10 @@ import { Dialog } from "../components/Dialog.tsx";
 import { PhoneField } from "../components/PhoneField.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
+import type { HouseOwed, OwedEntry } from "../owed.ts";
+import { owedSummary } from "../owed.ts";
 import type { Payment } from "../payments.ts";
-import { PAYMENT_METHODS, monthList, shortMonth } from "../payments.ts";
+import { PAYMENT_METHODS, monthList, monthName, shortMonth } from "../payments.ts";
 import { formatPhone, phoneEntry, wholePhone } from "../phone.ts";
 import { recall, remember } from "../queue.ts";
 import { isTouchScreen } from "../viewport.ts";
@@ -147,6 +149,10 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
       )}
 
       {can("finance:view") && (
+        <HouseholdOwed householdId={file.id} canRecord={can("finance:record")} canRemove={can("finance:reverse")} onOpen={onOpen} />
+      )}
+
+      {can("finance:view") && (
         <HouseholdPayments
           householdId={file.id}
           canReverse={can("finance:reverse")}
@@ -203,6 +209,159 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
       )}
       {dialog === "deactivate" && <Deactivate file={file} onClose={() => setDialog(null)} onSaved={changed} />}
     </main>
+  );
+}
+
+/**
+ * Deuda anterior: the months this house already owed when the app took over,
+ * as entered from the paper receipt book, with what is still owed. A month
+ * entered by mistake is removed ("Quitar") with a reason, until a payment
+ * covers it (owner, 13 November 2026).
+ */
+export function HouseholdOwed({
+  householdId,
+  canRecord,
+  canRemove,
+  onOpen,
+}: {
+  householdId: string;
+  canRecord: boolean;
+  canRemove: boolean;
+  onOpen: Go;
+}) {
+  const [data, setData] = useState<HouseOwed | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<OwedEntry | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    api<HouseOwed>("GET", `/finance/households/${householdId}/owed`)
+      .then((loaded) => setData(loaded))
+      .catch((err: Error) => setError(err.message));
+  }, [householdId]);
+
+  useEffect(load, [load]);
+
+  if (!data) {
+    return error ? <p className="message error">{error}</p> : null;
+  }
+  const { startMonth, entries } = data;
+
+  return (
+    <section className="stack" style={{ gap: 8 }}>
+      <h2>Deuda anterior</h2>
+      {message && <p className="message ok">{message}</p>}
+      {!startMonth ? (
+        <p className="muted">
+          Cuando se ponga el mes de inicio en Configuración, aquí se anotan los meses que la vivienda ya debía según el libro de recibos.
+        </p>
+      ) : entries.length === 0 ? (
+        <p className="muted">No tiene meses anotados de antes de {monthName(startMonth)}.</p>
+      ) : (
+        <div className="card stack" style={{ gap: 8 }}>
+          <strong>{owedSummary(entries)}</strong>
+          {entries.map((entry) => {
+            const left = entry.priceCentavos - entry.paidCentavos;
+            return (
+              <div key={entry.id} className="row" style={{ alignItems: "center", justifyContent: "space-between", flexWrap: "nowrap" }}>
+                <div>
+                  <strong>
+                    {shortMonth(entry.month)} {entry.month.slice(0, 4)}
+                  </strong>
+                  <div>
+                    <span style={{ whiteSpace: "nowrap" }}>{formatLempiras(entry.priceCentavos)}</span>
+                    {entry.lateFeeCentavos !== null && (
+                      <>
+                        {" "}
+                        <span style={{ whiteSpace: "nowrap" }}>+ mora {formatLempiras(entry.lateFeeCentavos)}</span>
+                      </>
+                    )}
+                  </div>
+                  <div className="muted">
+                    {left <= 0 ? "Cuota pagada" : entry.paidCentavos > 0 ? `Faltan ${formatLempiras(left)}` : "Sin pagar"}
+                  </div>
+                </div>
+                {canRemove && entry.paidCentavos === 0 && (
+                  <button className="btn danger" onClick={() => setRemoving(entry)}>
+                    <Icon name="x" /> Quitar
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {startMonth && canRecord && (
+        <button className="btn primary block" onClick={() => onOpen(`/finanzas/deuda/${householdId}`)}>
+          <Icon name="plus" /> Anotar deuda anterior
+        </button>
+      )}
+      {removing && (
+        <RemoveOwedDialog
+          entry={removing}
+          onClose={() => setRemoving(null)}
+          onRemoved={() => {
+            setRemoving(null);
+            setMessage(`Se quitó ${monthName(removing.month)} de la deuda anterior.`);
+            load();
+          }}
+        />
+      )}
+    </section>
+  );
+}
+
+/**
+ * "Quitar" a month entered as owed by mistake. It asks why; the server keeps
+ * the month, marked removed, and the history shows who and why.
+ */
+function RemoveOwedDialog({ entry, onClose, onRemoved }: { entry: OwedEntry; onClose: () => void; onRemoved: () => void }) {
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const remove = async () => {
+    if (reason.trim().length < 5) {
+      setError("Escriba por qué se quita.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await api("POST", `/finance/owed/${entry.id}/remove`, { reason: reason.trim() });
+      onRemoved();
+    } catch (err) {
+      setError((err as Error).message);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog title="Quitar este mes" onClose={onClose}>
+      <p>
+        Deuda anterior de <strong>{monthName(entry.month)}</strong>: {formatLempiras(entry.priceCentavos)}
+        {entry.lateFeeCentavos !== null && `, con mora de ${formatLempiras(entry.lateFeeCentavos)}`}.
+      </p>
+      <label>
+        Por qué se quita
+        <input
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Ejemplo: el libro dice que sí pagó"
+          autoFocus={!isTouchScreen()}
+        />
+      </label>
+      <p className="muted">No se borra: queda marcado como quitado, y en el historial.</p>
+      {error && <p className="message error">{error}</p>}
+      <div className="row">
+        <button className="btn primary" disabled={saving} onClick={() => void remove()}>
+          <Icon name="x" /> Quitar mes
+        </button>
+        <button className="btn" disabled={saving} onClick={onClose}>
+          <Icon name="back" /> Volver
+        </button>
+      </div>
+    </Dialog>
   );
 }
 

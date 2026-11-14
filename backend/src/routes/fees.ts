@@ -6,8 +6,8 @@
  * starts, covering the months up to the next amount, and the list shows every
  * price the board has ever set. A new amount may start in a past month, so the
  * fees of the years in the paper book can be entered, but not once a payment
- * falls in the months it would cover (owner, 12 November 2026). Until a
- * payment has been made in its months, an amount can be corrected if it was
+ * or a month entered as owed ("Deuda anterior") falls in the months it would
+ * cover (owner, 12 November 2026). Until then, an amount can be corrected if it was
  * typed wrong, or removed ("Quitar") if the board did not mean it or no longer
  * wants it: the row stays, marked removed, and the amount before it applies
  * again. Both need a written reason.
@@ -22,6 +22,7 @@ import { inTransaction } from "../db/client.js";
 import { feeRates, users } from "../db/schema.js";
 import { formatLempiras } from "../lib/census.js";
 import { recordAudit } from "../lib/audit.js";
+import type { PaidMonths } from "../lib/fees.js";
 import { firstOfMonth, monthAfter, monthName, paidMonthsAt } from "../lib/fees.js";
 import { HttpError, parse } from "../lib/http.js";
 import type { FeeKind } from "../lib/settings.js";
@@ -69,6 +70,11 @@ const removeBody = z.object({
 });
 
 const NOT_FOUND = new HttpError(404, "not_found", "No se encontró ese monto.");
+
+/** Why an amount's months are already counted, as the start of a sentence. */
+function countedIn(paid: PaidMonths): string {
+  return paid.firstHolds === "owed" ? "Ya hay deuda anterior anotada en esos meses" : "Ya hay pagos de esos meses";
+}
 
 /** The rate an address names, if it exists and has not been removed. */
 function liveRate(tx: Tx, idParam: string) {
@@ -147,12 +153,13 @@ export const feeRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app, o
         const after = monthAfter(paid.last) < thisMonth ? monthAfter(paid.last) : thisMonth;
         const earliestStart = existing.some((row) => row.startsOn > body.startsOn && row.startsOn <= after) ? null : after;
         const paidName = monthName(paid.first).replace(/^./, (letter) => letter.toUpperCase());
+        const holds = paid.firstHolds === "owed" ? "ya tiene deuda anterior anotada" : "ya tiene pagos";
         throw new HttpError(
           409,
           "months_paid",
           earliestStart
-            ? `${paidName} ya tiene pagos. Lo más pronto que puede empezar es ${monthName(earliestStart)}.`
-            : `${paidName} ya tiene pagos, así que este cambio no puede empezar en ${monthName(body.startsOn)}.`,
+            ? `${paidName} ${holds}. Lo más pronto que puede empezar es ${monthName(earliestStart)}.`
+            : `${paidName} ${holds}, así que este cambio no puede empezar en ${monthName(body.startsOn)}.`,
           { firstPaidMonth: paid.first, earliestStart },
         );
       }
@@ -195,11 +202,12 @@ export const feeRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app, o
 
     inTransaction(app.db, (tx) => {
       const rate = liveRate(tx, request.params.id);
-      if (paidMonthsAt(tx, rate.kind, rate.startsOn)) {
+      const paid = paidMonthsAt(tx, rate.kind, rate.startsOn);
+      if (paid) {
         throw new HttpError(
           409,
           "already_paid",
-          "Ya hay pagos de esos meses, así que este monto no se corrige. Ponga un monto nuevo desde este mes.",
+          `${countedIn(paid)}, así que este monto no se corrige. Ponga un monto nuevo desde este mes.`,
         );
       }
       if (body.amountCentavos === rate.amountCentavos) {
@@ -236,11 +244,12 @@ export const feeRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app, o
 
     inTransaction(app.db, (tx) => {
       const rate = liveRate(tx, request.params.id);
-      if (paidMonthsAt(tx, rate.kind, rate.startsOn)) {
+      const paid = paidMonthsAt(tx, rate.kind, rate.startsOn);
+      if (paid) {
         throw new HttpError(
           409,
           "already_paid",
-          "Ya hay pagos de esos meses, así que este monto no se quita. Ponga un monto nuevo desde el mes que corresponda.",
+          `${countedIn(paid)}, así que este monto no se quita. Ponga un monto nuevo desde el mes que corresponda.`,
         );
       }
 

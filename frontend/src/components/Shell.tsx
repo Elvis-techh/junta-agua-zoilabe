@@ -12,6 +12,7 @@ import { CollectScreen, PaymentScreen } from "../screens/Collect.tsx";
 import { HistoryScreen } from "../screens/History.tsx";
 import { HomeScreen } from "../screens/Home.tsx";
 import { HouseholdScreen } from "../screens/Household.tsx";
+import { OwedScreen } from "../screens/Owed.tsx";
 import type { RegisterPreset } from "../screens/Register.tsx";
 import { RegisterScreen } from "../screens/Register.tsx";
 import { SettingsScreen } from "../screens/Settings.tsx";
@@ -103,6 +104,9 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
       return (
         <PaymentScreen key={`${route}${again?.id ?? ""}`} id={route.slice("/finanzas/cobrar/".length)} again={again} onOpen={go} />
       );
+    }
+    if (route.startsWith("/finanzas/deuda/") && can("finance:record") && can("finance:view")) {
+      return <OwedScreen key={route} id={route.slice("/finanzas/deuda/".length)} onOpen={go} />;
     }
     if (route === "/usuarios" && can("users:manage")) {
       return <UsersScreen me={me} />;

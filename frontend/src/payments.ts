@@ -22,14 +22,22 @@ export interface MonthState {
   month: string;
   priceCentavos: number | null;
   paidCentavos: number;
+  /** It comes before the start month, so it is owed only if it was entered as owed. Absent: no. */
+  beforeStart?: boolean;
+  /** The month as entered from the paper book ("Deuda anterior"), if it was. */
+  owed?: { id: string; lateFeeCentavos: number | null } | null;
 }
 
 export interface HouseMonths {
   today: string;
   thisMonth: string;
   latestMonth: string;
+  /** The month the app took over from the paper book, or null while it is not set. */
+  startMonth: string | null;
   household: { id: string; code: string; status: "active" | "inactive"; waterConnection: string; ownerName: string };
   months: MonthState[];
+  /** Months entered as owed, earlier than `months`, with something still to pay. */
+  owedBefore: MonthState[];
 }
 
 export interface Payment {
@@ -72,6 +80,7 @@ export function monthList(months: readonly string[]): string {
 }
 
 export type MonthStatus =
+  | { kind: "not_owed" }
   | { kind: "no_fee" }
   | { kind: "free" }
   | { kind: "paid" }
@@ -79,6 +88,8 @@ export type MonthStatus =
   | { kind: "unpaid"; owedCentavos: number };
 
 export function monthStatus(state: MonthState): MonthStatus {
+  // Before the start month a house owes only the months entered from the paper book.
+  if (state.beforeStart && !state.owed && state.paidCentavos === 0) return { kind: "not_owed" };
   if (state.priceCentavos === null) return { kind: "no_fee" };
   if (state.priceCentavos === 0) return { kind: "free" };
   const owed = state.priceCentavos - state.paidCentavos;
@@ -90,6 +101,8 @@ export function monthStatus(state: MonthState): MonthStatus {
 export function statusLine(state: MonthState): string {
   const status = monthStatus(state);
   switch (status.kind) {
+    case "not_owed":
+      return "No debe";
     case "no_fee":
       return "Sin cuota";
     case "free":
@@ -103,10 +116,13 @@ export function statusLine(state: MonthState): string {
   }
 }
 
-/** Whether a month can be chosen: it has a price and something left to pay. */
+/**
+ * Whether a month can be chosen: it has a price and something left to pay,
+ * and, before the start month, it was entered as owed (owner, 13 November 2026).
+ */
 export function choosable(state: MonthState): boolean {
   const kind = monthStatus(state).kind;
-  return kind === "partial" || kind === "unpaid";
+  return (kind === "partial" || kind === "unpaid") && !(state.beforeStart && !state.owed);
 }
 
 /** What the chosen months still owe together. */

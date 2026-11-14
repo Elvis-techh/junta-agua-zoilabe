@@ -15,7 +15,7 @@
  * reversal has no shares, so the months go back to how they were before
  * the payment (src/lib/payments.ts, `monthStates`).
  */
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, lt, sql } from "drizzle-orm";
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 
@@ -23,12 +23,13 @@ import { actorOf } from "../auth/plugin.js";
 import { newId } from "../auth/session.js";
 import type { DbOrTx, Tx } from "../db/client.js";
 import { inTransaction } from "../db/client.js";
-import { categories, householdOwners, households, months, paymentMonths, people, transactions, users } from "../db/schema.js";
+import { categories, householdOwners, households, months, owedMonths, paymentMonths, people, transactions, users } from "../db/schema.js";
 import { recordAudit } from "../lib/audit.js";
 import { formatLempiras } from "../lib/census.js";
 import { firstOfMonth, monthName } from "../lib/fees.js";
 import { HttpError, parse } from "../lib/http.js";
 import { MONTHS_AHEAD, addMonths, allocatePayment, monthList, monthStates, monthsBetween } from "../lib/payments.js";
+import { startMonth } from "../lib/settings.js";
 import { businessToday, formatCalendarDate } from "../lib/time.js";
 
 /** The income category every monthly fee payment goes to (src/db/seeding.ts). */
@@ -217,12 +218,23 @@ export const paymentRoutes: FastifyPluginAsync<{ timeZone: string }> = async (ap
     }
 
     const household = householdOf(app.db, request.params.id);
+    // Months entered as owed from the paper book, older than the list, with
+    // something still to pay: shown first, so old debts need no searching.
+    const olderOwed = app.db
+      .select({ month: owedMonths.month })
+      .from(owedMonths)
+      .where(and(eq(owedMonths.householdId, household.id), isNull(owedMonths.removedAt), lt(owedMonths.month, from)))
+      .orderBy(asc(owedMonths.month))
+      .all()
+      .map((row) => row.month);
     return {
       today: day,
       thisMonth,
       latestMonth: latest,
+      startMonth: startMonth(app.db)?.month ?? null,
       household,
       months: monthStates(app.db, household.id, monthsBetween(from, to)),
+      owedBefore: monthStates(app.db, household.id, olderOwed).filter((state) => state.paidCentavos < state.priceCentavos!),
     };
   });
 

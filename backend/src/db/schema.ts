@@ -1,5 +1,5 @@
 /**
- * The eighteen tables of the App Plan's data model (docs/app-plan.md, "Data
+ * The nineteen tables of the App Plan's data model (docs/app-plan.md, "Data
  * model"). Phase 0 uses users, roles, role_permissions, access_tokens,
  * audit_log and settings; the rest are created now so the whole schema is
  * reviewed once, and filled by the census and finance phases.
@@ -478,6 +478,55 @@ export const paymentMonths = sqliteTable(
   ],
 );
 
+/**
+ * "Deuda anterior": a month a house already owed when the app took over,
+ * copied from the paper receipt book.
+ *
+ * The board decided on 7 November 2026 that the app takes over at one start
+ * month (the `start_month` setting), and that before it a house owes only the
+ * months the treasurer enters here. Each costs the fee in Configuración for
+ * that month, or the house's different amount (12 November: even for months
+ * before that amount was entered); a late fee only where the paper book shows
+ * one, at the late fee in Configuración for that month. Both prices are
+ * fixed when the month is entered, so nothing changes what it already counts.
+ *
+ * A month entered by mistake is removed ("Quitar") with a written reason,
+ * until a payment covers it (13 November): the row stays, with when, who and
+ * why, and no longer counts. The month is then free to be entered again.
+ */
+export const owedMonths = sqliteTable(
+  "owed_months",
+  {
+    id: uuid("id").primaryKey(),
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => households.id),
+    /** The month owed, as its first day; always before the start month. */
+    month: date("month").notNull(),
+    /** What the month costs: the fee in Configuración for it, or the house's different amount. */
+    priceCentavos: integer("price_centavos").notNull(),
+    /** The late fee for it, when the paper book shows one; null when it does not. */
+    lateFeeCentavos: integer("late_fee_centavos"),
+    createdAt: createdAt(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id),
+    removedAt: instant("removed_at"),
+    removedBy: uuid("removed_by").references(() => users.id),
+    removedReason: text("removed_reason"),
+  },
+  (table) => [
+    uniqueIndex("owed_months_household_month_unique")
+      .on(table.householdId, table.month)
+      .where(sql`${table.removedAt} IS NULL`),
+    check("owed_months_first_day", sql`substr(${table.month}, 9, 2) = '01'`),
+    check("owed_months_price", sql`${table.priceCentavos} > 0`),
+    check("owed_months_late_fee", sql`${table.lateFeeCentavos} IS NULL OR ${table.lateFeeCentavos} >= 0`),
+    // A removed month always says why.
+    check("owed_months_removed_reason", sql`(${table.removedAt} IS NULL) = (${table.removedReason} IS NULL)`),
+  ],
+);
+
 /** Where each receipt photo sits in the private storage bucket. */
 export const receiptFiles = sqliteTable("receipt_files", {
   id: uuid("id").primaryKey(),
@@ -540,6 +589,10 @@ export const auditLog = sqliteTable(
  * the date it takes effect, so the value in force on any past day can always
  * be read back. The current value of a key is the newest row whose
  * `effective_from` is not in the future.
+ *
+ * The start month (`start_month`) is the exception: the owner decided on
+ * 13 November 2026 that once saved it cannot be changed, so the database
+ * refuses a second row for it.
  */
 export const settings = sqliteTable(
   "settings",
@@ -551,5 +604,8 @@ export const settings = sqliteTable(
     createdAt: createdAt(),
     createdBy: uuid("created_by").references(() => users.id),
   },
-  (table) => [index("settings_key_idx").on(table.key, table.effectiveFrom)],
+  (table) => [
+    index("settings_key_idx").on(table.key, table.effectiveFrom),
+    uniqueIndex("settings_start_month_once").on(table.key).where(sql`${table.key} = 'start_month'`),
+  ],
 );
