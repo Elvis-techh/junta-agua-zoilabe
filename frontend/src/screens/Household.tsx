@@ -16,6 +16,7 @@ import { recall, remember } from "../queue.ts";
 import { isTouchScreen } from "../viewport.ts";
 import { formatDate, formatDateTime } from "../time.ts";
 import { HouseholdStatus } from "./Census.tsx";
+import { IncomeEntries } from "./Income.tsx";
 
 /** "3 de marzo de 2026" for a calendar date such as the paper form's. */
 const calendarDate = (date: string) => formatDate(`${date}T12:00:00Z`);
@@ -157,10 +158,17 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
         />
       )}
 
+      {can("finance:view") && <IncomeEntries householdId={file.id} title="Otros ingresos" canReverse={can("finance:reverse")} />}
+
       <h2>Acciones</h2>
       {can("finance:record") && can("finance:view") && (
         <button className="btn primary block" onClick={() => onOpen(`/finanzas/cobrar/${file.id}`)}>
           <Icon name="cash" /> Registrar pago
+        </button>
+      )}
+      {can("finance:record") && can("finance:view") && (
+        <button className="btn block" onClick={() => onOpen(`/finanzas/ingreso/${file.id}`)}>
+          <Icon name="receipt" /> Otro ingreso: mora, reconexión…
         </button>
       )}
       {sensitiveVisible && owner.phone && (
