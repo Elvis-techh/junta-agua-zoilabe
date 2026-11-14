@@ -10,19 +10,11 @@ import { newId } from "../src/auth/session.js";
 import { createDb } from "../src/db/client.js";
 import { MIGRATIONS_FOLDER, runMigrations } from "../src/db/migrations.js";
 import { auditLog, categories, feeRates, months, transactions } from "../src/db/schema.js";
-import { earliestFeeStart, firstOfMonth, monthAfter, paidFrom } from "../src/lib/fees.js";
+import { firstOfMonth, monthAfter, paidMonthsAt } from "../src/lib/fees.js";
 import { feeOn } from "../src/lib/settings.js";
 import { HONDURAS_TIME_ZONE, businessToday } from "../src/lib/time.js";
 import type { TestApp } from "./helpers.js";
 import { buildTestApp, rejectsWithDbError, signedInUser, takeAway } from "./helpers.js";
-
-describe("the earliest month a fee may start", () => {
-  it("is any month for the first amount, and this month after that", () => {
-    assert.equal(earliestFeeStart(false, "2026-11-02"), null);
-    assert.equal(earliestFeeStart(true, "2026-11-02"), "2026-11-01");
-    assert.equal(earliestFeeStart(true, "2026-12-31"), "2026-12-01");
-  });
-});
 
 describe("Configuración → Cuotas", () => {
   let t: TestApp;
@@ -75,7 +67,6 @@ describe("Configuración → Cuotas", () => {
     for (const fee of list.json().fees) {
       assert.deepEqual(fee.rates, []);
       assert.equal(fee.currentId, null);
-      assert.equal(fee.earliestStart, null);
     }
   });
 
@@ -111,13 +102,7 @@ describe("Configuración → Cuotas", () => {
     assert.equal(options.json().baseFeeCentavos, 7000);
   });
 
-  it("never rewrites a past month: a change starts this month at the earliest", async () => {
-    const sent = await call(president.cookie, "POST", { kind: "base_monthly", amountCentavos: 8000, startsOn: lastYear });
-    assert.equal(sent.statusCode, 409);
-    assert.equal(sent.json().error, "starts_too_early");
-    assert.equal(sent.json().earliestStart, thisMonth);
-    assert.equal(feeOn(t.db, "base_monthly", today), 7000);
-    // Another fee's first amount is still free to start in the past, and may be zero.
+  it("lets another fee's first amount start in the past too, and be zero", async () => {
     const lateFee = await call(president.cookie, "POST", { kind: "late_fee", amountCentavos: 0, startsOn: lastYear });
     assert.equal(lateFee.statusCode, 201);
     assert.equal(feeOn(t.db, "late_fee", today), 0);
@@ -153,7 +138,6 @@ describe("Configuración → Cuotas", () => {
     );
     assert.equal(base.currentId, base.rates[1].id);
     assert.equal(base.rates[0].createdByName, "Ana Presidenta");
-    assert.equal(base.earliestStart, thisMonth);
   });
 
   it("corrects an amount typed wrong, with a reason, and logs both", async () => {
@@ -177,7 +161,7 @@ describe("Configuración → Cuotas", () => {
     assert.deepEqual(entry!.before, { amountCentavos: 7000 });
   });
 
-  it("does not correct an amount once a payment has been made at it", async () => {
+  it("does not correct an amount once a payment falls in its months; an older amount, whose months end before it, still can", async () => {
     const [month] = await t.db.insert(months).values({ month: thisMonth, status: "open" }).returning();
     const [category] = await t.db.select().from(categories).where(eq(categories.name, "Cuota mensual"));
     const paymentId = newId();
@@ -192,12 +176,16 @@ describe("Configuración → Cuotas", () => {
       paymentMethod: "cash",
       createdBy: president.id,
     });
-    assert.equal(paidFrom(t.db, thisMonth), true);
-    assert.equal(paidFrom(t.db, nextMonth), false);
+    assert.deepEqual(paidMonthsAt(t.db, "base_monthly", thisMonth), { first: thisMonth, last: thisMonth });
+    assert.equal(paidMonthsAt(t.db, "base_monthly", nextMonth), null);
+    // The first amount's months end where the current one starts.
+    assert.equal(paidMonthsAt(t.db, "base_monthly", lastYear), null);
+    // A monthly fee payment says nothing about the late fee.
+    assert.equal(paidMonthsAt(t.db, "late_fee", lastYear), null);
 
     const base = await baseRates();
     const [upcoming, current, first] = base.rates;
-    assert.deepEqual([upcoming.correctable, current.correctable, first.correctable], [true, false, false]);
+    assert.deepEqual([upcoming.correctable, current.correctable, first.correctable], [true, false, true]);
 
     const sent = await correct(president.cookie, current.id, { amountCentavos: 7000, reason: "Error al escribir" });
     assert.equal(sent.statusCode, 409);
@@ -265,7 +253,7 @@ describe("Configuración → Cuotas", () => {
     assert.equal(feeOn(t.db, "base_monthly", today), 7500);
   });
 
-  it("says when removing an amount leaves its months with none, and a first amount may then start in the past again", async () => {
+  it("says when removing an amount leaves its months with none", async () => {
     const created = await call(president.cookie, "POST", { kind: "reconnection", amountCentavos: 50000, startsOn: nextMonth });
     assert.equal(created.statusCode, 201);
     const id = created.json().rate.id;
@@ -281,7 +269,6 @@ describe("Configuración → Cuotas", () => {
     const list = await call(president.cookie, "GET");
     const reconnection = list.json().fees.find((fee: { kind: string }) => fee.kind === "reconnection");
     assert.deepEqual(reconnection.rates, []);
-    assert.equal(reconnection.earliestStart, null);
   });
 
   it("refuses a removed amount with no reason, even from outside the app", async () => {
@@ -294,6 +281,189 @@ describe("Configuración → Cuotas", () => {
 
   it("is never deleted, even from outside the app", async () => {
     await rejectsWithDbError(t.db.delete(feeRates), /nothing is deleted: fee_rates/);
+  });
+});
+
+describe("a fee change that starts in a past month", () => {
+  let t: TestApp;
+  let president: { id: string; cookie: string };
+
+  // 12 November 2026, midday in Honduras, the day the owner decided this.
+  const now = new Date("2026-11-12T18:00:00.000Z");
+
+  before(async () => {
+    mock.timers.enable({ apis: ["Date"], now });
+    t = await buildTestApp();
+    president = await signedInUser(t, "presidente", "Ana Presidenta");
+    for (const [kind, amountCentavos, startsOn] of [
+      ["base_monthly", 7000, "2025-01-01"],
+      ["reconnection", 30000, "2024-01-01"],
+    ] as const) {
+      assert.equal((await add({ kind, amountCentavos, startsOn })).statusCode, 201);
+    }
+  });
+  after(async () => {
+    await t.close();
+    mock.timers.reset();
+  });
+
+  function add(payload: { kind: string; amountCentavos: number; startsOn: string }) {
+    return t.app.inject({ method: "POST", url: "/api/settings/fees", headers: { cookie: president.cookie }, payload });
+  }
+  const rates = async (kind: string) => {
+    const list = await t.app.inject({ method: "GET", url: "/api/settings/fees", headers: { cookie: president.cookie } });
+    return list.json().fees.find((fee: { kind: string }) => fee.kind === kind).rates as Array<{
+      id: number;
+      amountCentavos: number;
+      startsOn: string;
+      correctable: boolean;
+    }>;
+  };
+
+  /** A payment as Cobrar (or, later, "Other income") records it, under that fee's category. */
+  async function pay(category: string, occurredOn: string, monthsCovered: string[] | null) {
+    const accountingMonth = firstOfMonth(occurredOn);
+    const [month] = await t.db.select().from(months).where(eq(months.month, accountingMonth));
+    const monthId = month?.id ?? (await t.db.insert(months).values({ month: accountingMonth, status: "open" }).returning())[0]!.id;
+    const [row] = await t.db.select().from(categories).where(eq(categories.name, category));
+    const id = newId();
+    await t.db.insert(transactions).values({
+      id,
+      kind: "income",
+      categoryId: row!.id,
+      monthId,
+      occurredOn,
+      amountCentavos: 7000,
+      monthsCovered,
+      paymentMethod: "cash",
+      createdBy: president.id,
+    });
+    return id;
+  }
+
+  it("is accepted before the first amount, and between two amounts, while no payment falls in its months", async () => {
+    const older = await add({ kind: "base_monthly", amountCentavos: 5000, startsOn: "2023-01-01" });
+    assert.equal(older.statusCode, 201);
+    const between = await add({ kind: "base_monthly", amountCentavos: 6000, startsOn: "2024-01-01" });
+    assert.equal(between.statusCode, 201);
+    assert.deepEqual(
+      ["2022-12-01", "2023-06-01", "2024-01-01", "2024-12-01", "2025-01-01", "2026-11-01"].map((month) =>
+        feeOn(t.db, "base_monthly", month),
+      ),
+      [null, 5000, 6000, 6000, 7000, 7000],
+    );
+
+    // The history log names the amount it replaces from its month on, if any.
+    const summaries = await t.db
+      .select({ summary: auditLog.summary, entityId: auditLog.entityId })
+      .from(auditLog)
+      .where(eq(auditLog.action, "fee_rate.created"));
+    const summaryOf = (id: number) => summaries.find((entry) => entry.entityId === String(id))!.summary;
+    assert.match(summaryOf(older.json().rate.id), /fijó la cuota mensual base en L 50\.00 desde enero de 2023$/);
+    assert.match(summaryOf(between.json().rate.id), /en L 60\.00 desde enero de 2024 \(antes L 50\.00\)$/);
+  });
+
+  it("is refused once a payment falls in the months it would cover, and says the earliest month it could start", async () => {
+    await pay("Cuota mensual", "2026-11-03", ["2024-03-01", "2024-04-01"]);
+    const sent = await add({ kind: "base_monthly", amountCentavos: 6500, startsOn: "2024-02-01" });
+    assert.equal(sent.statusCode, 409);
+    assert.equal(sent.json().error, "months_paid");
+    assert.equal(sent.json().firstPaidMonth, "2024-03-01");
+    assert.equal(sent.json().earliestStart, "2024-05-01");
+    assert.equal(
+      sent.json().message,
+      "Marzo de 2024 ya tiene pagos. Lo más pronto que puede empezar es mayo de 2024.",
+    );
+    assert.equal(feeOn(t.db, "base_monthly", "2024-02-01"), 6000);
+
+    // That month is free: the change's months run from there to the next amount.
+    assert.equal((await add({ kind: "base_monthly", amountCentavos: 6500, startsOn: "2024-05-01" })).statusCode, 201);
+    assert.equal(feeOn(t.db, "base_monthly", "2024-04-01"), 6000);
+    assert.equal(feeOn(t.db, "base_monthly", "2024-05-01"), 6500);
+  });
+
+  it("names no month when the paid months run up to the next amount", async () => {
+    await pay("Cuota mensual", "2026-11-03", ["2024-12-01"]);
+    const sent = await add({ kind: "base_monthly", amountCentavos: 6800, startsOn: "2024-09-01" });
+    assert.equal(sent.statusCode, 409);
+    assert.equal(sent.json().earliestStart, null);
+    assert.equal(sent.json().message, "Diciembre de 2024 ya tiene pagos, así que este cambio no puede empezar en septiembre de 2024.");
+  });
+
+  it("does not count a reversed payment", async () => {
+    const original = await pay("Cuota mensual", "2026-11-04", ["2023-06-01"]);
+    const [month] = await t.db.select().from(months).where(eq(months.month, "2026-11-01"));
+    const [category] = await t.db.select().from(categories).where(eq(categories.name, "Cuota mensual"));
+    await t.db.insert(transactions).values({
+      id: newId(),
+      kind: "income",
+      categoryId: category!.id,
+      monthId: month!.id,
+      occurredOn: "2026-11-05",
+      amountCentavos: -7000,
+      reversesId: original,
+      reason: "Se anotó en la casa equivocada",
+      createdBy: president.id,
+    });
+    assert.equal((await add({ kind: "base_monthly", amountCentavos: 5500, startsOn: "2023-06-01" })).statusCode, 201);
+  });
+
+  it("counts only payments of the same fee", async () => {
+    // Monthly fee payments fill 2023 and 2024, and the late fee's first amount still starts in 2023.
+    assert.equal((await add({ kind: "late_fee", amountCentavos: 1000, startsOn: "2023-01-01" })).statusCode, 201);
+
+    // A late fee paid for March 2023 stops a late fee change that would cover it.
+    await pay("Mora", "2026-11-06", ["2023-03-01"]);
+    const lateFee = await add({ kind: "late_fee", amountCentavos: 1500, startsOn: "2023-02-01" });
+    assert.equal(lateFee.statusCode, 409);
+    assert.equal(lateFee.json().firstPaidMonth, "2023-03-01");
+
+    // A reconnection is charged on the day it is paid.
+    await pay("Reconexión", "2024-07-15", null);
+    const reconnection = await add({ kind: "reconnection", amountCentavos: 35000, startsOn: "2024-06-01" });
+    assert.equal(reconnection.statusCode, 409);
+    assert.equal(reconnection.json().firstPaidMonth, "2024-07-01");
+    assert.equal(reconnection.json().earliestStart, "2024-08-01");
+  });
+
+  it("is always accepted from this month on: a paid month keeps the price its first payment fixed", async () => {
+    await pay("Cuota mensual", "2026-11-07", ["2026-11-01", "2026-12-01"]);
+    assert.equal((await add({ kind: "base_monthly", amountCentavos: 8000, startsOn: "2026-11-01" })).statusCode, 201);
+  });
+
+  it("leaves an amount correctable while its own months hold no payment, even when later months do", async () => {
+    const base = await rates("base_monthly");
+    assert.deepEqual(
+      base.map((rate) => [rate.startsOn, rate.amountCentavos, rate.correctable]),
+      [
+        ["2026-11-01", 8000, false], // November 2026 is paid
+        ["2025-01-01", 7000, true],
+        ["2024-05-01", 6500, false], // December 2024 is paid
+        ["2024-01-01", 6000, false], // March and April 2024 are paid
+        ["2023-06-01", 5500, true], // its only payment was reversed
+        ["2023-01-01", 5000, true],
+      ],
+    );
+
+    const oldest = base.at(-1)!;
+    const corrected = await t.app.inject({
+      method: "PATCH",
+      url: `/api/settings/fees/${oldest.id}`,
+      headers: { cookie: president.cookie },
+      payload: { amountCentavos: 4500, reason: "El cuaderno dice L 45" },
+    });
+    assert.equal(corrected.statusCode, 200);
+    assert.equal(feeOn(t.db, "base_monthly", "2023-02-01"), 4500);
+
+    const paid = base.find((rate) => rate.startsOn === "2024-01-01")!;
+    const refused = await t.app.inject({
+      method: "POST",
+      url: `/api/settings/fees/${paid.id}/remove`,
+      headers: { cookie: president.cookie },
+      payload: { reason: "No era ese monto" },
+    });
+    assert.equal(refused.statusCode, 409);
+    assert.equal(refused.json().error, "already_paid");
   });
 });
 

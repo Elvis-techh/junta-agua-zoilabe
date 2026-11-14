@@ -46,7 +46,8 @@ changing how money, permissions or the history log work.
     (mora) and the reconnection fee, each from the month it starts. The
     census shows the base price's amount once one is set. See "Trying the
     fees" below. Owner decisions of 2 November 2026: a change may start in
-    the current month; an amount typed wrong may be corrected with a reason
+    the current month (since 12 November 2026, also a past month: see below);
+    an amount typed wrong may be corrected with a reason
     until a payment is made at it; an amount may be zero. Owner decision of
     6 November 2026: until a payment is made at
     it, an amount may also be removed ("Quitar"), with a reason; it stays in
@@ -77,6 +78,14 @@ changing how money, permissions or the history log work.
     recorded again); the reversal is dated the day it is made and counts in
     that month; it can be made at any time, even after the original's month
     is closed; and a reversal is final.
+  - **Past fee changes: built.** Owner decision of 12 November 2026: a fee
+    may also take a change that starts in a past month, so the fees of the
+    years in the paper book can be entered before what houses already owe
+    is counted. It is refused once a payment of that fee falls in the months
+    it would cover (from its month up to the next amount). The same months
+    decide whether an amount may still be corrected or removed, so an old
+    amount stays correctable while its own months hold no payment. See steps
+    3 and 4 of "Trying the fees" below.
   - Next: what each house already owes, entered month by month.
 
   A different amount starts with the month after the house's last payment
@@ -181,28 +190,34 @@ On a computer, month and date fields open the app's own calendar, in Spanish;
 a phone keeps its own picker.
 
 1. Tap **Poner monto** on "Cuota mensual base", type `70` and pick a month.
-   The first amount of each fee may start in a past month, so what houses
-   already owe from the paper book can be counted. `0` is allowed, for a
-   fee the board does not charge.
+   It may be a past month, so what houses already owe from the paper book
+   can be counted. `0` is allowed, for a fee the board does not charge.
    Amounts get their thousands commas as they are typed: `1250.5` shows as
    `1,250.5`. Identity numbers and phones never do.
 2. Tap **Seguir**, read the summary and tap **Sí, guardar**.
    The card shows L 70.00 "en uso", and **Registrar familia** now says
    "Precio base: L 70.00 al mes".
-3. Tap **Cambiar detalles**. The month picker starts at this month: a change
-   may start now or later, never in a past month. An amount for a later
-   month shows as "Todavía no empieza" until its month comes, then takes over
-   by itself on that month's first day, Honduras time. A month that already
-   has an amount is refused before the summary.
+3. Tap **Cambiar detalles**. The month picker starts at this month. An
+   amount for a later month shows as "Todavía no empieza" until its month
+   comes, then takes over by itself on that month's first day, Honduras
+   time. A month that already has an amount is refused before the summary.
+   A change may also start in a past month, for an older fee from the paper
+   book: each amount counts from its month until the next one starts, and
+   the summary says which unpaid months it prices ("desde marzo de 2024
+   hasta diciembre de 2024"). Once a payment of that fee falls in those
+   months, the change is refused, and the message names the earliest month
+   it could start instead. From this month on a change is always accepted:
+   a month already paid keeps the price it was paid at.
 4. Each saved amount sits in its own box. An amount typed wrong is fixed with
    the **Corregir** in its box, which asks for the right amount and the
-   reason. Once a payment has been made at an amount, the button is gone:
-   correcting it would change a month already paid.
+   reason. Once a payment falls in that amount's months, the button is gone:
+   correcting it would change a month already paid. An older amount whose
+   own months hold no payment keeps it, even when later months are paid.
 5. An amount the board did not mean, or no longer wants, goes with the
    **Quitar** in its box. The panel says what its months go back to (the
    amount before it, or none) and asks why. The box
    disappears, and its month is free for another amount. Like **Corregir**,
-   it is gone once a payment has been made at the amount.
+   it is gone once a payment falls in the amount's months.
 6. Nothing here is deleted, not even a removed amount: the database keeps it,
    marked removed. Every change, correction and removal is in
    **Historial**, with the amount and the reason.

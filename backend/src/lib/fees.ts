@@ -7,9 +7,11 @@
  * months"). A house with no payment recorded yet, such as one being
  * registered, starts with the month the fee is set in.
  */
-import { sql } from "drizzle-orm";
+import { and, asc, eq, gt, isNull, sql } from "drizzle-orm";
 
 import type { DbOrTx } from "../db/client.js";
+import { feeRates } from "../db/schema.js";
+import type { FeeKind } from "./settings.js";
 
 const MONTH_NAMES = [
   "enero", "febrero", "marzo", "abril", "mayo", "junio",
@@ -58,37 +60,72 @@ export function lastPaidMonth(db: DbOrTx, householdId: string): string | null {
 }
 
 /**
- * The earliest month a new rate of a fee may start, or null when any month may.
- *
- * The owner decided on 2026-11-02 that a change may start in the current
- * month. Months before it keep the price they were charged at (App Plan, 29
- * October 2026: a change "never rewrites months already charged or paid").
- * The very first amount of each fee is the exception: until it exists, no
- * month has been charged with it, and it may start in the past so that what
- * houses already owe from the paper book can be counted.
+ * The income category each fee's payments are recorded under
+ * (src/db/seeding.ts).
  */
-export function earliestFeeStart(hasRate: boolean, today: string): string | null {
-  return hasRate ? firstOfMonth(today) : null;
+const FEE_CATEGORIES: Record<FeeKind, string> = {
+  base_monthly: "Cuota mensual",
+  late_fee: "Mora",
+  reconnection: "Reconexión",
+};
+
+/** The first and last month a payment of a fee covers among an amount's months. */
+export interface PaidMonths {
+  first: string;
+  last: string;
 }
 
 /**
- * Whether a payment recorded in the app covers `month` or a later one.
+ * Which months a payment of this fee covers among those an amount starting in
+ * `startsOn` would cover: from that month up to the start of the next amount
+ * of the same fee, or with no end when none follows. Null when none.
  *
- * A fee amount may be corrected (owner, 2026-11-02) only while no payment has
- * been made at it: once one has, correcting it would rewrite a month already
- * paid. A reversed payment and the reversal itself do not count. This is
- * stricter than it must be (any payment from that month on, at any price),
- * which errs on the side of never rewriting a paid month.
+ * The owner decided on 2026-11-02 that an amount may be corrected, and on
+ * 2026-11-06 removed, only while no payment has been made at it, and on
+ * 2026-11-12 that an amount starting in a past month is refused once a
+ * payment falls in the months it would cover. All three ask about exactly
+ * those months, and only about payments of that fee: a monthly fee payment
+ * says nothing about the late fee's amount.
+ *
+ * A monthly fee or a late fee pays for months (`months_covered`, as Cobrar
+ * records it); a reconnection fee is charged on the day it is paid. Nothing
+ * records late fees or reconnections yet: "Other income" must record them
+ * under their categories, a late fee with its month in `months_covered`, for
+ * this to see them. A reversed payment and the reversal itself do not count.
  */
-export function paidFrom(db: DbOrTx, month: string): boolean {
-  const row = db.get<{ found: number }>(sql`
-    SELECT 1 AS found
-    FROM transactions t, json_each(t.months_covered) AS covered
-    WHERE covered.value >= ${month}
-      AND t.kind = 'income'
-      AND t.reverses_id IS NULL
-      AND NOT EXISTS (SELECT 1 FROM transactions r WHERE r.reverses_id = t.id)
-    LIMIT 1
-  `);
-  return row !== undefined;
+export function paidMonthsAt(db: DbOrTx, kind: FeeKind, startsOn: string): PaidMonths | null {
+  const until = nextFeeStart(db, kind, startsOn);
+  const category = FEE_CATEGORIES[kind];
+  // `months_covered` is a JSON list of "YYYY-MM-01" dates, which sort as text.
+  const row =
+    kind === "reconnection"
+      ? db.get<{ first: string | null; last: string | null }>(sql`
+          SELECT min(substr(t.occurred_on, 1, 7) || '-01') AS first, max(substr(t.occurred_on, 1, 7) || '-01') AS last
+          FROM transactions t, categories c
+          WHERE c.id = t.category_id AND c.kind = 'income' AND c.name = ${category}
+            AND t.occurred_on >= ${startsOn} AND (${until} IS NULL OR t.occurred_on < ${until})
+            AND t.reverses_id IS NULL
+            AND NOT EXISTS (SELECT 1 FROM transactions r WHERE r.reverses_id = t.id)
+        `)
+      : db.get<{ first: string | null; last: string | null }>(sql`
+          SELECT min(covered.value) AS first, max(covered.value) AS last
+          FROM transactions t, categories c, json_each(t.months_covered) AS covered
+          WHERE c.id = t.category_id AND c.kind = 'income' AND c.name = ${category}
+            AND covered.value >= ${startsOn} AND (${until} IS NULL OR covered.value < ${until})
+            AND t.reverses_id IS NULL
+            AND NOT EXISTS (SELECT 1 FROM transactions r WHERE r.reverses_id = t.id)
+        `);
+  return row?.first && row.last ? { first: row.first, last: row.last } : null;
+}
+
+/** The month the first amount of this fee after `startsOn` begins, or null when none follows. */
+export function nextFeeStart(db: DbOrTx, kind: FeeKind, startsOn: string): string | null {
+  const row = db
+    .select({ startsOn: feeRates.startsOn })
+    .from(feeRates)
+    .where(and(eq(feeRates.kind, kind), isNull(feeRates.removedAt), gt(feeRates.startsOn, startsOn)))
+    .orderBy(asc(feeRates.startsOn))
+    .limit(1)
+    .get();
+  return row?.startsOn ?? null;
 }
