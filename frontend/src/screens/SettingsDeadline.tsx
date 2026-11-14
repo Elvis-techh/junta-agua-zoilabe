@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "../api.ts";
+import { monthLabel } from "../calendar.ts";
+import { MonthField } from "../components/CalendarField.tsx";
 import { Icon } from "../icons.tsx";
 import { dueSoonLine } from "../payments.ts";
 import { formatDate } from "../time.ts";
@@ -104,6 +106,87 @@ export function DeadlineSection() {
           {message && <p className={`message ${message.kind}`}>{message.text}</p>}
           <button className="btn primary" disabled={busy} onClick={() => void save()}>
             <Icon name="check" /> Guardar plazo
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Configuración → Mora (owner, 14 November 2026): the month from which the
+ * app adds a late fee by itself to every month not paid in full by its
+ * deadline. Earlier months have only the late fees typed in from the paper
+ * book (Otro ingreso). Until it is set, the app adds none. Each change is
+ * kept and logged.
+ */
+export function LateFeesSection() {
+  const [today, setToday] = useState<string | null>(null);
+  const [from, setFrom] = useState<string | null>(null);
+  const [month, setMonth] = useState("");
+  const [saved, setSaved] = useState<{ savedAt: string; savedBy: string | null } | null>(null);
+  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const data = await api<{ today: string; from: string | null; saved: { savedAt: string; savedBy: string | null } | null }>(
+        "GET",
+        "/settings/late-fees",
+      );
+      setToday(data.today);
+      setFrom(data.from);
+      setMonth(data.from ? data.from.slice(0, 7) : "");
+      setSaved(data.saved);
+    } catch (err) {
+      setMessage({ kind: "error", text: (err as Error).message });
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const save = async () => {
+    if (!month) {
+      setMessage({ kind: "error", text: "Elija el mes desde el que se cobra la mora." });
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    try {
+      await api("POST", "/settings/late-fees", { month: `${month}-01` });
+      setMessage({ kind: "ok", text: "Guardado." });
+      await load();
+    } catch (err) {
+      setMessage({ kind: "error", text: (err as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="stack">
+      <h2>Mora</h2>
+      {!today && !message && <p className="muted">Cargando…</p>}
+      {today && (
+        <div className="card stack" style={{ gap: 8 }}>
+          <div>
+            Desde este mes, cada mes que no se pague completo dentro del plazo de pago debe su mora (el monto de Cuotas → Mora). Los meses
+            de antes solo tienen la mora que se anote del cuaderno en Otro ingreso.
+          </div>
+          <label>
+            La mora se cuenta sola desde
+            <MonthField value={month} onChange={setMonth} />
+          </label>
+          <div className="muted">
+            {from
+              ? `Se cuenta desde ${monthLabel(from.slice(0, 7))}. Guardado${saved?.savedBy ? ` por ${saved.savedBy}` : ""}${saved ? ` el ${formatDate(saved.savedAt)}` : ""}.`
+              : "Todavía no se ha puesto: la aplicación no cobra mora por sí misma."}
+          </div>
+          {message && <p className={`message ${message.kind}`}>{message.text}</p>}
+          <button className="btn primary" disabled={busy} onClick={() => void save()}>
+            <Icon name="check" /> Guardar mes
           </button>
         </div>
       )}

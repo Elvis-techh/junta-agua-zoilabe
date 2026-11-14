@@ -78,3 +78,18 @@ export function monthDeadline(month: string, rule: Deadline): { dueOn: string; l
 export function isPastDeadline(month: string, today: string, rule: Deadline): boolean {
   return today > monthDeadline(month, rule).lateAfter;
 }
+
+/**
+ * The month from which the app adds a late fee by itself (owner, 14 November
+ * 2026): from it on, every month a house owes that was not paid in full by
+ * its deadline owes its late fee. Earlier months have only the late fees
+ * typed in from the paper book (Otro ingreso). Set in Configuración → Mora;
+ * each change is a new row, and the newest applies. Until one is set, the
+ * app adds no late fee by itself.
+ */
+export const LATE_FEES_FROM_KEY = "late_fees_from";
+
+/** The first month of automatic late fees, as its first day, or null while none is set. */
+export function lateFeesFrom(db: DbOrTx, day: string): string | null {
+  return currentSetting<{ month: string }>(db, LATE_FEES_FROM_KEY, day)?.month ?? null;
+}

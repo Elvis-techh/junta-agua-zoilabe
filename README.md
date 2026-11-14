@@ -122,8 +122,24 @@ changing how money, permissions or the history log work.
     mistake is undone with **Anular**, as a payment is. A house's monthly fee
     and its late fee written on one receipt, the same day, do not count as a
     repeated receipt number. See "Trying Otro ingreso" below.
-  - Next: month-end late fees and the arrears list ("Quién debe"), using the
-    same payment deadline (Plazo de pago).
+  - **Month-end late fees and Quién debe: built.** Owner decisions of
+    14 November 2026: the app adds a late fee by itself only from a month
+    set in Configuración → **Mora** (until it is set, none; earlier months
+    have only the late fees typed in from the paper book); only active houses
+    with water (connected or shared) build them up; and late fees are worked
+    out each time from the payments, never written down, so an old payment
+    typed in later corrects them by itself. As Module 2 says, a month counts
+    as paid only when its full fee arrived by its deadline (Plazo de pago), so
+    a month paid in full late still owes its late fee. A month's late fee is
+    Configuración's late fee for that month, and it is paid by a "Mora" entry
+    for that month in Otro ingreso. The household's file shows it under **Lo
+    que debe** ("Debe la mora de octubre de 2026: L 50.00."), and **Quién
+    debe** (the treasurer's home button, and Cobrar) lists the active houses
+    with water that owe, the most owed first, each month with its fee left and
+    its late fee. The census keeps only a house's status now, not since when:
+    a house inactive or without water today builds up none, for any month.
+    See "Trying Quién debe" below.
+  - Next: expenses (category, supplier, amount and receipt photo).
 
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
@@ -382,6 +398,35 @@ Every entry and every Anular is in Historial (Finanzas). Only roles with
 "Registrar pagos y gastos" may record, and only those with "Corregir un
 registro de dinero" may undo; the server checks again whatever the screen
 shows.
+
+### Trying Quién debe
+
+With a base fee and a late fee in Configuración → Cuotas from a past month
+(for example L 70 and L 50 from January 2025), and a family whose history is
+typed in through Cobrar:
+
+1. Open **Quién debe** (on the treasurer's home screen, or under the search
+   in **Cobrar**). It lists the houses that owe months, but no late fees yet:
+   it says the month in Configuración → Mora is missing.
+2. In **Configuración** → **Mora**, pick the month from which the app counts
+   late fees by itself (say June 2025) and **Guardar mes**. It is in
+   Historial (Configuración).
+3. Back in **Quién debe**: each house now shows its months, each with the fee
+   left and its late fee ("Octubre 2026: L 70.00 de cuota y L 50.00 de
+   mora"). Months before June 2025 have no late fee. A month paid in full
+   after its deadline shows "solo la mora". The most owed house is first;
+   tap one to open its file.
+4. On the file, **Lo que debe** says "Debe la mora de …".
+5. In **Otro ingreso**, record the **Mora** of one of those months: it leaves
+   the list. **Anular** it, and it comes back.
+6. In **Configuración** → **Plazo de pago**, set an earlier day: a month paid
+   after that day now owes its late fee.
+7. Make a house inactive, or set its water to "Sin conexión": it leaves the
+   list, and its file says it is not charged a late fee.
+
+Only roles with "Ver finanzas" see the list, and only those with "Cambiar la
+configuración" may set the month; the server checks again whatever the
+screen shows.
 
 ### Trying the census
 

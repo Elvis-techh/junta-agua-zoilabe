@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api.ts";
 import { Icon } from "../icons.tsx";
 import { isTouchScreen } from "../viewport.ts";
-import { DeadlineSection } from "./SettingsDeadline.tsx";
+import { DeadlineSection, LateFeesSection } from "./SettingsDeadline.tsx";
 import { FeesSection } from "./SettingsFees.tsx";
 
 interface Sector {
@@ -52,6 +52,7 @@ export function SettingsScreen() {
       <h1>Configuración</h1>
       <FeesSection />
       <DeadlineSection />
+      <LateFeesSection />
       <h2>Sectores</h2>
       <p className="muted">La lista que aparece al registrar una familia. Un sector no se borra: se quita de la lista.</p>
 

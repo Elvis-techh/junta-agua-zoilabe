@@ -15,6 +15,7 @@ const owed = (months: MonthState[], because: "first_payment" | "registered" = "f
   months,
   dueSoon: [],
   totalCentavos: months.reduce((sum, state) => sum + state.priceCentavos! - state.paidCentavos, 0),
+  lateFees: { from: null, none: "not_set", months: [], totalCentavos: 0 },
 });
 
 describe("what a house owes, in words (owner, 13 November 2026)", () => {

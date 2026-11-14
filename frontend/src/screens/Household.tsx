@@ -10,7 +10,7 @@ import { PhoneField } from "../components/PhoneField.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
 import type { HouseOwed, Payment } from "../payments.ts";
-import { PAYMENT_METHODS, dueSoonLine, monthList, owedSince, owedSummary, shortMonth } from "../payments.ts";
+import { PAYMENT_METHODS, dueSoonLine, lateFeesLine, monthList, owedSince, owedSummary, shortMonth } from "../payments.ts";
 import { formatPhone, phoneEntry, wholePhone } from "../phone.ts";
 import { recall, remember } from "../queue.ts";
 import { isTouchScreen } from "../viewport.ts";
@@ -248,6 +248,7 @@ export function HouseholdOwed({ householdId }: { householdId: string }) {
             <span style={{ whiteSpace: "nowrap" }}>{formatLempiras(state.priceCentavos! - state.paidCentavos)}</span>
           </div>
         ))}
+        {lateFeesLine(owed.lateFees) && <strong>{lateFeesLine(owed.lateFees)}</strong>}
         {owed.dueSoon.map((state) => (
           <div key={state.month}>{dueSoonLine(state)}</div>
         ))}

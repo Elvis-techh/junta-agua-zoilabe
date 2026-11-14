@@ -6,6 +6,7 @@ import type { Route } from "../home.ts";
 import { navigation, routeOf, tabOf } from "../home.ts";
 import { Icon } from "../icons.tsx";
 import { censusQueue, remember, sendRegistration } from "../queue.ts";
+import { ArrearsScreen } from "../screens/Arrears.tsx";
 import { CensusScreen } from "../screens/Census.tsx";
 import type { PaymentPreset } from "../screens/Collect.tsx";
 import { CollectScreen, PaymentScreen } from "../screens/Collect.tsx";
@@ -106,6 +107,9 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
       );
     }
     // Otro ingreso: it finds the house in the census, by search from Cobrar or by id from a house's file.
+    if (route === "/finanzas/quien-debe" && can("finance:view")) {
+      return <ArrearsScreen onOpen={go} />;
+    }
     if (route === "/finanzas/ingreso" && can("finance:record") && can("finance:view") && can("census:view")) {
       return <IncomeScreen key={route} canReverse={can("finance:reverse")} onOpen={go} />;
     }

@@ -29,6 +29,7 @@ import { formatLempiras } from "../lib/census.js";
 import { NO_HOUSEHOLD, earlierReceipt, householdOf, incomeCategoryId, openMonthFor, repeatedReceiptColumn } from "../lib/entries.js";
 import { firstOfMonth, monthName } from "../lib/fees.js";
 import { HttpError, parse } from "../lib/http.js";
+import { lateFeesOf } from "../lib/lateFees.js";
 import {
   MONTHS_AHEAD,
   addMonths,
@@ -224,6 +225,8 @@ export const paymentRoutes: FastifyPluginAsync<{ timeZone: string }> = async (ap
       // Unpaid months still within their deadline or grace days (this month, or last month during its grace).
       dueSoon: waiting.map((state) => ({ ...state, ...monthDeadline(state.month, rule) })),
       totalCentavos: owed.reduce((sum, state) => sum + state.priceCentavos! - state.paidCentavos, 0),
+      // Month-end late fees still owed (src/lib/lateFees.ts), or why the house builds up none.
+      lateFees: lateFeesOf(app.db, household.id, day, options.timeZone),
     };
   });
 

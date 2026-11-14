@@ -68,6 +68,11 @@ export function CollectScreen({ onOpen, canRecordOther }: { onOpen: Go; canRecor
           <Icon name="receipt" /> Otro ingreso: mora, reconexión, conexión, donación
         </button>
       )}
+      {canRecordOther && (
+        <button className="btn block" onClick={() => onOpen("/finanzas/quien-debe")}>
+          <Icon name="alert" /> Quién debe
+        </button>
+      )}
     </main>
   );
 }

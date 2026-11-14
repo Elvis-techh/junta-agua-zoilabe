@@ -48,6 +48,36 @@ export interface HouseOwed {
   months: MonthState[];
   dueSoon: Array<MonthState & { dueOn: string; lateAfter: string }>;
   totalCentavos: number;
+  lateFees: HouseLateFees;
+}
+
+/**
+ * Month-end late fees a house still owes (owner, 14 November 2026), as the
+ * server works them out: one for each month, from the month set in
+ * Configuración → Mora, not paid in full by its deadline, until a Mora entry
+ * pays it. `none` says why a house builds up none.
+ */
+export interface HouseLateFees {
+  from: string | null;
+  none: "not_set" | "inactive" | "not_connected" | null;
+  months: Array<{ month: string; amountCentavos: number }>;
+  totalCentavos: number;
+}
+
+/**
+ * The late fee line under "Lo que debe": "Mora de octubre de 2026: L 50.00.",
+ * "Mora de 3 meses: L 150.00 (…).", or null when there is nothing to say.
+ */
+export function lateFeesLine(fees: HouseLateFees): string | null {
+  if (fees.none === "inactive") return "No se le cobra mora: la vivienda está inactiva.";
+  if (fees.none === "not_connected") return "No se le cobra mora: la vivienda no tiene conexión.";
+  if (fees.none !== null || fees.months.length === 0) return null;
+  const months = fees.months.map((fee) => fee.month);
+  const total = formatLempiras(fees.totalCentavos);
+  if (months.length === 1) return `Debe la mora de ${monthName(months[0]!)}: ${total}.`;
+  return months.length <= 4
+    ? `Debe la mora de ${monthList(months)}: ${total}.`
+    : `Debe la mora de ${months.length} meses: ${total}. La más antigua es de ${monthName(months[0]!)}.`;
 }
 
 /**
