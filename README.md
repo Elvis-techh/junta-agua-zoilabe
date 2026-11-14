@@ -71,6 +71,13 @@ changing how money, permissions or the history log work.
     seed runs (the test copy runs it on every update), with a history entry for each role that gained something. A
     month close still takes two different people: the database refuses an
     approval by whoever prepared it.
+  - **Every screen on everyone's Inicio: built.** Owner decision of
+    14 November 2026: the whole board sees the same screens, whatever its
+    role, the administrator too. Inicio shows first the large buttons for
+    what the role usually does (App Plan), then every other built screen
+    under **Otras tareas**, so a president can open Cobrar and an
+    administrator can register a family without going through a household's
+    file.
   - **Corrections (Anular pago): built.** A payment recorded by mistake is
     undone from the household's file with a reason: a reversal
     entry with the opposite amount that points to the original. See step 7
@@ -270,9 +277,9 @@ computer and on a phone, and it is back where it was when the panel closes.
 
 ### Trying Cobrar
 
-As the treasurer (with a base fee set in Configuración → Cuotas, and a
-family registered), tap **Cobrar** on Inicio, or **Registrar pago** on a
-household's file. A payment needs signal: it is not kept on the phone.
+With a base fee set in Configuración → Cuotas, and a family registered, tap
+**Cobrar** on Inicio (among the treasurer's own buttons, and under **Otras
+tareas** for every other role), or **Registrar pago** on a household's file. A payment needs signal: it is not kept on the phone.
 
 1. Search for the house by name or code and tap it.
 2. **¿Qué meses paga?** Each month shows what it still owes ("L 70.00",
