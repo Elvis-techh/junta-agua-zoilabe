@@ -14,9 +14,10 @@ import { actorOf } from "../auth/plugin.js";
 import { inTransaction } from "../db/client.js";
 import { settings, users } from "../db/schema.js";
 import { recordAudit } from "../lib/audit.js";
+import { monthName } from "../lib/fees.js";
 import { parse } from "../lib/http.js";
 import type { Deadline } from "../lib/settings.js";
-import { DEADLINE_KEY, DEFAULT_DEADLINE, deadline } from "../lib/settings.js";
+import { DEADLINE_KEY, DEFAULT_DEADLINE, LATE_FEES_FROM_KEY, deadline, lateFeesFrom } from "../lib/settings.js";
 import { businessToday } from "../lib/time.js";
 
 const deadlineBody = z.object({
@@ -30,6 +31,10 @@ const deadlineBody = z.object({
     .int("Escriba los días de gracia, o 0.")
     .min(0, "Los días de gracia no pueden ser negativos.")
     .max(60, "Son demasiados días de gracia."),
+});
+
+const lateFeesBody = z.object({
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-01$/, "Elija el mes desde el que se cobra la mora."),
 });
 
 /** "el día 25, con 5 días de gracia" — how the history log says it. */
@@ -79,5 +84,52 @@ export const deadlineRoutes: FastifyPluginAsync<{ timeZone: string }> = async (a
     });
 
     return { deadline: body, default: DEFAULT_DEADLINE };
+  });
+
+  /**
+   * Configuración → Mora (owner, 14 November 2026): the month from which the
+   * app adds a late fee by itself to every month not paid in full by its
+   * deadline (src/lib/lateFees.ts). Each change is a new row and is logged.
+   */
+  app.get("/settings/late-fees", guard, async () => {
+    const day = today();
+    const saved = app.db
+      .select({ savedAt: settings.createdAt, savedBy: users.name })
+      .from(settings)
+      .leftJoin(users, eq(users.id, settings.createdBy))
+      .where(eq(settings.key, LATE_FEES_FROM_KEY))
+      .orderBy(desc(settings.id))
+      .limit(1)
+      .get();
+    return { today: day, from: lateFeesFrom(app.db, day), saved: saved ?? null };
+  });
+
+  app.post("/settings/late-fees", guard, async (request) => {
+    const body = parse(lateFeesBody, request.body);
+    const actor = actorOf(request);
+    const day = today();
+
+    inTransaction(app.db, (tx) => {
+      const before = lateFeesFrom(tx, day);
+      if (before === body.month) {
+        return;
+      }
+      tx.insert(settings)
+        .values({ key: LATE_FEES_FROM_KEY, value: { month: body.month }, effectiveFrom: day, createdBy: actor.userId })
+        .run();
+      recordAudit(tx, actor, {
+        area: "settings",
+        action: "late_fees_from.set",
+        summary:
+          `${actor.name} (${actor.role}) fijó desde qué mes se cobra la mora: ${monthName(body.month)}` +
+          (before ? ` (antes ${monthName(before)})` : " (antes no se cobraba sola)"),
+        entityType: "setting",
+        entityId: LATE_FEES_FROM_KEY,
+        before: before ? { month: before } : null,
+        after: { month: body.month },
+      });
+    });
+
+    return { from: body.month };
   });
 };
