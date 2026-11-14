@@ -2,11 +2,9 @@
 
 ## Who you are working with
 
-The owner is new to programming and often works from a phone. Explain git,
-GitHub and deploy concepts (branch, commit, push, pull request, merge, build,
-deploy) in plain language the first time they come up in a session, briefly
-and without jargon, and say why a step is needed, not just what to type.
-Never ask for secrets in the chat.
+The owner is new to programming and often works from a phone. They
+can paste commands into the droplet console but cannot easily copy text out of
+it; they share screenshots instead. Never ask for secrets in the chat.
 
 The same owner maintains Lindero (`Elvis-techh/land-management`) and Báscula
 Central (`Elvis-techh/weight_software`). This app deliberately uses Lindero's
