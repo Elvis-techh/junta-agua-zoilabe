@@ -82,6 +82,24 @@ export function homeButtons(roleCode: string, permissions: readonly string[]): H
   );
 }
 
+/**
+ * Every other screen this user may open, under their role's buttons ("then
+ * the other tasks below them", App Plan, "Screens and navigation"). The whole
+ * board may do everything (6 November 2026), so every role, the administrator
+ * too, finds every built screen on Inicio, not only those of its usual job
+ * (owner, 14 November 2026). Built screens only, each once.
+ */
+export function otherButtons(roleCode: string, permissions: readonly string[]): HomeButton[] {
+  const shown = new Set(homeButtons(roleCode, permissions).map((button) => button.route));
+  return (Object.values(B) as HomeButton[]).filter((button) => {
+    if (!button.route || shown.has(button.route) || (button.permission && !permissions.includes(button.permission))) {
+      return false;
+    }
+    shown.add(button.route);
+    return true;
+  });
+}
+
 export interface Tab {
   label: string;
   icon: IconName;

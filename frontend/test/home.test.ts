@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { HOME_BUTTONS, homeButtons, navigation, routeOf, tabOf } from "../src/home.ts";
+import { HOME_BUTTONS, homeButtons, navigation, otherButtons, routeOf, tabOf } from "../src/home.ts";
 import { ROLES } from "../src/roles.ts";
 
 describe("home buttons", () => {
@@ -13,6 +13,31 @@ describe("home buttons", () => {
       HOME_BUTTONS.tesorero?.map((b) => b.label),
       ["Cobrar", "Gasto", "Resumen del mes", "Quién debe"],
     );
+  });
+
+  it("lets every role, the administrator too, open every built screen from Inicio (owner, 14 November 2026)", () => {
+    const everything = ["census:view", "census:edit", "finance:view", "finance:record", "log:view", "users:manage", "settings:edit"];
+    const built = (role: string) =>
+      new Set([...homeButtons(role, everything), ...otherButtons(role, everything)].flatMap((b) => (b.route ? [b.route] : [])));
+    const expected = built("tesorero");
+    for (const role of ROLES) {
+      assert.deepEqual([...built(role.code)].sort(), [...expected].sort(), role.code);
+      // Its own buttons first, and nothing twice.
+      const others = otherButtons(role.code, everything).map((b) => b.route);
+      assert.equal(new Set(others).size, others.length, role.code);
+      assert.ok(!others.some((route) => homeButtons(role.code, everything).some((b) => b.route === route)), role.code);
+    }
+    for (const route of ["/finanzas/cobrar", "/censo/registrar", "/usuarios", "/historial", "/configuracion"]) {
+      assert.ok(expected.has(route as never), route);
+    }
+    const forAdmin = otherButtons("administrador", everything).map((b) => b.label);
+    for (const label of ["Registrar familia", "Buscar", "Lista", "Cobrar", "Historial"]) {
+      assert.ok(forAdmin.includes(label), label);
+    }
+    // Already among the administrator's own buttons, so not again; and never a screen not built yet.
+    for (const label of ["Usuarios", "Configuración", "Censo", "Gasto"]) {
+      assert.ok(!forAdmin.includes(label), label);
+    }
   });
 
   it("hides a button whose permission the role no longer has", () => {
