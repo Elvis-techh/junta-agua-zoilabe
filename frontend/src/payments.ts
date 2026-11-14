@@ -6,7 +6,7 @@
  * the treasurer see the problem on the screen where it can be fixed, and
  * shows on "¿Está correcto?" how the money will be shared.
  */
-import { monthLabel } from "./calendar.ts";
+import { dayLabel, monthLabel } from "./calendar.ts";
 import { formatLempiras } from "./census.ts";
 
 export type PaymentMethod = "cash" | "transfer" | "other";
@@ -37,29 +37,44 @@ export interface HouseMonths {
 /**
  * What a house owes, as the server works it out (owner, 13 November 2026):
  * every month not paid in full from its first entered payment, or the month
- * it was registered if earlier, up to this month.
+ * it was registered if earlier, whose payment deadline and grace days are
+ * over. `dueSoon` holds the unpaid months still within them.
  */
 export interface HouseOwed {
   today: string;
   thisMonth: string;
   owesFrom: { month: string; because: "first_payment" | "registered" };
+  deadline: { dueDay: number; graceDays: number };
   months: MonthState[];
+  dueSoon: Array<MonthState & { dueOn: string; lateAfter: string }>;
   totalCentavos: number;
 }
 
 /**
- * "Debe L 140.00: octubre y noviembre de 2026.", or that it owes nothing.
- * More than four months are counted, not listed, so the sentence stays short.
+ * "Debe el mes de octubre de 2026 (L 70.00).", "Debe los meses de …", or
+ * that it owes nothing. More than four months are counted, not listed.
  */
 export function owedSummary(owed: HouseOwed): string {
   const months = owed.months.map((state) => state.month);
+  const total = formatLempiras(owed.totalCentavos);
   if (months.length === 0) {
     return "Al día: no debe ningún mes.";
   }
-  const total = formatLempiras(owed.totalCentavos);
+  if (months.length === 1) {
+    return `Debe el mes de ${monthName(months[0]!)} (${total}).`;
+  }
   return months.length <= 4
-    ? `Debe ${total}: ${monthList(months)}.`
-    : `Debe ${total} de ${months.length} meses. El más antiguo es ${monthName(months[0]!)}.`;
+    ? `Debe los meses de ${monthList(months)} (${total}).`
+    : `Debe ${months.length} meses (${total}). El más antiguo es ${monthName(months[0]!)}.`;
+}
+
+/** "Noviembre de 2026 se paga hasta el 25 de noviembre; si no, cuenta como debido desde el 1 de diciembre." */
+export function dueSoonLine(state: { month: string; dueOn: string; lateAfter: string }): string {
+  const name = monthName(state.month);
+  const next = new Date(`${state.lateAfter}T12:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  const from = dayLabel(next.toISOString().slice(0, 10));
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)} se paga hasta el ${dayLabel(state.dueOn).replace(/ de \d{4}$/, "")}; si no, cuenta como debido desde el ${from.replace(/ de \d{4}$/, "")}.`;
 }
 
 /** Where the count starts, in words: "Se cuenta desde marzo de 2025, su primer pago anotado." */

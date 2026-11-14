@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 183, taken 2026-11-13.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 188, taken 2026-11-13.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -412,7 +412,7 @@ Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fee
 
 **What comes next**
 
-Phase 2 is under way: the app sets fees, records monthly fee payments and reverses a payment recorded by mistake. Next is other income: late fee, reconnection fee, connection fee, donation and other. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test, and, before the late-fee piece, how late fees apply to months owed from before the app.
+Phase 2 is under way: the app sets fees, records monthly fee payments and reverses a payment recorded by mistake. Next is other income: late fee, reconnection fee, connection fee, donation and other. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
 
 Finished, waiting to be merged: what each house owes, counted from its first entered payment (PR #33), on the test copy for the owner to try. The start month (PR #32) was closed without merging on 13 November 2026. Past fee changes (PR #30) were merged on 13 November 2026.
 
@@ -430,7 +430,7 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - [x] Every role gets every permission, and a month close still takes two different people (decided 6 November). Merged in PR #26 on 6 November 2026.
 - [x] Corrections: a reversal entry that points to the original and needs a written reason. Merged in PR #27 on 7 November 2026.
 - [x] Past fee changes in Configuración: a fee can take a change that starts in a past month, so the fees of the years in the paper book can be entered, unless a payment falls in the months it would cover (decided 12 November). Merged in PR #30 on 13 November 2026.
-- [ ] What each house owes: every month not paid in full from its first entered payment (or the month it was registered, if earlier) up to the current month, with its history typed in through Cobrar (decided 13 November, replacing the start month of 7 November). Pull request #33.
+- [ ] What each house owes: every month not paid in full from its first entered payment (or the month it was registered, if earlier) once its payment deadline and grace days in Configuración are over, with its history typed in through Cobrar (decided 13 November, replacing the start month of 7 November). Pull request #33.
 - [ ] Other income: late fee, reconnection fee, connection fee, donation and other.
 - [ ] Month-end late fees and the arrears list: active, connected households with unpaid months and the late fee owed for each.
 - [ ] Expenses: category, supplier, amount and receipt photo. Photos stay on the computer until the bucket is connected.
@@ -527,17 +527,20 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 **Decisions made on 12 November 2026**
 
 - A fee in Configuración can also take an earlier change that starts in a past month, so the fees of the years in the paper book can be entered. It is refused once a payment or an entered old month falls in the months it would cover, so nothing already counted is rewritten. Since 13 November no old months are entered by hand, so only payments count.
-- A house with a different amount owes that amount for its old unpaid months too, even for months before the amount was entered in the app.
+- A house with a different amount owes that amount for its old unpaid months too, even for months before the amount was entered in the app. Set aside for now on 13 November.
 
 **Decisions made on 13 November 2026**
 
 - There is no start month (it replaces the decision of 7 November). Each family's history is typed in through Cobrar, each payment with its own date and months, at the fees in Configuración for those months. Families can start from different dates.
 - A family owes every month not paid in full from its first entered payment on, up to the current month. A skipped month stays owed after a later month is paid.
 - A family with no payment entered yet owes from the month it was registered in the census. Once its history is typed in, its first entered payment decides, if it is earlier.
+- A month counts as owed only once its payment deadline is over: a day of the month by which it is paid (for example the 25th) plus a number of grace days, both set in Configuración by whoever may change the settings. Until they are set, the last day of the month with no grace. After that the household shows "Debe el mes de …" or "Debe los meses de …".
+- Late fees for the months a family owes from before the app are charged only where the paper book shows one.
+- For now, a house's different amount does not price months before it started (the 12 November decision is set aside): an old receipt at the old full price must still be accepted.
 
 **Still open**
 
 - [ ] Check the data separation on the droplet (own database file and system user, storage key and backup for each app) before the first deployment. This has not been done yet and will be updated later.
 - [x] How the treasurer enters what each house already owes: month by month (so each unpaid month can carry its own late fee), or one total per house. Decided on 6 November: month by month.
 - [ ] How to run Phase 2's "done when" test: it compares a real month with the real paper receipt book, but the test copy takes only made-up data. The options are a made-up receipt book on the test copy, or a real month after the real app is deployed.
-- [ ] How late fees apply to the months a family owes from before the app (13 November rule): one for every month not paid in full by its last day (Module 2), or only where the paper book shows one (7 November). Needed before the month-end late fees piece.
+- [x] How late fees apply to the months a family owes from before the app (13 November rule): one for every month not paid in full by its last day (Module 2), or only where the paper book shows one (7 November). Decided on 13 November: only where the paper book shows one.

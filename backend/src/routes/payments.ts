@@ -38,6 +38,7 @@ import {
   owedMonths,
   owesFrom,
 } from "../lib/payments.js";
+import { deadline, isPastDeadline, monthDeadline } from "../lib/settings.js";
 import { businessToday, formatCalendarDate } from "../lib/time.js";
 
 /** The income category every monthly fee payment goes to (src/db/seeding.ts). */
@@ -227,6 +228,7 @@ export const paymentRoutes: FastifyPluginAsync<{ timeZone: string }> = async (ap
 
     const household = householdOf(app.db, request.params.id);
     const start = owesFrom(app.db, household.id, options.timeZone).month;
+    const rule = deadline(app.db, day);
     return {
       today: day,
       thisMonth,
@@ -234,14 +236,16 @@ export const paymentRoutes: FastifyPluginAsync<{ timeZone: string }> = async (ap
       household,
       months: monthStates(app.db, household.id, monthsBetween(from, to)),
       // Owed months older than the list, shown first, so they need no searching.
-      owedBefore: owedMonths(app.db, household.id, start, addMonths(from, -1)),
+      owedBefore: owedMonths(app.db, household.id, start, addMonths(from, -1)).filter((state) =>
+        isPastDeadline(state.month, day, rule),
+      ),
     };
   });
 
   /**
    * What a house owes (owner, 13 November 2026): every month not paid in
    * full from its first entered payment, or the month it was registered if
-   * earlier, up to this month.
+   * earlier, whose payment deadline and grace days are over.
    */
   app.get<{ Params: Params }>("/finance/households/:id/owed", view, async (request) => {
     if (!z.uuid().safeParse(request.params.id).success) {
@@ -251,12 +255,19 @@ export const paymentRoutes: FastifyPluginAsync<{ timeZone: string }> = async (ap
     const day = today();
     const thisMonth = firstOfMonth(day);
     const from = owesFrom(app.db, household.id, options.timeZone);
-    const owed = owedMonths(app.db, household.id, from.month, thisMonth);
+    const rule = deadline(app.db, day);
+    // A month counts as owed only once its deadline and grace days are over.
+    const unpaid = owedMonths(app.db, household.id, from.month, thisMonth);
+    const owed = unpaid.filter((state) => isPastDeadline(state.month, day, rule));
+    const waiting = unpaid.filter((state) => !isPastDeadline(state.month, day, rule));
     return {
       today: day,
       thisMonth,
       owesFrom: from,
+      deadline: rule,
       months: owed,
+      // Unpaid months still within their deadline or grace days (this month, or last month during its grace).
+      dueSoon: waiting.map((state) => ({ ...state, ...monthDeadline(state.month, rule) })),
       totalCentavos: owed.reduce((sum, state) => sum + state.priceCentavos! - state.paidCentavos, 0),
     };
   });

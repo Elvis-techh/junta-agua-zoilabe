@@ -10,7 +10,7 @@ import { PhoneField } from "../components/PhoneField.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
 import type { HouseOwed, Payment } from "../payments.ts";
-import { PAYMENT_METHODS, monthList, owedSince, owedSummary, shortMonth } from "../payments.ts";
+import { PAYMENT_METHODS, dueSoonLine, monthList, owedSince, owedSummary, shortMonth } from "../payments.ts";
 import { formatPhone, phoneEntry, wholePhone } from "../phone.ts";
 import { recall, remember } from "../queue.ts";
 import { isTouchScreen } from "../viewport.ts";
@@ -211,8 +211,9 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
 /**
  * Lo que debe (owner, 13 November 2026): every month not paid in full from
  * the house's first entered payment, or the month it was registered if
- * earlier, up to this month. The server works it out; a month paid in part
- * says what is left.
+ * earlier, once its payment deadline and grace days are over (Configuración
+ * → Plazo de pago). The server works it out; a month paid in part says what
+ * is left, and a month still within its deadline says until when.
  */
 export function HouseholdOwed({ householdId }: { householdId: string }) {
   const [owed, setOwed] = useState<HouseOwed | null>(null);
@@ -238,6 +239,9 @@ export function HouseholdOwed({ householdId }: { householdId: string }) {
             {shortMonth(state.month)} {state.month.slice(0, 4)}: pagado en parte, faltan{" "}
             <span style={{ whiteSpace: "nowrap" }}>{formatLempiras(state.priceCentavos! - state.paidCentavos)}</span>
           </div>
+        ))}
+        {owed.dueSoon.map((state) => (
+          <div key={state.month}>{dueSoonLine(state)}</div>
         ))}
         <div className="muted">{owedSince(owed)}</div>
       </div>
