@@ -14,8 +14,8 @@ import { PAYMENT_METHODS, choosable, monthName, monthStatus, owedFor, sharePayme
 import { isTouchScreen } from "../viewport.ts";
 import { HouseholdStatus } from "./Census.tsx";
 
-/** Cobrar, first screen: which house is paying. */
-export function CollectScreen({ onOpen }: { onOpen: Go }) {
+/** Cobrar, first screen: which house is paying, or other income (mora, reconexión, donación…). */
+export function CollectScreen({ onOpen, canRecordOther }: { onOpen: Go; canRecordOther: boolean }) {
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<HouseholdRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +63,11 @@ export function CollectScreen({ onOpen }: { onOpen: Go }) {
           <div className="muted">{row.sectorName}</div>
         </button>
       ))}
+      {canRecordOther && (
+        <button className="btn block" onClick={() => onOpen("/finanzas/ingreso")}>
+          <Icon name="receipt" /> Otro ingreso: mora, reconexión, conexión, donación
+        </button>
+      )}
     </main>
   );
 }

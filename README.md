@@ -102,8 +102,25 @@ changing how money, permissions or the history log work.
     same day: late fees for months owed from before the app only where the
     paper book shows one (the late fee piece will do it); a different amount
     does not price months before it started, for now.
-  - Next: other income (late fee, reconnection, connection fee, donation).
-    It must record a late fee under the "Mora" category, with its month.
+  - **Other income (Otro ingreso): built.** A late fee (mora) and the
+    month it covers, a reconnection, a connection fee, a donation or other
+    income, each with who paid, the amount, the date, how it was paid and
+    the paper receipt's number, then "¿Está correcto?". A late fee is
+    recorded under "Mora" with its month, and a reconnection under
+    "Reconexión", so Configuración's checks see them: a fee amount with a
+    late fee paid in its months can no longer be corrected or removed. Their
+    amount is Configuración's (the late fee of the month it covers, the
+    reconnection fee of the day it is paid); another amount needs a reason
+    (App Plan, Module 2). The app records a late fee only where the treasurer
+    enters one, as the owner decided on 13 November 2026 for months from the
+    paper book. A house's late fee for a month is recorded once. A
+    connection fee, a donation or other income may be from someone outside
+    the census, and other income says what it is. An entry recorded by
+    mistake is undone with **Anular**, as a payment is. A house's monthly fee
+    and its late fee written on one receipt, the same day, do not count as a
+    repeated receipt number. See "Trying Otro ingreso" below.
+  - Next: month-end late fees and the arrears list ("Quién debe"), using the
+    same payment deadline (Plazo de pago).
 
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
@@ -328,6 +345,36 @@ it, and only those with "Cambiar la configuración" may change the deadline;
 the server works it out, whatever the screen shows. The newest deadline
 applies to every month. A day past a short month's end (31 in February)
 means its last day.
+
+### Trying Otro ingreso
+
+With a late fee and a reconnection fee in Configuración → Cuotas from a past
+month (for example L 50 and L 200 from January 2025):
+
+1. Open a family's file and tap **Otro ingreso: mora, reconexión…** (or open
+   **Cobrar** and tap **Otro ingreso** under the search).
+2. Pick **Mora**, then the month written on the receipt or in the paper
+   book. The next screen fills in L 50, the late fee of that month. Type
+   another amount and it asks "¿Por qué es otro monto?".
+3. Answer the receipt and who paid, check "¿Está correcto?" and **Sí,
+   guardar**. The file now shows it under **Otros ingresos**.
+4. Record the same month's late fee again: it is refused, with the date and
+   receipt of the first. Record the month's fee in **Cobrar** with the same
+   receipt number, the same day: no "número de recibo repetido".
+5. Pick **Reconexión**: the amount is the reconnection fee of the payment's
+   date.
+6. From **Cobrar → Otro ingreso**, pick **Donación**, then **No es de una
+   vivienda del censo**, and type who gave it. It shows under **Últimos
+   ingresos** on that first screen.
+7. **Anular** an entry, with a reason: it stays, marked "Anulado", and its
+   month's late fee can be recorded again.
+8. In **Configuración → Cuotas**, try **Quitar** on the late fee from
+   January 2025: it is refused, because a late fee was paid in its months.
+
+Every entry and every Anular is in Historial (Finanzas). Only roles with
+"Registrar pagos y gastos" may record, and only those with "Corregir un
+registro de dinero" may undo; the server checks again whatever the screen
+shows.
 
 ### Trying the census
 

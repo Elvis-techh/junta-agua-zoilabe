@@ -15,17 +15,18 @@
  * reversal has no shares, so the months go back to how they were before
  * the payment (src/lib/payments.ts, `monthStates`).
  */
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 
 import { actorOf } from "../auth/plugin.js";
 import { newId } from "../auth/session.js";
-import type { DbOrTx, Tx } from "../db/client.js";
+import type { DbOrTx } from "../db/client.js";
 import { inTransaction } from "../db/client.js";
-import { categories, householdOwners, households, months, paymentMonths, people, transactions, users } from "../db/schema.js";
+import { paymentMonths, transactions, users } from "../db/schema.js";
 import { recordAudit } from "../lib/audit.js";
 import { formatLempiras } from "../lib/census.js";
+import { NO_HOUSEHOLD, earlierReceipt, householdOf, incomeCategoryId, openMonthFor, repeatedReceiptColumn } from "../lib/entries.js";
 import { firstOfMonth, monthName } from "../lib/fees.js";
 import { HttpError, parse } from "../lib/http.js";
 import {
@@ -94,29 +95,7 @@ const monthsQuery = z.object({ from: month.optional(), to: month.optional() });
 
 type Params = { id: string };
 
-const NO_HOUSEHOLD = new HttpError(404, "not_found", "No se encontró esa vivienda.");
 const NO_PAYMENT = new HttpError(404, "not_found", "No se encontró ese pago.");
-
-/** The household and the name of the person it is registered to now. */
-function householdOf(tx: DbOrTx, id: string) {
-  const row = tx
-    .select({
-      id: households.id,
-      code: households.code,
-      status: households.status,
-      waterConnection: households.waterConnection,
-      ownerName: people.fullName,
-    })
-    .from(households)
-    .innerJoin(householdOwners, and(eq(householdOwners.householdId, households.id), isNull(householdOwners.endsOn)))
-    .innerJoin(people, eq(people.id, householdOwners.personId))
-    .where(eq(households.id, id))
-    .get();
-  if (!row) {
-    throw NO_HOUSEHOLD;
-  }
-  return row;
-}
 
 /**
  * The payments of a house (or the one with this id), newest first, each with
@@ -138,13 +117,7 @@ function paymentsOf(tx: DbOrTx, where: { householdId: string } | { id: string })
       recordedBy: users.name,
       createdAt: transactions.createdAt,
       reversed: sql<number>`EXISTS (SELECT 1 FROM transactions r WHERE r.reverses_id = ${transactions.id})`,
-      repeatedReceipt: sql<number>`EXISTS (
-        SELECT 1 FROM transactions o
-        WHERE o.paper_receipt_number = ${transactions.paperReceiptNumber}
-          AND o.id <> ${transactions.id}
-          AND o.reverses_id IS NULL
-          AND NOT EXISTS (SELECT 1 FROM transactions r WHERE r.reverses_id = o.id)
-      )`,
+      repeatedReceipt: repeatedReceiptColumn,
     })
     .from(transactions)
     .innerJoin(paymentMonths, eq(paymentMonths.transactionId, transactions.id))
@@ -184,24 +157,6 @@ function reversalOf(tx: DbOrTx, id: string) {
       .where(eq(transactions.reversesId, id))
       .get() ?? null
   );
-}
-
-/** The month row an entry dated `occurredOn` belongs to, made when its month has none yet. */
-function openMonthFor(
-  tx: Tx,
-  occurredOn: string,
-  closed = (first: string) =>
-    `El mes de ${monthName(first)} ya está cerrado. Registre el pago con la fecha de hoy y escriba en la nota de qué fecha es.`,
-): number {
-  const first = firstOfMonth(occurredOn);
-  const existing = tx.select().from(months).where(eq(months.month, first)).get();
-  if (existing) {
-    if (existing.status !== "open") {
-      throw new HttpError(409, "month_closed", closed(first));
-    }
-    return existing.id;
-  }
-  return tx.insert(months).values({ month: first, status: "open" }).returning({ id: months.id }).get()!.id;
 }
 
 export const paymentRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app, options) => {
@@ -319,19 +274,13 @@ export const paymentRoutes: FastifyPluginAsync<{ timeZone: string }> = async (ap
         throw new HttpError(409, allocation.code, allocation.problem);
       }
 
-      const repeated = tx
-        .select({ code: households.code, occurredOn: transactions.occurredOn, amountCentavos: transactions.amountCentavos })
-        .from(transactions)
-        .leftJoin(households, eq(households.id, transactions.householdId))
-        .where(
-          and(
-            eq(transactions.paperReceiptNumber, body.paperReceiptNumber),
-            isNull(transactions.reversesId),
-            sql`NOT EXISTS (SELECT 1 FROM transactions r WHERE r.reverses_id = ${transactions.id})`,
-          ),
-        )
-        .orderBy(desc(transactions.createdAt))
-        .get();
+      const categoryId = incomeCategoryId(tx, MONTHLY_FEE_CATEGORY);
+      const repeated = earlierReceipt(tx, {
+        number: body.paperReceiptNumber,
+        householdId: household.id,
+        occurredOn: body.occurredOn,
+        categoryId,
+      });
       // Flagged, not blocked: receipt books can start their numbering again.
       if (repeated && !body.confirmRepeatedReceipt) {
         throw new HttpError(
@@ -342,15 +291,6 @@ export const paymentRoutes: FastifyPluginAsync<{ timeZone: string }> = async (ap
         );
       }
 
-      const category = tx
-        .select({ id: categories.id })
-        .from(categories)
-        .where(and(eq(categories.kind, "income"), eq(categories.name, MONTHLY_FEE_CATEGORY)))
-        .get();
-      if (!category) {
-        throw new Error(`The income category "${MONTHLY_FEE_CATEGORY}" is missing`);
-      }
-
       const id = newId();
       const payerName = body.payerName ?? household.ownerName;
       const coveredMonths = allocation.shares.map((share) => share.month);
@@ -358,7 +298,7 @@ export const paymentRoutes: FastifyPluginAsync<{ timeZone: string }> = async (ap
         .values({
           id,
           kind: "income",
-          categoryId: category.id,
+          categoryId,
           householdId: household.id,
           monthId: openMonthFor(tx, body.occurredOn),
           occurredOn: body.occurredOn,

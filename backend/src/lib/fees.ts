@@ -44,15 +44,17 @@ export function differentFeeStart(lastPaidMonth: string | null, today: string): 
  * The latest month a payment of this house covers, or null if none.
  *
  * A payment that was reversed does not count, nor does the reversal itself:
- * a correction must not move the start of a fee.
+ * a correction must not move the start of a fee. Only monthly fee payments
+ * count: a late fee also names its month, but paying a month's late fee
+ * does not pay the month.
  */
 export function lastPaidMonth(db: DbOrTx, householdId: string): string | null {
   // `months_covered` is a JSON list of "YYYY-MM-01" dates, which sort as text.
   const row = db.get<{ month: string | null }>(sql`
     SELECT max(covered.value) AS month
-    FROM transactions t, json_each(t.months_covered) AS covered
+    FROM transactions t, categories c, json_each(t.months_covered) AS covered
     WHERE t.household_id = ${householdId}
-      AND t.kind = 'income'
+      AND c.id = t.category_id AND c.kind = 'income' AND c.name = ${FEE_CATEGORIES.base_monthly}
       AND t.reverses_id IS NULL
       AND NOT EXISTS (SELECT 1 FROM transactions r WHERE r.reverses_id = t.id)
   `);
@@ -63,7 +65,7 @@ export function lastPaidMonth(db: DbOrTx, householdId: string): string | null {
  * The income category each fee's payments are recorded under
  * (src/db/seeding.ts).
  */
-const FEE_CATEGORIES: Record<FeeKind, string> = {
+export const FEE_CATEGORIES: Record<FeeKind, string> = {
   base_monthly: "Cuota mensual",
   late_fee: "Mora",
   reconnection: "Reconexión",
@@ -88,10 +90,10 @@ export interface PaidMonths {
  * says nothing about the late fee's amount.
  *
  * A monthly fee or a late fee pays for months (`months_covered`, as Cobrar
- * records it); a reconnection fee is charged on the day it is paid. Nothing
- * records late fees or reconnections yet: "Other income" must record them
- * under their categories, a late fee with its month in `months_covered`, for
- * this to see them. A reversed payment and the reversal itself do not count.
+ * and "Otro ingreso" record them); a reconnection fee is charged on the day
+ * it is paid. "Otro ingreso" (src/routes/income.ts) records them under their
+ * categories, a late fee with its month in `months_covered`. A reversed
+ * payment and the reversal itself do not count.
  */
 export function paidMonthsAt(db: DbOrTx, kind: FeeKind, startsOn: string): PaidMonths | null {
   const until = nextFeeStart(db, kind, startsOn);
