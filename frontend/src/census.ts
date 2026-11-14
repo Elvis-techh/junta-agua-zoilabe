@@ -217,4 +217,50 @@ export interface HouseholdFile {
     | { kind: "base"; baseFeeCentavos: number | null }
     | { kind: "different"; monthlyAmountCentavos: number; reason: string; startsOn: string };
   otherHouseholds: HouseholdRef[];
+  /** Its status and connection over time, newest entry first (backend/src/lib/householdStatus.ts). */
+  statusHistory: StatusEntry[];
+}
+
+/** One entry of a house's status history: from `startsOn` on, it is this. */
+export interface StatusEntry {
+  id: number;
+  status: "active" | "inactive";
+  inactiveReason: InactiveReason | null;
+  waterConnection: WaterConnection;
+  startsOn: string;
+  createdAt: string;
+  createdBy: string | null;
+}
+
+/**
+ * The entry in force on `day`, as the server works it out: the newest entry
+ * whose date is not after it, or the first one entered before every date.
+ * `history` is newest first.
+ */
+export function entryOn(history: readonly StatusEntry[], day: string): StatusEntry | null {
+  return history.find((entry) => entry.startsOn <= day) ?? history.at(-1) ?? null;
+}
+
+/**
+ * Under "Lo que debe", for a house without service today: since when, and
+ * that its months from then are not charged. Null while it has service.
+ */
+export function noServiceLine(history: readonly StatusEntry[], today: string): string | null {
+  const entry = entryOn(history, today);
+  if (!entry || (entry.status === "active" && entry.waterConnection !== "not_connected")) {
+    return null;
+  }
+  const what = entry.status === "inactive" ? "Está inactiva" : "No tiene conexión";
+  return `${what} desde el ${calendarDay(entry.startsOn)}: no se cobran sus meses desde entonces, ni su mora.`;
+}
+
+/** "Inactiva (Se mudó), conectada" — what an entry says. */
+export function statusEntryLine(entry: StatusEntry): string {
+  const status = entry.status === "active" ? "Activa" : `Inactiva (${INACTIVE_REASONS[entry.inactiveReason ?? "moved_away"]})`;
+  return `${status}, ${WATER_CONNECTIONS[entry.waterConnection].toLowerCase()}`;
+}
+
+/** "1 de febrero de 2025" for a calendar date. */
+function calendarDay(date: string): string {
+  return new Intl.DateTimeFormat("es-HN", { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" }).format(new Date(`${date}T12:00:00Z`));
 }

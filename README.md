@@ -143,9 +143,20 @@ changing how money, permissions or the history log work.
     que debe** ("Debe la mora de octubre de 2026: L 50.00."), and **Quién
     debe** (the treasurer's home button, and Cobrar) lists the active houses
     with water that owe, the most owed first, each month with its fee left and
-    its late fee. The census keeps only a house's status now, not since when:
-    a house inactive or without water today builds up none, for any month.
-    See "Trying Quién debe" below.
+    its late fee. See "Trying Quién debe" below.
+  - **Status history: built.** Owner decisions of 14 November 2026: each
+    house keeps when it was active or inactive, and with or without water
+    (**Estado y agua** on its file). **Desactivar**, **Reactivar** and a new
+    water connection ask "¿Desde cuándo?", starting at today, so a family
+    typed in from the paper book can say it was cut off since March 2025.
+    The newest entry takes over from its date; nothing entered before it
+    changes. A month is owed, and can owe a late fee, only if the house was
+    active and with water ("Compartida" counts) on the day its deadline
+    ended. So a house inactive since February owes nothing from then on, and
+    still owes the months before. Houses registered before the history
+    existed start active since they were registered, and those inactive now
+    are inactive since their last "desactivó" in Historial. See "Trying the
+    status history" below.
   - Next: expenses (category, supplier, amount and receipt photo).
 
   A different amount starts with the month after the house's last payment
@@ -429,7 +440,29 @@ typed in through Cobrar:
 6. In **Configuración** → **Plazo de pago**, set an earlier day: a month paid
    after that day now owes its late fee.
 7. Make a house inactive, or set its water to "Sin conexión": it leaves the
-   list, and its file says it is not charged a late fee.
+   list. Its months from that date are not charged (see "Trying the status
+   history").
+
+### Trying the status history
+
+With a family whose history is typed in through Cobrar, owing some old
+months, and the month in Configuración → Mora set before them:
+
+1. On its file, **Estado y agua** shows "Desde el …: Activa, conectada",
+   since the day it was registered.
+2. **Desactivar**, pick why, and set **¿Desde cuándo?** to the first day of
+   last month. **Lo que debe** now says "Está inactiva desde el …: no se
+   cobran sus meses desde entonces, ni su mora", and last month is no longer
+   owed. The months before still are, with their late fees.
+3. **Reactivar**, and set **¿Desde cuándo?** to the 20th of last month (it
+   may be earlier than today). Last month is owed again: the house was
+   active when its deadline ended.
+4. **Corregir datos de la vivienda**, change **Conexión de agua** to "Sin
+   conexión": it asks since when. The months from that date drop out of **Lo
+   que debe** and **Quién debe**.
+5. Each change is in **Historial** with its date ("desactivó la vivienda …
+   desde el 1 de octubre de 2026"), and the file keeps every entry: nothing
+   is changed or deleted.
 
 Only roles with "Ver finanzas" see the list, and only those with "Cambiar la
 configuración" may set the month; the server checks again whatever the
@@ -480,7 +513,8 @@ starting the API.
 The file refuses, by itself, to delete any row of any table, and to change
 any row of the history log (`audit_log`) or of the money entries
 (`transactions`, and `payment_months`, how each payment was shared among
-months): triggers that `src/db/guards.ts` puts back after every
+months) or of a house's status history (`household_status_changes`):
+triggers that `src/db/guards.ts` puts back after every
 migration. That includes the delete hidden inside SQLite's `INSERT OR
 REPLACE`. Taking one away would take a deliberate `DROP TRIGGER` with
 other tools, and the history log's hash chain (`npm run db:verify-log`)

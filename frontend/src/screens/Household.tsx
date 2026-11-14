@@ -3,7 +3,17 @@ import { useCallback, useEffect, useState } from "react";
 import type { Me } from "../api.ts";
 import { api } from "../api.ts";
 import type { CensusOptions, HouseholdFile, InactiveReason, PhoneMissing, Relation, WaterConnection } from "../census.ts";
-import { INACTIVE_REASONS, PHONE_MISSING, RELATIONS, WATER_CONNECTIONS, formatIdNumber, formatLempiras, whatsappLink } from "../census.ts";
+import {
+  INACTIVE_REASONS,
+  PHONE_MISSING,
+  RELATIONS,
+  WATER_CONNECTIONS,
+  formatIdNumber,
+  formatLempiras,
+  noServiceLine,
+  statusEntryLine,
+  whatsappLink,
+} from "../census.ts";
 import { DateField } from "../components/CalendarField.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import { PhoneField } from "../components/PhoneField.tsx";
@@ -14,7 +24,7 @@ import { PAYMENT_METHODS, dueSoonLine, lateFeesLine, monthList, owedSince, owedS
 import { formatPhone, phoneEntry, wholePhone } from "../phone.ts";
 import { recall, remember } from "../queue.ts";
 import { isTouchScreen } from "../viewport.ts";
-import { formatDate, formatDateTime } from "../time.ts";
+import { formatDate, formatDateTime, todayInHonduras } from "../time.ts";
 import { HouseholdStatus } from "./Census.tsx";
 import { IncomeEntries } from "./Income.tsx";
 
@@ -27,7 +37,7 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
   const [sensitiveVisible, setSensitiveVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<"household" | "person" | "deactivate" | null>(null);
+  const [dialog, setDialog] = useState<"household" | "person" | "deactivate" | "reactivate" | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -132,6 +142,8 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
         {file.lastVerifiedOn && <div>Verificada el {calendarDate(file.lastVerifiedOn)}</div>}
       </section>
 
+      <StatusHistory file={file} />
+
       {file.otherHouseholds.length > 0 && (
         <section className="stack" style={{ gap: 8 }}>
           <h2>Otras viviendas de {owner.fullName}</h2>
@@ -147,7 +159,7 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
         </section>
       )}
 
-      {can("finance:view") && <HouseholdOwed householdId={file.id} />}
+      {can("finance:view") && <HouseholdOwed householdId={file.id} noService={noServiceLine(file.statusHistory, todayInHonduras())} />}
 
       {can("finance:view") && (
         <HouseholdPayments
@@ -195,14 +207,7 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
             <Icon name="x" /> Desactivar
           </button>
         ) : (
-          <button
-            className="btn block"
-            onClick={() =>
-              void api("POST", `/census/households/${file.id}/reactivate`, {})
-                .then(() => changed("Vivienda activa de nuevo."))
-                .catch((err: Error) => setMessage(err.message))
-            }
-          >
+          <button className="btn block" onClick={() => setDialog("reactivate")}>
             <Icon name="check" /> Reactivar
           </button>
         ))}
@@ -212,6 +217,7 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
         <EditPerson file={file} canEditSensitive={sensitiveVisible} onClose={() => setDialog(null)} onSaved={changed} />
       )}
       {dialog === "deactivate" && <Deactivate file={file} onClose={() => setDialog(null)} onSaved={changed} />}
+      {dialog === "reactivate" && <Reactivate file={file} onClose={() => setDialog(null)} onSaved={changed} />}
     </main>
   );
 }
@@ -223,7 +229,7 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
  * → Plazo de pago). The server works it out; a month paid in part says what
  * is left, and a month still within its deadline says until when.
  */
-export function HouseholdOwed({ householdId }: { householdId: string }) {
+export function HouseholdOwed({ householdId, noService }: { householdId: string; noService: string | null }) {
   const [owed, setOwed] = useState<HouseOwed | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -249,10 +255,42 @@ export function HouseholdOwed({ householdId }: { householdId: string }) {
           </div>
         ))}
         {lateFeesLine(owed.lateFees) && <strong>{lateFeesLine(owed.lateFees)}</strong>}
+        {noService && <div>{noService}</div>}
         {owed.dueSoon.map((state) => (
           <div key={state.month}>{dueSoonLine(state)}</div>
         ))}
         <div className="muted">{owedSince(owed)}</div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Estado y agua (owner, 14 November 2026): the house's status and water
+ * connection over time, newest entry first. A month is charged, and can owe
+ * a late fee, only if the house was active with water when its deadline
+ * ended; an entry dated in the past takes over from its date.
+ */
+function StatusHistory({ file }: { file: HouseholdFile }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? file.statusHistory : file.statusHistory.slice(0, 3);
+  return (
+    <section className="stack" style={{ gap: 8 }}>
+      <h2>Estado y agua</h2>
+      <div className="card stack" style={{ gap: 6 }}>
+        {shown.map((entry) => (
+          <div key={entry.id}>
+            <strong>Desde el {calendarDate(entry.startsOn)}:</strong> {statusEntryLine(entry)}
+            <div className="muted">
+              Anotado {entry.createdBy ? `por ${entry.createdBy} ` : ""}el {formatDateTime(entry.createdAt)}
+            </div>
+          </div>
+        ))}
+        {file.statusHistory.length > shown.length && (
+          <button className="btn" style={{ justifySelf: "start" }} onClick={() => setAll(true)}>
+            Ver los {file.statusHistory.length} cambios
+          </button>
+        )}
       </div>
     </section>
   );
@@ -458,6 +496,8 @@ function EditHousehold({ file, onClose, onSaved }: { file: HouseholdFile; onClos
   const [sectorId, setSectorId] = useState(file.sector.id);
   const [references, setReferences] = useState(file.references);
   const [waterConnection, setWaterConnection] = useState<WaterConnection>(file.waterConnection);
+  // A new connection goes into the status history from this date (owner, 14 November 2026).
+  const [connectionSince, setConnectionSince] = useState(todayInHonduras);
   const [relation, setRelation] = useState<Relation>(file.owner.relation);
   const [paperDate, setPaperDate] = useState(file.paperDate ?? "");
   const [paperFormNumber, setPaperFormNumber] = useState(file.paperFormNumber ?? "");
@@ -471,7 +511,13 @@ function EditHousehold({ file, onClose, onSaved }: { file: HouseholdFile; onClos
     ? options.sectors
     : [file.sector, ...(options?.sectors ?? [])];
 
+  const connectionChanged = waterConnection !== file.waterConnection;
+
   const save = async () => {
+    if (connectionChanged && !connectionSince) {
+      setError("Elija desde cuándo tiene esta conexión.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -479,6 +525,7 @@ function EditHousehold({ file, onClose, onSaved }: { file: HouseholdFile; onClos
         sectorId,
         references,
         waterConnection,
+        ...(connectionChanged ? { connectionSince } : {}),
         relation,
         gps,
         paperDate: paperDate || null,
@@ -536,6 +583,12 @@ function EditHousehold({ file, onClose, onSaved }: { file: HouseholdFile; onClos
           ))}
         </select>
       </label>
+      {connectionChanged && (
+        <label>
+          ¿Desde cuándo está {WATER_CONNECTIONS[waterConnection].toLowerCase()}?
+          <DateField value={connectionSince} max={todayInHonduras()} onChange={setConnectionSince} />
+        </label>
+      )}
       <label>
         Fecha de la hoja de papel
         <DateField value={paperDate} max={options?.today} onChange={setPaperDate} clearable />
@@ -666,16 +719,21 @@ function EditPerson({
 
 function Deactivate({ file, onClose, onSaved }: { file: HouseholdFile; onClose: () => void; onSaved: (text: string) => Promise<void> }) {
   const [reason, setReason] = useState<InactiveReason | null>(null);
+  const [since, setSince] = useState(todayInHonduras);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const save = async () => {
+    if (!since) {
+      setError("Elija desde cuándo está inactiva.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      await api("POST", `/census/households/${file.id}/deactivate`, { reason, ...(note.trim() ? { note: note.trim() } : {}) });
-      await onSaved(`Vivienda ${file.code} desactivada. No se borró: se puede reactivar.`);
+      await api("POST", `/census/households/${file.id}/deactivate`, { reason, since, ...(note.trim() ? { note: note.trim() } : {}) });
+      await onSaved(`Vivienda ${file.code} desactivada desde el ${calendarDate(since)}. No se borró: se puede reactivar.`);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -692,12 +750,61 @@ function Deactivate({ file, onClose, onSaved }: { file: HouseholdFile; onClose: 
         </button>
       ))}
       <label>
+        ¿Desde cuándo?
+        <DateField value={since} max={todayInHonduras()} onChange={setSince} />
+      </label>
+      <p className="muted" style={{ margin: 0 }}>
+        Sus meses desde esa fecha no se cobran, ni su mora, mientras siga inactiva.
+      </p>
+      <label>
         Nota (opcional)
         <input value={note} onChange={(e) => setNote(e.target.value)} />
       </label>
       {error && <p className="message error">{error}</p>}
       <button className="btn danger block" disabled={!reason || busy} onClick={() => void save()}>
         <Icon name="x" /> Sí, desactivar
+      </button>
+    </Dialog>
+  );
+}
+
+/** Reactivar, from a date: today unless the house was active again earlier (owner, 14 November 2026). */
+function Reactivate({ file, onClose, onSaved }: { file: HouseholdFile; onClose: () => void; onSaved: (text: string) => Promise<void> }) {
+  const [since, setSince] = useState(todayInHonduras);
+  const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    if (!since) {
+      setError("Elija desde cuándo está activa.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await api("POST", `/census/households/${file.id}/reactivate`, { since, ...(note.trim() ? { note: note.trim() } : {}) });
+      await onSaved(`Vivienda ${file.code} activa de nuevo desde el ${calendarDate(since)}.`);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog title={`Reactivar ${file.code}`} onClose={onClose}>
+      <label>
+        ¿Desde cuándo está activa otra vez?
+        <DateField value={since} max={todayInHonduras()} onChange={setSince} />
+      </label>
+      <label>
+        Nota (opcional)
+        <input value={note} onChange={(e) => setNote(e.target.value)} />
+      </label>
+      {error && <p className="message error">{error}</p>}
+      <button className="btn go block" disabled={busy} onClick={() => void save()}>
+        <Icon name="check" /> Sí, reactivar
       </button>
     </Dialog>
   );

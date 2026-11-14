@@ -30,6 +30,8 @@ import type { DbOrTx } from "../db/client.js";
 import { householdFees, households, paymentMonths } from "../db/schema.js";
 import { formatLempiras } from "./census.js";
 import { firstOfMonth, monthName } from "./fees.js";
+import { monthsWithService } from "./householdStatus.js";
+import type { Deadline } from "./settings.js";
 import { feeOn } from "./settings.js";
 import { businessToday } from "./time.js";
 
@@ -245,13 +247,17 @@ export function owesFrom(db: DbOrTx, householdId: string, timeZone: string): Owe
 /**
  * The months this house owes, oldest first: every month from `from` to
  * `through` that has a price and is not paid in full. A month with no fee
- * set, or one the board does not charge (L 0), is not owed.
+ * set, or one the board does not charge (L 0), is not owed, nor is one in
+ * which the house was inactive or without water on the day its deadline
+ * (`rule`) ended (owner, 14 November 2026; src/lib/householdStatus.ts).
  */
-export function owedMonths(db: DbOrTx, householdId: string, from: string, through: string): MonthState[] {
+export function owedMonths(db: DbOrTx, householdId: string, from: string, through: string, rule: Deadline): MonthState[] {
   if (from > through) {
     return [];
   }
-  return monthStates(db, householdId, monthsBetween(from, through)).filter(
-    (state) => state.priceCentavos !== null && state.paidCentavos < state.priceCentavos,
+  const months = monthsBetween(from, through);
+  const served = monthsWithService(db, householdId, months, rule);
+  return monthStates(db, householdId, months).filter(
+    (state) => served.has(state.month) && state.priceCentavos !== null && state.paidCentavos < state.priceCentavos,
   );
 }

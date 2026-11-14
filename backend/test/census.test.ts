@@ -405,7 +405,15 @@ describe("census", () => {
       waterConnection: "connected",
       relation: "owner",
     });
-    assert.match(entry!.summary, /referencias, conexión de agua y relación con la vivienda$/);
+    assert.match(entry!.summary, /referencias, conexión de agua y relación con la vivienda \(compartida desde el .+\)$/);
+    // The new connection is an entry in the status history, from today (no date was given).
+    assert.deepEqual(
+      file.json().household.statusHistory.map((row: { status: string; waterConnection: string }) => [row.status, row.waterConnection]),
+      [
+        ["active", "shared"],
+        ["active", "connected"],
+      ],
+    );
 
     const personId = file.json().household.owner.personId;
     const renamed = await call(secretary.cookie, "PATCH", `/api/census/people/${personId}`, { fullName: "JUAN PÉREZ LÓPEZ" });

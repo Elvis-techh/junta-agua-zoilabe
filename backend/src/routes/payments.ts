@@ -192,7 +192,7 @@ export const paymentRoutes: FastifyPluginAsync<{ timeZone: string }> = async (ap
       household,
       months: monthStates(app.db, household.id, monthsBetween(from, to)),
       // Owed months older than the list, shown first, so they need no searching.
-      owedBefore: owedMonths(app.db, household.id, start, addMonths(from, -1)).filter((state) =>
+      owedBefore: owedMonths(app.db, household.id, start, addMonths(from, -1), rule).filter((state) =>
         isPastDeadline(state.month, day, rule),
       ),
     };
@@ -213,7 +213,7 @@ export const paymentRoutes: FastifyPluginAsync<{ timeZone: string }> = async (ap
     const from = owesFrom(app.db, household.id, options.timeZone);
     const rule = deadline(app.db, day);
     // A month counts as owed only once its deadline and grace days are over.
-    const unpaid = owedMonths(app.db, household.id, from.month, thisMonth);
+    const unpaid = owedMonths(app.db, household.id, from.month, thisMonth, rule);
     const owed = unpaid.filter((state) => isPastDeadline(state.month, day, rule));
     const waiting = unpaid.filter((state) => !isPastDeadline(state.month, day, rule));
     return {
