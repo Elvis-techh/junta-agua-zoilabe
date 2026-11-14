@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { globSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import ts from "typescript";
 
@@ -12,7 +13,8 @@ const DECIDE_FOR_THEMSELVES = new Set(["CensusScreen"]);
 /** Every `autoFocus` written in the screens: where, on which element, and with what value. */
 function autoFocusUses(): Array<{ where: string; element: string; value: string }> {
   const uses: Array<{ where: string; element: string; value: string }> = [];
-  for (const file of globSync("**/*.tsx", { cwd: SOURCE.pathname })) {
+  // Not `SOURCE.pathname`: on Windows that is "/C:/…", a folder that does not exist.
+  for (const file of globSync("**/*.tsx", { cwd: fileURLToPath(SOURCE) })) {
     const text = readFileSync(new URL(file, SOURCE), "utf8");
     const tree = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
     const visit = (node: ts.Node): void => {

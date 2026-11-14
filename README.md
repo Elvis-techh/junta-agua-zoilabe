@@ -434,6 +434,12 @@ npm test
 The tests need no database server or settings: each one makes its own
 database in memory and throws it away.
 
+They pass on a Windows computer too, although GitHub runs them on Linux only.
+Two things there differ, so a test that reads the repository's files allows
+for both: Git for Windows checks files out with `\r\n` line endings, and a
+`file:` URL's `.pathname` is `/C:/…`, a folder that does not exist
+(`fileURLToPath` gives the real one).
+
 On GitHub, every pull request runs two checks: **Tests** (the same two
 commands, plus a build) and **Test copy** (the tests again, then the build
 on the test copy). Do not merge while either is red.
