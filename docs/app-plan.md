@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 162, taken 2026-11-12.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 172, taken 2026-11-13.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -382,9 +382,9 @@ Phases 1 to 3 are built and tested on the builder's computer before anything cha
 | 3. Close, reports and guests | Not started | Everything, including print layouts and guest invitations | A guest signing in from a municipal phone at the real address |
 | 4. Handover | Not started | A first draft of the runbook | The restore test, board-owned accounts, training and installing on every director's phone |
 
-**Done so far (as of 12 November 2026)**
+**Done so far (as of 13 November 2026)**
 
-Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fees can be set and removed in Configuración, monthly fee payments can be recorded, and a payment recorded by mistake can be reversed. Board members sign in with their phone number and a password.
+Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fees can be set and removed in Configuración, including changes that start in a past month, monthly fee payments can be recorded, and a payment recorded by mistake can be reversed. Board members sign in with their phone number and a password.
 
 - [x] Test copy running at [prueba-agua.basculacentral.com](https://prueba-agua.basculacentral.com) with made-up data only, set up on 1 November 2026 (PRs #11 to #13). Every pull request now goes there for a phone check. Its own separation check passed; the real app's is still open below.
 - [x] Database moved to SQLite (PR #8).
@@ -408,12 +408,13 @@ Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fee
 - [x] Corrections, "Anular pago": a whole payment is reversed from the household's file with a reason and the PIN, dated the day it is made; the original stays, marked "Anulado", and can be recorded again with its details filled in (PR #27, merged on 7 November 2026).
 - [x] Signing in with phone number and password, replacing the invitation link and the PIN (PR #28, merged on 9 November 2026).
 - [x] The history log keeps changes, not visits: signing in and wrong passwords leave no entry, and new entries no longer save the phone's description (PR #29, merged on 9 November 2026).
+- [x] Past fee changes in Configuración: a fee can take a change that starts in a past month, so the fees of the years in the paper book can be entered, unless a payment of that fee falls in the months it would cover. Corregir and Quitar now look only at payments in an amount's own months (PR #30, merged on 13 November 2026).
 
 **What comes next**
 
-Phase 2 is under way: the app sets fees, records monthly fee payments and reverses a payment recorded by mistake. Next is what each house already owes, entered month by month before its first payment. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
+Phase 2 is under way: the app sets fees, records monthly fee payments and reverses a payment recorded by mistake. Next is other income: late fee, reconnection fee, connection fee, donation and other. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test and which month is the start month.
 
-Finished, waiting to be merged: past fee changes in Configuración (PR #30), on the test copy for the owner to try. The history log change (PR #29) is merged.
+Finished, waiting to be merged: the start month and what each house already owes (PR #32), on the test copy for the owner to try. Past fee changes (PR #30) were merged on 13 November 2026.
 
 Needs people, not code:
 
@@ -428,8 +429,8 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - [x] Removing a fee amount ("Quitar") until a payment covers its month, with a written reason (decided 6 November). Merged in PR #25 on 6 November 2026.
 - [x] Every role gets every permission, and a month close still takes two different people (decided 6 November). Merged in PR #26 on 6 November 2026.
 - [x] Corrections: a reversal entry that points to the original and needs a written reason. Merged in PR #27 on 7 November 2026.
-- [ ] Past fee changes in Configuración: a fee can take a change that starts in a past month, so the fees of the years in the paper book can be entered, unless a payment falls in the months it would cover (decided 12 November). Pull request #30.
-- [ ] What each house already owes, entered month by month before its first payment, so each unpaid month can carry its own late fee (decided 6 November). One start month for every house; older unpaid months are tapped on a month grid at the fee in Configuración, with mora only where the paper book shows it (decided 7 November).
+- [x] Past fee changes in Configuración: a fee can take a change that starts in a past month, so the fees of the years in the paper book can be entered, unless a payment falls in the months it would cover (decided 12 November). Merged in PR #30 on 13 November 2026.
+- [ ] What each house already owes, entered month by month before its first payment, so each unpaid month can carry its own late fee (decided 6 November). One start month for every house; older unpaid months are tapped on a month grid at the fee in Configuración, with mora only where the paper book shows it (decided 7 November). Pull request #32.
 - [ ] Other income: late fee, reconnection fee, connection fee, donation and other.
 - [ ] Month-end late fees and the arrears list: active, connected households with unpaid months and the late fee owed for each.
 - [ ] Expenses: category, supplier, amount and receipt photo. Photos stay on the computer until the bucket is connected.
@@ -527,6 +528,12 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 
 - A fee in Configuración can also take an earlier change that starts in a past month, so the fees of the years in the paper book can be entered. It is refused once a payment or an entered old month falls in the months it would cover, so nothing already counted is rewritten.
 - A house with a different amount owes that amount for its old unpaid months too, even for months before the amount was entered in the app.
+
+**Decisions made on 13 November 2026**
+
+- A month entered as owed by mistake is removed with "Quitar" and a written reason, until a payment covers it. It stays in the database, marked removed.
+- Cobrar offers a month before the start month only if it was entered as owed.
+- Once the start month is saved in Configuración, it cannot be changed.
 
 **Still open**
 
