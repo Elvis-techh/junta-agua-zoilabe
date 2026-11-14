@@ -30,6 +30,44 @@ export interface HouseMonths {
   latestMonth: string;
   household: { id: string; code: string; status: "active" | "inactive"; waterConnection: string; ownerName: string };
   months: MonthState[];
+  /** Owed months older than `months`, oldest first. */
+  owedBefore: MonthState[];
+}
+
+/**
+ * What a house owes, as the server works it out (owner, 13 November 2026):
+ * every month not paid in full from its first entered payment, or the month
+ * it was registered if earlier, up to this month.
+ */
+export interface HouseOwed {
+  today: string;
+  thisMonth: string;
+  owesFrom: { month: string; because: "first_payment" | "registered" };
+  months: MonthState[];
+  totalCentavos: number;
+}
+
+/**
+ * "Debe L 140.00: octubre y noviembre de 2026.", or that it owes nothing.
+ * More than four months are counted, not listed, so the sentence stays short.
+ */
+export function owedSummary(owed: HouseOwed): string {
+  const months = owed.months.map((state) => state.month);
+  if (months.length === 0) {
+    return "Al día: no debe ningún mes.";
+  }
+  const total = formatLempiras(owed.totalCentavos);
+  return months.length <= 4
+    ? `Debe ${total}: ${monthList(months)}.`
+    : `Debe ${total} de ${months.length} meses. El más antiguo es ${monthName(months[0]!)}.`;
+}
+
+/** Where the count starts, in words: "Se cuenta desde marzo de 2025, su primer pago anotado." */
+export function owedSince(owed: HouseOwed): string {
+  const month = monthName(owed.owesFrom.month);
+  return owed.owesFrom.because === "first_payment"
+    ? `Se cuenta desde ${month}, su primer pago anotado.`
+    : `Se cuenta desde ${month}, cuando se registró. Si tiene pagos de antes, anótelos en Cobrar con su fecha.`;
 }
 
 export interface Payment {

@@ -15,17 +15,23 @@
  *    change of fee does not change what is still owed for it (owner,
  *    6 November 2026). Until then a month costs the house's different amount
  *    in force for it, or else the base monthly fee in force for it.
+ *  - A house owes every month not paid in full from its first entered
+ *    payment, or from the month it was registered if that is earlier, up to
+ *    the current month; a skipped month stays owed after a later one is paid
+ *    (owner, 13 November 2026). There is no start month: each family's
+ *    history is typed in through Cobrar, from whatever date it begins.
  *
  * A payment that has been reversed does not count, and a reversal carries no
  * shares of its own, so undoing a payment gives its months back as they were.
  */
-import { and, desc, eq, isNull, lte, or, gte, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, lte, min, or, gte, sql } from "drizzle-orm";
 
 import type { DbOrTx } from "../db/client.js";
-import { householdFees } from "../db/schema.js";
+import { householdFees, households, paymentMonths } from "../db/schema.js";
 import { formatLempiras } from "./census.js";
-import { monthName } from "./fees.js";
+import { firstOfMonth, monthName } from "./fees.js";
 import { feeOn } from "./settings.js";
+import { businessToday } from "./time.js";
 
 /** "2026-11-01" moved by `by` months: "2026-11-01", 3 → "2027-02-01". */
 export function addMonths(month: string, by: number): string {
@@ -190,4 +196,62 @@ export function monthStates(db: DbOrTx, householdId: string, months: readonly st
       ? { month, priceCentavos: row.price, paidCentavos: row.paid }
       : { month, priceCentavos: listPrice(db, householdId, month), paidCentavos: 0 };
   });
+}
+
+/** The earliest month a payment of this house covers, or null while none is entered. A reversed payment does not count. */
+export function firstPaidMonth(db: DbOrTx, householdId: string): string | null {
+  const row = db
+    .select({ month: min(paymentMonths.month) })
+    .from(paymentMonths)
+    .where(
+      and(
+        eq(paymentMonths.householdId, householdId),
+        sql`NOT EXISTS (SELECT 1 FROM transactions r WHERE r.reverses_id = ${paymentMonths.transactionId})`,
+      ),
+    )
+    .get();
+  return row?.month ?? null;
+}
+
+/** Where what a house owes is counted from, and why: its first entered payment, or the month it was registered. */
+export interface OwesFrom {
+  month: string;
+  because: "first_payment" | "registered";
+}
+
+/**
+ * The first month a house owes (owner, 13 November 2026): the first month its
+ * entered payments cover, or the month it was registered in the census if
+ * that is earlier or nothing is entered yet. The month it was registered is
+ * the paper form's date when it was typed in from paper, otherwise the day
+ * it was saved, in Honduras time.
+ */
+export function owesFrom(db: DbOrTx, householdId: string, timeZone: string): OwesFrom {
+  const household = db
+    .select({ paperDate: households.paperDate, createdAt: households.createdAt })
+    .from(households)
+    .where(eq(households.id, householdId))
+    .get();
+  if (!household) {
+    throw new Error(`No household ${householdId}`);
+  }
+  const registered = firstOfMonth(household.paperDate ?? businessToday(timeZone, household.createdAt));
+  const firstPaid = firstPaidMonth(db, householdId);
+  return firstPaid !== null && firstPaid < registered
+    ? { month: firstPaid, because: "first_payment" }
+    : { month: registered, because: "registered" };
+}
+
+/**
+ * The months this house owes, oldest first: every month from `from` to
+ * `through` that has a price and is not paid in full. A month with no fee
+ * set, or one the board does not charge (L 0), is not owed.
+ */
+export function owedMonths(db: DbOrTx, householdId: string, from: string, through: string): MonthState[] {
+  if (from > through) {
+    return [];
+  }
+  return monthStates(db, householdId, monthsBetween(from, through)).filter(
+    (state) => state.priceCentavos !== null && state.paidCentavos < state.priceCentavos,
+  );
 }

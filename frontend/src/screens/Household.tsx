@@ -9,8 +9,8 @@ import { Dialog } from "../components/Dialog.tsx";
 import { PhoneField } from "../components/PhoneField.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
-import type { Payment } from "../payments.ts";
-import { PAYMENT_METHODS, monthList, shortMonth } from "../payments.ts";
+import type { HouseOwed, Payment } from "../payments.ts";
+import { PAYMENT_METHODS, monthList, owedSince, owedSummary, shortMonth } from "../payments.ts";
 import { formatPhone, phoneEntry, wholePhone } from "../phone.ts";
 import { recall, remember } from "../queue.ts";
 import { isTouchScreen } from "../viewport.ts";
@@ -146,6 +146,8 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
         </section>
       )}
 
+      {can("finance:view") && <HouseholdOwed householdId={file.id} />}
+
       {can("finance:view") && (
         <HouseholdPayments
           householdId={file.id}
@@ -203,6 +205,43 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
       )}
       {dialog === "deactivate" && <Deactivate file={file} onClose={() => setDialog(null)} onSaved={changed} />}
     </main>
+  );
+}
+
+/**
+ * Lo que debe (owner, 13 November 2026): every month not paid in full from
+ * the house's first entered payment, or the month it was registered if
+ * earlier, up to this month. The server works it out; a month paid in part
+ * says what is left.
+ */
+export function HouseholdOwed({ householdId }: { householdId: string }) {
+  const [owed, setOwed] = useState<HouseOwed | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api<HouseOwed>("GET", `/finance/households/${householdId}/owed`)
+      .then(setOwed)
+      .catch((err: Error) => setError(err.message));
+  }, [householdId]);
+
+  if (!owed) {
+    return error ? <p className="message error">{error}</p> : null;
+  }
+  const partial = owed.months.filter((state) => state.paidCentavos > 0);
+  return (
+    <section className="stack" style={{ gap: 8 }}>
+      <h2>Lo que debe</h2>
+      <div className="card stack" style={{ gap: 4 }}>
+        <strong>{owedSummary(owed)}</strong>
+        {partial.map((state) => (
+          <div key={state.month}>
+            {shortMonth(state.month)} {state.month.slice(0, 4)}: pagado en parte, faltan{" "}
+            <span style={{ whiteSpace: "nowrap" }}>{formatLempiras(state.priceCentavos! - state.paidCentavos)}</span>
+          </div>
+        ))}
+        <div className="muted">{owedSince(owed)}</div>
+      </div>
+    </section>
   );
 }
 
