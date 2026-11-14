@@ -1,6 +1,6 @@
 /**
- * Configuración → Cuotas: the base monthly fee, the late fee (mora) and the
- * reconnection fee, each from the month it starts.
+ * Configuración → Cuotas: the base monthly fee, the late fee (mora), the
+ * reconnection fee and the connection fee, each from the month it starts.
  *
  * A rate is never deleted. A new amount is a new row from the month it
  * starts, covering the months up to the next amount, and the list shows every
@@ -33,6 +33,7 @@ const FEE_NAMES: Record<FeeKind, string> = {
   base_monthly: "la cuota mensual base",
   late_fee: "la mora",
   reconnection: "la cuota de reconexión",
+  connection: "la cuota de conexión",
 };
 
 // Zero is allowed (owner, 2026-11-02): the board may decide not to charge a fee.

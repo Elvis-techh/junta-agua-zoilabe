@@ -16,6 +16,7 @@ const setup: IncomeSetup = {
     { startsOn: "2024-01-01", amountCentavos: 5000 },
   ],
   reconnection: [{ startsOn: "2026-11-01", amountCentavos: 25000 }],
+  connection: [{ startsOn: "2026-06-01", amountCentavos: 150000 }],
 };
 
 describe("Otro ingreso's amounts from Configuración", () => {
@@ -28,9 +29,14 @@ describe("Otro ingreso's amounts from Configuración", () => {
     assert.equal(configuredAmount(setup, "reconnection", "", "2026-10-31"), null);
   });
 
-  it("have nothing to say about a connection, a donation or other income", () => {
-    assert.equal(configuredAmount(setup, "connection", "", "2026-11-14"), undefined);
+  it("take the connection fee of the day it is paid (owner, 14 November 2026)", () => {
+    assert.equal(configuredAmount(setup, "connection", "", "2026-11-14"), 150000);
+    assert.equal(configuredAmount(setup, "connection", "", "2026-05-31"), null);
+  });
+
+  it("have nothing to say about a donation or other income", () => {
     assert.equal(configuredAmount(setup, "donation", "", "2026-11-14"), undefined);
+    assert.equal(configuredAmount(setup, "other", "", "2026-11-14"), undefined);
     assert.equal(needsHouse("late_fee"), true);
     assert.equal(needsHouse("reconnection"), true);
     assert.equal(needsHouse("donation"), false);

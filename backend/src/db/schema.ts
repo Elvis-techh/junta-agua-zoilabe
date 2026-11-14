@@ -316,7 +316,8 @@ export const householdFees = sqliteTable(
 // ---------------------------------------------------------------------------
 
 /**
- * Base monthly fee, late fee (mora) and reconnection fee, each from a start date.
+ * Base monthly fee, late fee (mora), reconnection fee and connection fee, each
+ * from a start date.
  *
  * An amount the board did not mean, or no longer wants, is removed ("Quitar")
  * until a payment covers its month: the row stays, with when, who and why,
@@ -326,7 +327,7 @@ export const feeRates = sqliteTable(
   "fee_rates",
   {
     id: serial("id"),
-    kind: text("kind", { enum: ["base_monthly", "late_fee", "reconnection"] }).notNull(),
+    kind: text("kind", { enum: ["base_monthly", "late_fee", "reconnection", "connection"] }).notNull(),
     amountCentavos: integer("amount_centavos").notNull(),
     startsOn: date("starts_on").notNull(),
     createdAt: createdAt(),
