@@ -121,7 +121,10 @@ close the keyboard to look for a button. When a screen is built or changed:
 
 `npm run typecheck` and `npm test` from the repository root. The **Tests** workflow
 (`.github/workflows/tests.yml`) runs them, plus a build, on every pull
-request; do not merge one whose check is red.
+request; do not merge one whose check is red. The owner also runs them on
+a Windows computer, which GitHub does not: a test that reads files finds them
+with `fileURLToPath`, never a URL's `.pathname`, and does not assume a line
+ends in `\n` alone (Git for Windows checks files out with `\r\n`).
 
 The **Test copy** workflow (`.github/workflows/test-copy.yml`) puts every
 pull request on the droplet's test copy (docs/test-copy.md), where the
