@@ -12,6 +12,7 @@ import { auditRoutes } from "./routes/audit.js";
 import { authRoutes } from "./routes/auth.js";
 import { censusRoutes } from "./routes/census.js";
 import { feeRoutes } from "./routes/fees.js";
+import { deadlineRoutes } from "./routes/deadline.js";
 import { healthRoutes } from "./routes/health.js";
 import { paymentRoutes } from "./routes/payments.js";
 import { permissionRoutes } from "./routes/permissions.js";
@@ -77,6 +78,7 @@ export async function buildApp(config: AppConfig, db: Db) {
       await api.register(sectorRoutes);
       await api.register(feeRoutes, { timeZone: config.timeZone });
       await api.register(paymentRoutes, { timeZone: config.timeZone });
+      await api.register(deadlineRoutes, { timeZone: config.timeZone });
     },
     { prefix: "/api" },
   );

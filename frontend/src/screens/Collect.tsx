@@ -133,7 +133,8 @@ export function PaymentScreen({ id, again, onOpen }: { id: string; again?: Payme
   }
 
   const { household } = data;
-  const states = data.months;
+  // Owed months older than the list come first, so they need no searching.
+  const states = [...data.owedBefore, ...data.months];
   const chosen = states.filter((state) => selected.includes(state.month));
   const amountCentavos = parseLempiras(amountText);
   const sharing = sharePayment(chosen, amountCentavos);
@@ -211,10 +212,17 @@ export function PaymentScreen({ id, again, onOpen }: { id: string; again?: Payme
         <main className="screen stack">
           {head("¿Qué meses paga?")}
           {household.status === "inactive" && <p className="message error">Esta vivienda está inactiva.</p>}
-          <button className="btn block" onClick={() => setFrom(addMonths(states[0]!.month, -12))}>
+          {data.owedBefore.length > 0 && (
+            <>
+              <h2 style={{ margin: 0 }}>Debe de antes</h2>
+              <MonthGrid states={data.owedBefore} selected={selected} thisMonth={data.thisMonth} onToggle={toggle} />
+              <h2 style={{ margin: 0 }}>Meses recientes</h2>
+            </>
+          )}
+          <button className="btn block" onClick={() => setFrom(addMonths(data.months[0]!.month, -12))}>
             <Icon name="calendar" /> Ver meses anteriores
           </button>
-          <MonthGrid states={states} selected={selected} thisMonth={data.thisMonth} onToggle={toggle} />
+          <MonthGrid states={data.months} selected={selected} thisMonth={data.thisMonth} onToggle={toggle} />
           {chosen.length > 0 && (
             <p>
               {chosen.length === 1 ? "Ese mes debe" : `Esos ${chosen.length} meses deben`} <strong>{money(owedFor(chosen))}</strong>.

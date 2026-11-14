@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api.ts";
 import { Icon } from "../icons.tsx";
 import { isTouchScreen } from "../viewport.ts";
+import { DeadlineSection } from "./SettingsDeadline.tsx";
 import { FeesSection } from "./SettingsFees.tsx";
 
 interface Sector {
@@ -13,9 +14,9 @@ interface Sector {
 }
 
 /**
- * Configuración: the fees (Cuotas) and the list a household's sector is
- * chosen from (Sectores). Categories and the village profile come later in
- * the finance phase.
+ * Configuración: the fees (Cuotas), the payment deadline (Plazo de pago)
+ * and the list a household's sector is chosen from (Sectores). Categories
+ * and the village profile come later in the finance phase.
  */
 export function SettingsScreen() {
   const [sectors, setSectors] = useState<Sector[] | null>(null);
@@ -50,6 +51,7 @@ export function SettingsScreen() {
     <main className="screen stack">
       <h1>Configuración</h1>
       <FeesSection />
+      <DeadlineSection />
       <h2>Sectores</h2>
       <p className="muted">La lista que aparece al registrar una familia. Un sector no se borra: se quita de la lista.</p>
 

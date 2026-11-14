@@ -86,7 +86,24 @@ changing how money, permissions or the history log work.
     decide whether an amount may still be corrected or removed, so an old
     amount stays correctable while its own months hold no payment. See steps
     3 and 4 of "Trying the fees" below.
-  - Next: what each house already owes, entered month by month.
+  - **What each house owes: built.** Owner decision of 13 November 2026,
+    replacing the start month of 7 November: there is no start month. Each
+    family's history is typed in through Cobrar, each payment with its own
+    date and months, from whatever date it begins. A family owes every month
+    not paid in full from its first entered payment (or the month it was
+    registered, if earlier, or while nothing is entered) once that month's
+    payment deadline is over; a skipped month stays owed after a later one is
+    paid. The deadline is set in Configuración → **Plazo de pago**: the day
+    of each month by which it is paid, plus grace days (until set, the last
+    day of the month, with no grace). The household's file shows it under
+    **Lo que debe** ("Debe el mes de octubre de 2026", "Debe los meses de
+    …"), and Cobrar lists owed months older than its usual list first, under
+    **Debe de antes**. See "Trying Lo que debe" below. Owner decisions of the
+    same day: late fees for months owed from before the app only where the
+    paper book shows one (the late fee piece will do it); a different amount
+    does not price months before it started, for now.
+  - Next: other income (late fee, reconnection, connection fee, donation).
+    It must record a late fee under the "Mora" category, with its month.
 
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
@@ -238,8 +255,9 @@ household's file. A payment needs signal: it is not kept on the phone.
 1. Search for the house by name or code and tap it.
 2. **¿Qué meses paga?** Each month shows what it still owes ("L 70.00",
    "Faltan L 40.00") or "Pagado". The list starts three months back and runs
-   a year ahead; **Ver meses anteriores** adds older ones. Tap the months
-   written on the paper receipt.
+   a year ahead; **Ver meses anteriores** adds older ones. Owed months older
+   than that come first, under **Debe de antes**. Tap the months written on
+   the paper receipt.
 3. **¿Cuánto pagó?** starts on the full amount. Paying less fills the
    chosen months oldest first, so only the last one is left partly paid. More
    than they owe is refused, as is an amount that does not reach every month
@@ -275,6 +293,41 @@ it is never saved twice. Only roles with "Registrar pagos y gastos" may
 save, only those with "Ver finanzas" see the months and payments, and only
 those with "Corregir un registro de dinero" may anular; the server checks
 all three.
+
+### Trying Lo que debe
+
+With a base fee in Configuración → Cuotas from a past month (for example
+January 2025):
+
+1. In **Configuración** → **Plazo de pago**, type the day of the month by
+   which a month is paid (say 25) and the grace days (say 5); the sentence
+   under them says what that means this month. **Guardar plazo**. Each
+   change is kept and in Historial (Configuración).
+2. Register a family, or open one, and scroll to **Lo que debe** on its file.
+   With nothing entered it owes from the month it was registered (the paper
+   form's month, for a family typed in from paper), but only once a month's
+   deadline and grace days are over: until then it says "Al día" and
+   "Noviembre de 2026 se paga hasta el 25 de noviembre; si no, cuenta como
+   debido desde el 1 de diciembre".
+3. Type in its history in **Cobrar**: tap **Ver meses anteriores** until the
+   old months show, pick a month written on an old receipt (say March 2025),
+   and give the payment the receipt's date. Do the same for May 2025.
+4. Back on the file: it now counts from March 2025, "su primer pago
+   anotado". April 2025 is owed (skipped), and so is every month from June
+   2025 to the last one past its deadline. More than four months are counted,
+   not listed ("Debe 18 meses (L 1,260.00). El más antiguo es abril de
+   2025."). A month paid in part says what is left.
+5. Open **Cobrar** for that family: the owed months older than the usual list
+   come first, under **Debe de antes**, ready to tap.
+6. **Anular pago** on the March payment: the count then starts from May 2025,
+   and April is no longer owed.
+
+A month with no fee set, or one the board does not charge, is never owed.
+Months paid ahead are not owed either. Only roles with "Ver finanzas" see
+it, and only those with "Cambiar la configuración" may change the deadline;
+the server works it out, whatever the screen shows. The newest deadline
+applies to every month. A day past a short month's end (31 in February)
+means its last day.
 
 ### Trying the census
 
