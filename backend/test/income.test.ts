@@ -78,11 +78,13 @@ describe("Otro ingreso: late fees, reconnections, connections, donations and oth
     president = await signedInUser(t, "presidente");
     vocal = await signedInUser(t, "primer_vocal");
     secretary = await signedInUser(t, "secretario");
-    // Fees from two years back, so every month in these tests has one: L 70 a month, L 50 late fee, L 200 reconnection.
+    // Fees from two years back, so every month in these tests has one:
+    // L 70 a month, L 50 late fee, L 200 reconnection, L 1,500 connection.
     await t.db.insert(feeRates).values([
       { kind: "base_monthly", amountCentavos: 7000, startsOn: monthsAgo(24) },
       { kind: "late_fee", amountCentavos: 5000, startsOn: monthsAgo(24) },
       { kind: "reconnection", amountCentavos: 20000, startsOn: monthsAgo(24) },
+      { kind: "connection", amountCentavos: 150000, startsOn: monthsAgo(24) },
     ]);
     ({ id: householdId, code: householdCode } = await register());
   });
@@ -102,14 +104,38 @@ describe("Otro ingreso: late fees, reconnections, connections, donations and oth
     assert.equal((await t.db.select().from(transactions)).length, 0);
   });
 
-  it("gives the screen the late fee and reconnection amounts it fills in", async () => {
+  it("gives the screen the late fee, reconnection and connection amounts it fills in", async () => {
     const response = await call(treasurer.cookie, "GET", "/api/finance/income/setup");
     assert.equal(response.statusCode, 200, response.body);
     assert.deepEqual(response.json(), {
       today,
       lateFee: [{ startsOn: monthsAgo(24), amountCentavos: 5000 }],
       reconnection: [{ startsOn: monthsAgo(24), amountCentavos: 20000 }],
+      connection: [{ startsOn: monthsAgo(24), amountCentavos: 150000 }],
     });
+  });
+
+  it("charges a connection at the connection fee of the day it is paid, and asks why for another amount (owner, 14 November 2026)", async () => {
+    const house = await register();
+    const connection = (overrides: Record<string, unknown>) => record({ type: "connection", householdId: house.id, month: undefined, ...overrides });
+    const other = await connection({ amountCentavos: 120000 });
+    assert.equal(other.statusCode, 400);
+    assert.equal(other.json().error, "amount_reason");
+    assert.match(other.json().message, /^La conexión es de L 1,500\.00 en Configuración\. Si se cobró otro monto, escriba por qué\.$/);
+
+    const withReason = await connection({ amountCentavos: 120000, amountReason: "Acuerdo de la junta" });
+    assert.equal(withReason.statusCode, 201, withReason.body);
+    assert.equal(withReason.json().entry.amountReason, "Acuerdo de la junta");
+    const [entry] = await t.db.select().from(transactions).where(eq(transactions.id, withReason.json().entry.id));
+    const [category] = await t.db.select().from(categories).where(eq(categories.id, entry!.categoryId));
+    assert.equal(category!.name, "Conexión");
+    assert.equal(entry!.monthsCovered, null);
+
+    // Before any connection fee was set, there is no amount to charge.
+    const tooOld = await connection({ amountCentavos: 150000, occurredOn: `${monthsAgo(30).slice(0, 8)}10` });
+    assert.equal(tooOld.statusCode, 409);
+    assert.equal(tooOld.json().error, "no_fee");
+    assert.match(tooOld.json().message, /^No hay monto para la conexión en Configuración → Cuotas/);
   });
 
   it("records a late fee under Mora with the month it covers, and logs it in Finanzas", async () => {
@@ -309,6 +335,28 @@ describe("Otro ingreso: late fees, reconnections, connections, donations and oth
     const refused = await call(president.cookie, "POST", `/api/settings/fees/${rate.id}/remove`, { reason: "No era ese monto" });
     assert.equal(refused.statusCode, 409);
     assert.equal(refused.json().error, "already_paid");
+  });
+
+  it("puts the connection fee in Configuración → Cuotas, where a paid amount can no longer be removed", async () => {
+    const list = await call(president.cookie, "GET", "/api/settings/fees");
+    assert.equal(list.statusCode, 200, list.body);
+    const fees = list.json().fees as Array<{ kind: string; rates: Array<{ id: number; startsOn: string; correctable: boolean }> }>;
+    assert.deepEqual(fees.map((fee) => fee.kind), ["base_monthly", "late_fee", "reconnection", "connection"]);
+    // The connections recorded above were paid at the amount from two years back.
+    const paid = fees.find((fee) => fee.kind === "connection")!.rates.find((rate) => rate.startsOn === monthsAgo(24))!;
+    assert.equal(paid.correctable, false);
+    const refused = await call(president.cookie, "POST", `/api/settings/fees/${paid.id}/remove`, { reason: "No era ese monto" });
+    assert.equal(refused.statusCode, 409);
+    assert.equal(refused.json().error, "already_paid");
+
+    const added = await call(president.cookie, "POST", "/api/settings/fees", {
+      kind: "connection",
+      amountCentavos: 180000,
+      startsOn: addMonths(thisMonth, 1),
+    });
+    assert.equal(added.statusCode, 201, added.body);
+    const [logged] = await t.db.select().from(auditLog).where(eq(auditLog.action, "fee_rate.created"));
+    assert.match(logged?.summary ?? "", /la cuota de conexión/);
   });
 
   it("is kept by the database: an entry cannot be changed or deleted", async () => {

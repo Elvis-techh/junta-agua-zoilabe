@@ -8,7 +8,7 @@ import { MonthField } from "../components/CalendarField.tsx";
 import { Icon } from "../icons.tsx";
 import { isTouchScreen } from "../viewport.ts";
 
-type FeeKind = "base_monthly" | "late_fee" | "reconnection";
+type FeeKind = "base_monthly" | "late_fee" | "reconnection" | "connection";
 
 export interface Rate {
   id: number;
@@ -39,6 +39,10 @@ const FEES: Record<FeeKind, { title: string; help: string }> = {
   reconnection: {
     title: "Reconexión",
     help: "Lo que se cobra por volver a conectar el agua.",
+  },
+  connection: {
+    title: "Conexión",
+    help: "Lo que se cobra por conectar el agua a una vivienda por primera vez.",
   },
 };
 

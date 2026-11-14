@@ -9,14 +9,15 @@
  * The rules:
  *
  *  - A late fee is recorded under "Mora" with the month it covers in
- *    `months_covered`, and a reconnection under "Reconexión" on the day it is
- *    paid: the fee checks in Configuración look for them there
- *    (src/lib/fees.ts, `paidMonthsAt`).
- *  - Their amount is the one in Configuración, the late fee for the month it
- *    covers and the reconnection fee for the day it is paid; another amount
- *    needs a written reason (Module 2). A late fee is charged only where the
- *    paper book shows one (owner, 13 November 2026): the treasurer records
- *    it, the app does not charge it by itself.
+ *    `months_covered`, and a reconnection under "Reconexión" and a connection
+ *    under "Conexión" on the day each is paid: the fee checks in
+ *    Configuración look for them there (src/lib/fees.ts, `paidMonthsAt`).
+ *  - Their amount is the one in Configuración: the late fee for the month it
+ *    covers, and the reconnection or connection fee for the day it is paid
+ *    (the connection fee since the owner added it on 14 November 2026);
+ *    another amount needs a written reason (Module 2). A late fee is
+ *    charged only where the paper book shows one (owner, 13 November 2026):
+ *    the treasurer records it, the app does not charge it by itself.
  *  - A house's late fee for a month is recorded once. A second one is
  *    refused, so the same receipt line cannot be typed in twice.
  *  - A late fee and a reconnection are for a house; a connection fee, a
@@ -97,7 +98,7 @@ const incomeBody = z.object({
     .max(30, "El número del recibo es demasiado largo."),
   payerName: optionalText(120, "El nombre es demasiado largo."),
   note: optionalText(300, "La nota es demasiado larga."),
-  /** Why a late fee or reconnection is not the amount in Configuración. */
+  /** Why a late fee, reconnection or connection is not the amount in Configuración. */
   amountReason: optionalText(300, "El motivo es demasiado largo."),
   confirmRepeatedReceipt: z.boolean().optional(),
 });
@@ -213,20 +214,21 @@ export const incomeRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
   const today = () => businessToday(options.timeZone);
 
   /**
-   * What the screen needs before it asks anything: today, and the late fee
-   * and reconnection fee amounts with the month each starts, so it can fill
-   * in the amount for the month or day chosen. The server checks it again.
+   * What the screen needs before it asks anything: today, and the late fee,
+   * reconnection fee and connection fee amounts with the month each starts,
+   * so it can fill in the amount for the month or day chosen. The server
+   * checks it again.
    */
   app.get("/finance/income/setup", record, async () => {
     const rates = app.db
       .select({ kind: feeRates.kind, startsOn: feeRates.startsOn, amountCentavos: feeRates.amountCentavos })
       .from(feeRates)
-      .where(and(inArray(feeRates.kind, ["late_fee", "reconnection"]), isNull(feeRates.removedAt)))
+      .where(and(inArray(feeRates.kind, ["late_fee", "reconnection", "connection"]), isNull(feeRates.removedAt)))
       .orderBy(feeRates.startsOn)
       .all();
-    const of = (kind: "late_fee" | "reconnection") =>
+    const of = (kind: "late_fee" | "reconnection" | "connection") =>
       rates.filter((rate) => rate.kind === kind).map(({ startsOn, amountCentavos }) => ({ startsOn, amountCentavos }));
-    return { today: today(), lateFee: of("late_fee"), reconnection: of("reconnection") };
+    return { today: today(), lateFee: of("late_fee"), reconnection: of("reconnection"), connection: of("connection") };
   });
 
   /** Other income, newest first: a house's, or the latest of everyone's. */
@@ -272,12 +274,13 @@ export const incomeRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
     }
 
     /**
-     * A late fee or reconnection costs what Configuración says, unless the
-     * treasurer says why not. Returns the reason kept, or null. Read inside
-     * the transaction, so a fee change cannot slip in between.
+     * A late fee, reconnection or connection costs what Configuración says,
+     * unless the treasurer says why not. Returns the reason kept, or null.
+     * Read inside the transaction, so a fee change cannot slip in between.
      */
     const amountReasonFor = (tx: DbOrTx): string | null => {
-      const kind = body.type === "late_fee" ? "late_fee" : body.type === "reconnection" ? "reconnection" : null;
+      const kind =
+        body.type === "late_fee" || body.type === "reconnection" || body.type === "connection" ? body.type : null;
       if (!kind) {
         return null;
       }

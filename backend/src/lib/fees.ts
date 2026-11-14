@@ -69,7 +69,13 @@ export const FEE_CATEGORIES: Record<FeeKind, string> = {
   base_monthly: "Cuota mensual",
   late_fee: "Mora",
   reconnection: "Reconexión",
+  connection: "Conexión",
 };
+
+/** A reconnection or connection fee is charged on the day it is paid; the other fees pay for months. */
+export function chargedOnTheDay(kind: FeeKind): boolean {
+  return kind === "reconnection" || kind === "connection";
+}
 
 /** The first and last month a payment of a fee covers among an amount's months. */
 export interface PaidMonths {
@@ -90,17 +96,17 @@ export interface PaidMonths {
  * says nothing about the late fee's amount.
  *
  * A monthly fee or a late fee pays for months (`months_covered`, as Cobrar
- * and "Otro ingreso" record them); a reconnection fee is charged on the day
- * it is paid. "Otro ingreso" (src/routes/income.ts) records them under their
- * categories, a late fee with its month in `months_covered`. A reversed
- * payment and the reversal itself do not count.
+ * and "Otro ingreso" record them); a reconnection or connection fee is
+ * charged on the day it is paid. "Otro ingreso" (src/routes/income.ts)
+ * records them under their categories, a late fee with its month in
+ * `months_covered`. A reversed payment and the reversal itself do not count.
  */
 export function paidMonthsAt(db: DbOrTx, kind: FeeKind, startsOn: string): PaidMonths | null {
   const until = nextFeeStart(db, kind, startsOn);
   const category = FEE_CATEGORIES[kind];
   // `months_covered` is a JSON list of "YYYY-MM-01" dates, which sort as text.
   const row =
-    kind === "reconnection"
+    chargedOnTheDay(kind)
       ? db.get<{ first: string | null; last: string | null }>(sql`
           SELECT min(substr(t.occurred_on, 1, 7) || '-01') AS first, max(substr(t.occurred_on, 1, 7) || '-01') AS last
           FROM transactions t, categories c

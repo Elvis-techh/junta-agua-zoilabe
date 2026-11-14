@@ -43,7 +43,8 @@ changing how money, permissions or the history log work.
 - **Phase 2 (Finances): started.** Its pieces, in build order, are ticked off
   under "What comes next" in the [app plan](docs/app-plan.md).
   - **Fees in Configuración: built.** The base monthly fee, the late fee
-    (mora) and the reconnection fee, each from the month it starts. The
+    (mora), the reconnection fee and the connection fee (added by the owner
+    on 14 November 2026), each from the month it starts. The
     census shows the base price's amount once one is set. See "Trying the
     fees" below. Owner decisions of 2 November 2026: a change may start in
     the current month (since 12 November 2026, also a past month: see below);
@@ -106,14 +107,16 @@ changing how money, permissions or the history log work.
     month it covers, a reconnection, a connection fee, a donation or other
     income, each with who paid, the amount, the date, how it was paid and
     the paper receipt's number, then "¿Está correcto?". A late fee is
-    recorded under "Mora" with its month, and a reconnection under
-    "Reconexión", so Configuración's checks see them: a fee amount with a
-    late fee paid in its months can no longer be corrected or removed. Their
-    amount is Configuración's (the late fee of the month it covers, the
-    reconnection fee of the day it is paid); another amount needs a reason
-    (App Plan, Module 2). The app records a late fee only where the treasurer
-    enters one, as the owner decided on 13 November 2026 for months from the
-    paper book. A house's late fee for a month is recorded once. A
+    recorded under "Mora" with its month, a reconnection under "Reconexión"
+    and a connection under "Conexión", so Configuración's checks see them: a
+    fee amount with one paid in its months can no longer be corrected or
+    removed. Their amount is Configuración's (the late fee of the month it
+    covers, the reconnection or connection fee of the day it is paid);
+    another amount needs a reason (App Plan, Module 2), and until
+    Configuración has an amount for it the entry is refused. The app records
+    a late fee only where the treasurer enters one, as the owner decided on
+    13 November 2026 for months from the paper book. A house's late fee for a
+    month is recorded once. A
     connection fee, a donation or other income may be from someone outside
     the census, and other income says what it is. An entry recorded by
     mistake is undone with **Anular**, as a payment is. A house's monthly fee
@@ -227,7 +230,9 @@ a phone keeps its own picker.
    It may be a past month, so what houses already owe from the paper book
    can be counted. `0` is allowed, for a fee the board does not charge.
    Amounts get their thousands commas as they are typed: `1250.5` shows as
-   `1,250.5`. Identity numbers and phones never do.
+   `1,250.5`. Identity numbers and phones never do. The other cards, **Mora**,
+   **Reconexión** and **Conexión**, work the same way; what Otro ingreso
+   charges for them comes from here.
 2. Tap **Seguir**, read the summary and tap **Sí, guardar**.
    The card shows L 70.00 "en uso", and **Registrar familia** now says
    "Precio base: L 70.00 al mes".
@@ -348,8 +353,9 @@ means its last day.
 
 ### Trying Otro ingreso
 
-With a late fee and a reconnection fee in Configuración → Cuotas from a past
-month (for example L 50 and L 200 from January 2025):
+With a late fee, a reconnection fee and a connection fee in Configuración →
+Cuotas from a past month (for example L 50, L 200 and L 1,500 from January
+2025):
 
 1. Open a family's file and tap **Otro ingreso: mora, reconexión…** (or open
    **Cobrar** and tap **Otro ingreso** under the search).
@@ -361,8 +367,9 @@ month (for example L 50 and L 200 from January 2025):
 4. Record the same month's late fee again: it is refused, with the date and
    receipt of the first. Record the month's fee in **Cobrar** with the same
    receipt number, the same day: no "número de recibo repetido".
-5. Pick **Reconexión**: the amount is the reconnection fee of the payment's
-   date.
+5. Pick **Reconexión**, or **Conexión**: the amount is the reconnection or
+   connection fee of the payment's date. With no connection fee set in
+   Configuración, a connection is refused until one is.
 6. From **Cobrar → Otro ingreso**, pick **Donación**, then **No es de una
    vivienda del censo**, and type who gave it. It shows under **Últimos
    ingresos** on that first screen.

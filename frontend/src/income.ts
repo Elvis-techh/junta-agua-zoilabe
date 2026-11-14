@@ -3,8 +3,8 @@
  *
  * The server decides (backend/src/routes/income.ts) and checks everything
  * again. This copy only lets the treasurer see a problem on the screen where
- * it can be fixed, and fills in the amount Configuración sets for a late fee
- * or a reconnection.
+ * it can be fixed, and fills in the amount Configuración sets for a late
+ * fee, a reconnection or a connection.
  */
 import { formatLempiras } from "./census.ts";
 import type { PaymentMethod } from "./payments.ts";
@@ -36,6 +36,7 @@ export interface IncomeSetup {
   today: string;
   lateFee: Rate[];
   reconnection: Rate[];
+  connection: Rate[];
 }
 
 /** The amount in force on `day` ("YYYY-MM-DD" or a month's first day), or null while none is set. */
@@ -51,15 +52,16 @@ export function rateOn(rates: readonly Rate[], day: string): number | null {
 
 /**
  * What Configuración says this entry costs: the late fee for the month it
- * covers, or the reconnection fee of the day it is paid. Undefined for a
- * kind with no amount there; null while Configuración has none.
+ * covers, or the reconnection or connection fee of the day it is paid.
+ * Undefined for a kind with no amount there (a donation, other income);
+ * null while Configuración has none.
  */
 export function configuredAmount(setup: IncomeSetup, type: IncomeType, month: string, occurredOn: string): number | null | undefined {
   if (type === "late_fee") {
     return month ? rateOn(setup.lateFee, month) : null;
   }
-  if (type === "reconnection") {
-    return occurredOn ? rateOn(setup.reconnection, occurredOn) : null;
+  if (type === "reconnection" || type === "connection") {
+    return occurredOn ? rateOn(setup[type], occurredOn) : null;
   }
   return undefined;
 }
@@ -84,8 +86,8 @@ export function incomeTitle(type: IncomeType, month: string | null): string {
 
 /**
  * The amount screen's problem, or null when it can go on: the amount, the
- * date, Configuración's amount for a late fee or reconnection (another one
- * needs a reason), and what other income is for.
+ * date, Configuración's amount for a late fee, reconnection or connection
+ * (another one needs a reason), and what other income is for.
  */
 export function amountProblem(answers: {
   type: IncomeType;

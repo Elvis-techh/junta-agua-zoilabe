@@ -20,7 +20,7 @@ export function currentSetting<T>(db: DbOrTx, key: string, day: string): T | nul
 
 export type FeeKind = (typeof feeRates.$inferSelect)["kind"];
 
-export const FEE_KINDS = ["base_monthly", "late_fee", "reconnection"] as const satisfies readonly FeeKind[];
+export const FEE_KINDS = ["base_monthly", "late_fee", "reconnection", "connection"] as const satisfies readonly FeeKind[];
 
 /**
  * The amount of a fee in force on `day`, in centavos, or null while the board
