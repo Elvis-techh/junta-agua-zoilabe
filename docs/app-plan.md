@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 194, taken 2026-11-13.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 197, taken 2026-11-15.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -410,17 +410,21 @@ Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fee
 - [x] The history log keeps changes, not visits: signing in and wrong passwords leave no entry, and new entries no longer save the phone's description (PR #29, merged on 9 November 2026).
 - [x] Past fee changes in Configuración: a fee can take a change that starts in a past month, so the fees of the years in the paper book can be entered, unless a payment of that fee falls in the months it would cover. Corregir and Quitar now look only at payments in an amount's own months (PR #30, merged on 13 November 2026).
 - [x] What each house owes: a household's file shows "Debe el mes de …" or "Debe los meses de …", counted from its first entered payment (or its registration month, if earlier), once a month's payment deadline and grace days are over. Configuración → Plazo de pago sets the day of the month and the grace days. Cobrar lists older owed months first, under "Debe de antes" (PR #33, merged on 13 November 2026). The owner tried it on the test copy.
+- [x] Other income, "Otro ingreso": a late fee (with the month it covers), a reconnection, a connection fee, a donation or other income, each with who paid, the amount, the date, how it was paid and the paper receipt's number. A late fee is recorded under "Mora" and a reconnection under "Reconexión", so Configuración's checks see them. A wrong entry is undone with "Anular" (PR #36, merged on 14 November 2026).
+- [x] Connection fee in Configuración, added by the owner on 14 November 2026, and charged from Otro ingreso (PR #37, merged on 14 November 2026).
+- [x] Month-end late fees and "Quién debe": the app adds a late fee by itself only from a month set in Configuración → Mora. Only active houses with water build them up. They are worked out each time from the payments and never written down. The household's file shows them under "Lo que debe", and "Quién debe" lists who owes, the most owed first (PR #38, merged on 14 November 2026).
+- [x] The same home screen for every role: Inicio shows the role's usual buttons first, then every other built screen under "Otras tareas" (PR #39, merged on 14 November 2026).
 
 **What comes next**
 
-Phase 2 is under way: the app sets fees, records monthly fee payments and reverses a payment recorded by mistake. Next is other income: late fee, reconnection fee, connection fee, donation and other. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
+Phase 2 is under way: the app sets fees, records monthly fee payments and other income, shows what each house owes with its late fees, and reverses a payment recorded by mistake. Next is expenses: category, supplier, amount and receipt photo. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
 
-Nothing is waiting to be merged. What each house owes (PR #33) and past fee changes (PR #30) were merged on 13 November 2026. The start month (PR #32) was closed without merging.
+One pull request is waiting: #40, a status history for each house, so a month is charged only if the house was active and had water then. It needs the owner to try it on the test copy before it is merged. Other income (PR #36), the connection fee (PR #37), month-end late fees (PR #38) and the same home screen for every role (PR #39) were merged on 14 November 2026. The start month (PR #32) was closed without merging.
 
-**Where to pick up next (13 November 2026, evening)**
+**Where to pick up next (14 November 2026, evening)**
 
-- **Next piece: other income** (late fee, reconnection fee, connection fee, donation, other). It must record a late fee under the "Mora" category with the month it covers, and a reconnection under "Reconexión", because the fee-change checks look for them there. A late fee is charged only where the paper book shows one, at the late fee in Configuración for that month.
-- **After it:** month-end late fees and the arrears list, which must use the same payment deadline (Plazo de pago), then expenses, the opening balance, household statements and digital receipts.
+- **Next: try PR #40 (status history) on the test copy**, following "Trying the status history" in the README, then merge it. A month is owed, and owes a late fee, only if on the day its deadline and grace days end the house was active and had water. Desactivar, Reactivar and a change of water ask "¿Desde cuándo?". One question for the owner: should Quién debe also list a house that is inactive now but has old unpaid months? It lists only active houses with water today.
+- **After it:** expenses, the opening balance, household statements and digital receipts.
 - **Still open for the board:** how to run Phase 2's "done when" test, and the data-separation check on the droplet before the first deployment.
 - **How work goes:** one branch and one pull request per piece, tried on the test copy at prueba-agua.basculacentral.com before merging. The plan snapshot in the repository (docs/app-plan.md) is refreshed from this doc in each pull request.
 
@@ -439,8 +443,9 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - [x] Corrections: a reversal entry that points to the original and needs a written reason. Merged in PR #27 on 7 November 2026.
 - [x] Past fee changes in Configuración: a fee can take a change that starts in a past month, so the fees of the years in the paper book can be entered, unless a payment falls in the months it would cover (decided 12 November). Merged in PR #30 on 13 November 2026.
 - [x] What each house owes: every month not paid in full from its first entered payment (or the month it was registered, if earlier) once its payment deadline and grace days in Configuración are over, with its history typed in through Cobrar (decided 13 November, replacing the start month of 7 November). Merged in PR #33 on 13 November 2026.
-- [ ] Other income: late fee, reconnection fee, connection fee, donation and other.
-- [ ] Month-end late fees and the arrears list: active, connected households with unpaid months and the late fee owed for each.
+- [x] Other income: late fee, reconnection fee, connection fee, donation and other. Merged in PR #36 and PR #37 on 14 November 2026.
+- [x] Month-end late fees and the arrears list: active, connected households with unpaid months and the late fee owed for each. Merged in PR #38 on 14 November 2026.
+- [ ] A status history for each house: a month is charged only if the house was active and had water on its deadline day (decided 14 November). Waiting to be tried on the test copy in PR #40.
 - [ ] Expenses: category, supplier, amount and receipt photo. Photos stay on the computer until the bucket is connected.
 - [ ] Opening balance, entered once. The phase table does not name it, but Phase 2's test compares balances.
 - [ ] Household statements.
