@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 202, taken 2026-11-15.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 209, taken 2026-11-15.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -418,15 +418,15 @@ Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fee
 
 **What comes next**
 
-Phase 2 is under way: the app sets fees, records monthly fee payments and other income, shows what each house owes with its late fees, and reverses a payment recorded by mistake. Expenses (category, supplier, amount and receipt photo) are built and waiting to be tried on the test copy. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
+Phase 2 is under way: the app sets fees, records monthly fee payments and other income, shows what each house owes with its late fees, and reverses a payment recorded by mistake. Expenses (category, supplier, amount and receipt photo) are built (PR #41, merged on 15 November 2026). Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
 
-One pull request is waiting: expenses ("Gasto"). The status history (PR #40) was merged on 15 November 2026, after PR #36 to #39 on 14 November 2026. The start month (PR #32) was closed without merging.
+Nothing is waiting to be merged. Expenses ("Gasto", PR #41) were merged on 15 November 2026. The status history (PR #40) was merged on 15 November 2026, after PR #36 to #39 on 14 November 2026. The start month (PR #32) was closed without merging.
 
 **Where to pick up next (15 November 2026)**
 
-- **In review: expenses, "Gasto"**, in a pull request to try on the test copy ("Trying Gasto" in the README). Decided by the owner on 15 November: the photo is asked for every time, and an expense with no paper is saved only with "No hay recibo" and a written reason, marked "Sin foto"; Gasto asks how it was paid, as Cobrar does; the invoice number is optional, and the same number from the same supplier is flagged, not blocked. Photos stay on the computer, beside the database file, and are not in the nightly backup yet.
+- **Done: expenses, "Gasto"**, merged in PR #41 on 15 November 2026 ("Trying Gasto" in the README). Decided by the owner on 15 November: the photo is asked for every time, and an expense with no paper is saved only with "No hay recibo" and a written reason, marked "Sin foto"; Gasto asks how it was paid, as Cobrar does; the invoice number is optional, and the same number from the same supplier is flagged, not blocked. Photos stay on the computer, beside the database file, and are not in the nightly backup yet.
 - **Open for the owner, not code:** try the status history on the test copy ("Trying the status history" in the README), and say whether Quién debe should also list a house that is inactive now but has old unpaid months. It lists only active houses with water today.
-- **After expenses:** the opening balance, household statements and digital receipts. Before real expenses are entered on the droplet, receipt photos must go to the bucket or into the backup.
+- **Next: household statements and digital receipts.** The board decides how the opening balance is counted before it is built. Before real expenses are entered on the droplet, receipt photos must go to the bucket or into the backup.
 - **Still open for the board:** how to run Phase 2's "done when" test, and the data-separation check on the droplet before the first deployment.
 - **How work goes:** one branch and one pull request per piece, tried on the test copy at prueba-agua.basculacentral.com before merging. The plan snapshot in the repository (docs/app-plan.md) is refreshed from this doc in each pull request.
 
@@ -448,7 +448,7 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - [x] Other income: late fee, reconnection fee, connection fee, donation and other. Merged in PR #36 and PR #37 on 14 November 2026.
 - [x] Month-end late fees and the arrears list: active, connected households with unpaid months and the late fee owed for each. Merged in PR #38 on 14 November 2026.
 - [x] A status history for each house: a month is charged only if the house was active and had water on its deadline day (decided 14 November). Merged in PR #40 on 15 November 2026.
-- [ ] Expenses: category, supplier, amount and receipt photo. Photos stay on the computer until the bucket is connected. With no paper, "No hay recibo" and a written reason; how it was paid; an optional invoice number (decided 15 November). In a pull request, to be tried on the test copy.
+- [x] Expenses: category, supplier, amount and receipt photo. Photos stay on the computer until the bucket is connected. With no paper, "No hay recibo" and a written reason; how it was paid; an optional invoice number (decided 15 November). Merged in PR #41 on 15 November 2026.
 - [ ] Opening balance, entered once. The phase table does not name it, but Phase 2's test compares balances.
 - [ ] Household statements.
 - [ ] Digital receipts on request, with "Compartir por WhatsApp".
