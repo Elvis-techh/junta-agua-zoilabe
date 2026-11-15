@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import type { StatusEntry } from "../src/census.ts";
+import { entryOn, noServiceLine, statusEntryLine } from "../src/census.ts";
 import { homeButtons, routeOf } from "../src/home.ts";
 import type { HouseLateFees } from "../src/payments.ts";
 import { lateFeesLine } from "../src/payments.ts";
@@ -24,11 +26,42 @@ describe("month-end late fees on the household's file (owner, 14 November 2026)"
     );
   });
 
-  it("say why an inactive or unconnected house is not charged, and nothing while none is owed or none is set", () => {
-    assert.match(lateFeesLine(fees([], "inactive")) ?? "", /inactiva/);
-    assert.match(lateFeesLine(fees([], "not_connected")) ?? "", /no tiene conexión/);
+  it("say nothing while none is owed or Configuración → Mora has no month", () => {
     assert.equal(lateFeesLine(fees([])), null);
     assert.equal(lateFeesLine({ from: null, none: "not_set", months: [], totalCentavos: 0 }), null);
+  });
+});
+
+describe("a house's status history on its file (owner, 14 November 2026)", () => {
+  const entry = (id: number, startsOn: string, status: StatusEntry["status"] = "active", waterConnection: StatusEntry["waterConnection"] = "connected"): StatusEntry => ({
+    id,
+    status,
+    inactiveReason: status === "inactive" ? "moved_away" : null,
+    waterConnection,
+    startsOn,
+    createdAt: "2026-11-14T15:00:00.000Z",
+    createdBy: "Pedro",
+  });
+
+  it("takes the newest entry whose date is not after the day, as the server does", () => {
+    // Newest entry first: registered 1 November, then entered: without water since March.
+    const history = [entry(2, "2026-03-01", "active", "not_connected"), entry(1, "2026-11-01")];
+    assert.equal(entryOn(history, "2026-11-14")!.id, 2);
+    assert.equal(entryOn(history, "2026-02-01")!.id, 1);
+  });
+
+  it("says under Lo que debe since when a house without service is not charged", () => {
+    assert.equal(
+      noServiceLine([entry(2, "2025-02-01", "inactive"), entry(1, "2024-01-10")], "2026-11-14"),
+      "Está inactiva desde el 1 de febrero de 2025: no se cobran sus meses desde entonces, ni su mora.",
+    );
+    assert.match(noServiceLine([entry(1, "2026-03-01", "active", "not_connected")], "2026-11-14") ?? "", /^No tiene conexión desde el 1 de marzo de 2026/);
+    assert.equal(noServiceLine([entry(1, "2024-01-10", "active", "shared")], "2026-11-14"), null);
+  });
+
+  it("says each entry in the village's words", () => {
+    assert.equal(statusEntryLine(entry(1, "2025-02-01", "inactive")), "Inactiva (Se mudó), conectada");
+    assert.equal(statusEntryLine(entry(1, "2025-02-01", "active", "not_connected")), "Activa, sin conexión");
   });
 });
 

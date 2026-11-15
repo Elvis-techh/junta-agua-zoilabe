@@ -16,13 +16,14 @@ import { actorOf } from "../auth/plugin.js";
 import { newId } from "../auth/session.js";
 import type { DbOrTx, Tx } from "../db/client.js";
 import { inTransaction, searchText } from "../db/client.js";
-import { householdFees, householdOwners, households, people, sectors, users } from "../db/schema.js";
+import { householdFees, householdOwners, householdStatusChanges, households, people, sectors, users } from "../db/schema.js";
 import { recordAudit } from "../lib/audit.js";
 import {
   INACTIVE_REASONS,
   INACTIVE_REASON_CODES,
   PHONE_MISSING_CODES,
   RELATION_CODES,
+  WATER_CONNECTIONS,
   WATER_CONNECTION_CODES,
   capitalizeName,
   formatLempiras,
@@ -30,6 +31,7 @@ import {
   maskDigits,
 } from "../lib/census.js";
 import { differentFeeStart, lastPaidMonth } from "../lib/fees.js";
+import { recordStatus, statusEntries } from "../lib/householdStatus.js";
 import { HttpError, parse } from "../lib/http.js";
 import { maskPhone, phoneSchema, phoneSearchPatterns } from "../lib/phone.js";
 import { baseMonthlyFee, currentSetting } from "../lib/settings.js";
@@ -115,6 +117,8 @@ const householdPatch = z
     paperDate: isoDate.nullable(),
     paperFormNumber: formNumber.nullable(),
     reason: note,
+    /** Since when the house has the new water connection; today when not given. */
+    connectionSince: isoDate,
   })
   .partial();
 
@@ -125,7 +129,11 @@ const personPatch = z
 const deactivateBody = z.object({
   reason: z.enum(INACTIVE_REASON_CODES, { message: "Elija por qué se desactiva." }),
   note,
+  /** Since when the house is inactive; today when not given (owner, 14 November 2026). */
+  since: isoDate.optional(),
 });
+
+const reactivateBody = z.object({ note, since: isoDate.optional() });
 
 type Params = { Params: { id: string } };
 
@@ -148,6 +156,14 @@ const currentOwner = and(eq(householdOwners.householdId, households.id), isNull(
 
 export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app, options) => {
   const today = () => businessToday(options.timeZone);
+  /** "¿Desde cuándo?" for a change of status or connection: the date given, never after today, or today. */
+  const sinceOrToday = (since: string | undefined): string => {
+    const day = today();
+    if (since && since > day) {
+      throw new HttpError(400, "invalid_request", "La fecha no puede ser después de hoy.");
+    }
+    return since ?? day;
+  };
   const canSeeSensitive = (request: FastifyRequest) =>
     request.user!.permissions.has("census:view_sensitive");
   const canSetFeeAtRegistration = (request: FastifyRequest) =>
@@ -305,6 +321,15 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
         createdBy: actor.userId,
       };
       tx.insert(households).values(household).run();
+      // Its status history starts with it: active, with this connection, since the day it was registered.
+      tx.insert(householdStatusChanges).values({
+        householdId: household.id,
+        status: "active",
+        inactiveReason: null,
+        waterConnection: household.waterConnection,
+        startsOn,
+        createdBy: actor.userId,
+      }).run();
       tx.insert(householdOwners).values({
         id: newId(),
         householdId: household.id,
@@ -498,6 +523,8 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
           ? { kind: "different" as const, ...different }
           : { kind: "base" as const, baseFeeCentavos: baseMonthlyFee(app.db, today()) },
         otherHouseholds: householdsOf(app.db, owner.personId).filter((h) => h.id !== household.id),
+        // Its status and connection over time, newest entry first (src/lib/householdStatus.ts).
+        statusHistory: statusEntries(app.db, household.id).reverse(),
       },
       sensitiveVisible: sensitive,
     };
@@ -509,6 +536,7 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
     if (body.paperDate && body.paperDate > today()) {
       throw new HttpError(400, "invalid_request", "La fecha de la hoja no puede ser después de hoy.");
     }
+    const connectionSince = sinceOrToday(body.connectionSince);
 
     inTransaction(app.db, (tx) => {
       const household = lockHousehold(tx, request.params.id);
@@ -551,9 +579,11 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
           note("gps", oldGps, body.gps);
         }
       }
-      if (body.waterConnection !== undefined && body.waterConnection !== household.waterConnection) {
-        changes.waterConnection = body.waterConnection;
+      // A new connection is an entry in the status history, from the date given (src/lib/householdStatus.ts).
+      const connectionChanged = body.waterConnection !== undefined && body.waterConnection !== household.waterConnection;
+      if (connectionChanged) {
         note("waterConnection", household.waterConnection, body.waterConnection);
+        after.connectionSince = connectionSince;
       }
       if (body.paperDate !== undefined && body.paperDate !== household.paperDate) {
         changes.paperDate = body.paperDate;
@@ -575,6 +605,16 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
       if (Object.keys(changes).length > 0) {
         tx.update(households).set(changes).where(eq(households.id, household.id)).run();
       }
+      if (connectionChanged) {
+        recordStatus(tx, {
+          householdId: household.id,
+          status: household.status,
+          inactiveReason: household.inactiveReason,
+          waterConnection: body.waterConnection!,
+          startsOn: connectionSince,
+          createdBy: actor.userId,
+        });
+      }
       if (relationChanged) {
         tx.update(householdOwners).set({ relation: body.relation! }).where(eq(householdOwners.id, owner!.id)).run();
       }
@@ -582,7 +622,10 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
       recordAudit(tx, actor, {
         area: "census",
         action: "household.edited",
-        summary: `${actor.name} (${actor.role}) corrigió la vivienda ${household.code}: ${describeFields(Object.keys(after))}`,
+        summary:
+          `${actor.name} (${actor.role}) corrigió la vivienda ${household.code}: ` +
+          describeFields(Object.keys(after).filter((field) => field !== "connectionSince")) +
+          (connectionChanged ? ` (${WATER_CONNECTIONS[body.waterConnection!].toLowerCase()} desde el ${formatCalendarDate(connectionSince)})` : ""),
         entityType: "household",
         entityId: household.id,
         before,
@@ -674,6 +717,7 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
   app.post<Params>("/census/households/:id/deactivate", deactivate, async (request) => {
     const body = parse(deactivateBody, request.body);
     const actor = actorOf(request);
+    const since = sinceOrToday(body.since);
 
     inTransaction(app.db, (tx) => {
       const household = lockHousehold(tx, request.params.id);
@@ -681,19 +725,24 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
         throw new HttpError(409, "not_allowed", "Esa vivienda ya está inactiva.");
       }
 
-      tx
-        .update(households)
-        .set({ status: "inactive", inactiveReason: body.reason })
-        .where(eq(households.id, household.id))
-        .run();
+      recordStatus(tx, {
+        householdId: household.id,
+        status: "inactive",
+        inactiveReason: body.reason,
+        waterConnection: household.waterConnection,
+        startsOn: since,
+        createdBy: actor.userId,
+      });
       recordAudit(tx, actor, {
         area: "census",
         action: "household.deactivated",
-        summary: `${actor.name} (${actor.role}) desactivó la vivienda ${household.code}: ${INACTIVE_REASONS[body.reason]}`,
+        summary:
+          `${actor.name} (${actor.role}) desactivó la vivienda ${household.code} desde el ${formatCalendarDate(since)}: ` +
+          INACTIVE_REASONS[body.reason],
         entityType: "household",
         entityId: household.id,
         before: { status: household.status },
-        after: { status: "inactive", inactiveReason: body.reason },
+        after: { status: "inactive", inactiveReason: body.reason, since },
         reason: body.note ? `${INACTIVE_REASONS[body.reason]}. ${body.note}` : INACTIVE_REASONS[body.reason],
       });
     });
@@ -702,8 +751,9 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
   });
 
   app.post<Params>("/census/households/:id/reactivate", deactivate, async (request) => {
-    const body = parse(z.object({ note }).default({}), request.body ?? {});
+    const body = parse(reactivateBody.default({}), request.body ?? {});
     const actor = actorOf(request);
+    const since = sinceOrToday(body.since);
 
     inTransaction(app.db, (tx) => {
       const household = lockHousehold(tx, request.params.id);
@@ -711,15 +761,22 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
         throw new HttpError(409, "not_allowed", "Esa vivienda ya está activa.");
       }
 
-      tx.update(households).set({ status: "active", inactiveReason: null }).where(eq(households.id, household.id)).run();
+      recordStatus(tx, {
+        householdId: household.id,
+        status: "active",
+        inactiveReason: null,
+        waterConnection: household.waterConnection,
+        startsOn: since,
+        createdBy: actor.userId,
+      });
       recordAudit(tx, actor, {
         area: "census",
         action: "household.reactivated",
-        summary: `${actor.name} (${actor.role}) reactivó la vivienda ${household.code}`,
+        summary: `${actor.name} (${actor.role}) reactivó la vivienda ${household.code} desde el ${formatCalendarDate(since)}`,
         entityType: "household",
         entityId: household.id,
         before: { status: household.status, inactiveReason: household.inactiveReason },
-        after: { status: "active" },
+        after: { status: "active", since },
         reason: body.note || null,
       });
     });

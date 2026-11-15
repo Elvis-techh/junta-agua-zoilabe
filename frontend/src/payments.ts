@@ -54,12 +54,13 @@ export interface HouseOwed {
 /**
  * Month-end late fees a house still owes (owner, 14 November 2026), as the
  * server works them out: one for each month, from the month set in
- * Configuración → Mora, not paid in full by its deadline, until a Mora entry
- * pays it. `none` says why a house builds up none.
+ * Configuración → Mora, not paid in full by its deadline, in which the house
+ * had service (its status history), until a Mora entry pays it. `none` is
+ * "not_set" while Configuración → Mora has no month.
  */
 export interface HouseLateFees {
   from: string | null;
-  none: "not_set" | "inactive" | "not_connected" | null;
+  none: "not_set" | null;
   months: Array<{ month: string; amountCentavos: number }>;
   totalCentavos: number;
 }
@@ -69,8 +70,6 @@ export interface HouseLateFees {
  * "Mora de 3 meses: L 150.00 (…).", or null when there is nothing to say.
  */
 export function lateFeesLine(fees: HouseLateFees): string | null {
-  if (fees.none === "inactive") return "No se le cobra mora: la vivienda está inactiva.";
-  if (fees.none === "not_connected") return "No se le cobra mora: la vivienda no tiene conexión.";
   if (fees.none !== null || fees.months.length === 0) return null;
   const months = fees.months.map((fee) => fee.month);
   const total = formatLempiras(fees.totalCentavos);

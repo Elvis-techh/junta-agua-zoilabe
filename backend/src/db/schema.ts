@@ -270,6 +270,42 @@ export const households = sqliteTable(
   ],
 );
 
+/**
+ * A household's status and water connection over time (owner, 14 November
+ * 2026): each row says that from `starts_on` on, the house is active or
+ * inactive, with this connection. The state on a day is the newest row
+ * entered whose `starts_on` is not after it, so an entry dated in the past
+ * ("sin conexión desde marzo de 2025") takes over from its date without
+ * changing what was entered before. `households.status` and
+ * `households.water_connection` keep the state of today.
+ *
+ * Append-only, like `transactions`: a wrong entry is put right by a newer
+ * one. src/lib/householdStatus.ts reads it.
+ */
+export const householdStatusChanges = sqliteTable(
+  "household_status_changes",
+  {
+    id: serial("id"),
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => households.id),
+    status: text("status", { enum: ["active", "inactive"] }).notNull(),
+    inactiveReason: text("inactive_reason"),
+    waterConnection: text("water_connection", { enum: ["connected", "not_connected", "shared"] }).notNull(),
+    startsOn: date("starts_on").notNull(),
+    createdAt: createdAt(),
+    /** Null for the rows the migration made from households registered before the history existed. */
+    createdBy: uuid("created_by").references(() => users.id),
+  },
+  (table) => [
+    index("household_status_changes_household_idx").on(table.householdId),
+    check(
+      "household_status_changes_inactive_reason",
+      sql`${table.status} = 'active' OR ${table.inactiveReason} IS NOT NULL`,
+    ),
+  ],
+);
+
 /** Who owns (or rents, or looks after) which household, and from when to when. */
 export const householdOwners = sqliteTable(
   "household_owners",

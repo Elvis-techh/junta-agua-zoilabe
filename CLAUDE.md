@@ -41,14 +41,20 @@ one more thing to run and back up there.
 
 - **Nothing is deleted, and history never changes, in the file itself.**
   `applyGuards` (`backend/src/db/guards.ts`) gives every table a trigger that
-  refuses DELETE, and `audit_log`, `transactions` and `payment_months` one
-  that refuses UPDATE. It runs after every migration and on every start, so
+  refuses DELETE, and `audit_log`, `transactions`, `payment_months` and
+  `household_status_changes` one that refuses UPDATE. It runs after every
+  migration and on every start, so
   a new table is guarded without a line there (an append-only one is added
   to `APPEND_ONLY_TABLES`). `createDb` switches on `recursive_triggers`,
   so `INSERT OR REPLACE` and `UPDATE OR REPLACE` (which delete the row in
   their way) are refused too; never switch it off. No code may drop a
   trigger; a migration that must change rows of those tables is a
   decision for the owner first.
+- **A house's status and water connection change only through
+  `recordStatus`** (`backend/src/lib/householdStatus.ts`), which adds a dated
+  entry to its history and updates `households` in the same transaction.
+  What a house owes, and its late fees, read that history, not today's
+  status.
 - **Every write runs in `inTransaction`** (`backend/src/db/client.ts`): a
   synchronous IMMEDIATE transaction, so inside it every query ends in
   `.get()`, `.all()` or `.run()`, never `await`. That is what keeps the

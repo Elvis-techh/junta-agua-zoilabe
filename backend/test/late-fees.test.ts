@@ -200,20 +200,45 @@ describe("Month-end late fees and Quién debe", () => {
     assert.equal(body.totalCentavos, body.households.reduce((sum: number, h: { totalCentavos: number }) => sum + h.totalCentavos, 0));
   });
 
-  it("leaves out an inactive house, and one without a connection: neither builds up late fees", async () => {
+  it("counts a month, and its late fee, only if the house was active with water when its deadline ended (status history)", async () => {
     const inactive = await register("luis pineda");
     const disconnected = await register("marta cruz");
+    // Both paid m(3) in time; m(2) and m(1) are unpaid.
     for (const id of [inactive.id, disconnected.id]) {
       await pay(id, m(3), dayOf(m(3), 5));
     }
-    await t.db.update(households).set({ status: "inactive", inactiveReason: "abandoned" }).where(eq(households.id, inactive.id));
-    await t.db.update(households).set({ waterConnection: "not_connected" }).where(eq(households.id, disconnected.id));
+    const owedOf = async (id: string) => {
+      const body = (await call(treasurer.cookie, "GET", `/api/finance/households/${id}/owed`)).json();
+      return { months: body.months.map((s: { month: string }) => s.month), lateFees: body.lateFees.months.map((f: { month: string }) => f.month) };
+    };
 
-    assert.equal(lateFeesOf(t.db, inactive.id, today, HONDURAS_TIME_ZONE).none, "inactive");
-    assert.equal(lateFeesOf(t.db, disconnected.id, today, HONDURAS_TIME_ZONE).none, "not_connected");
+    // Inactive since the first day of m(1): m(1) is neither owed nor late; m(2) still is, both.
+    const deactivated = await call(president.cookie, "POST", `/api/census/households/${inactive.id}/deactivate`, {
+      reason: "moved_away",
+      since: dayOf(m(1), 1),
+    });
+    assert.equal(deactivated.statusCode, 200, deactivated.body);
+    assert.deepEqual(await owedOf(inactive.id), { months: [m(2)], lateFees: [m(2)] });
+
+    // Without water since the first day of m(2), entered today: neither month is owed.
+    const cut = await call(president.cookie, "PATCH", `/api/census/households/${disconnected.id}`, {
+      waterConnection: "not_connected",
+      connectionSince: dayOf(m(2), 1),
+    });
+    assert.equal(cut.statusCode, 200, cut.body);
+    assert.deepEqual(await owedOf(disconnected.id), { months: [], lateFees: [] });
+
+    // Quién debe lists only the houses active with water today.
     const ids = (await call(treasurer.cookie, "GET", "/api/finance/arrears")).json().households.map((h: { id: string }) => h.id);
     assert.ok(!ids.includes(inactive.id));
     assert.ok(!ids.includes(disconnected.id));
+
+    // Active again since the 20th of m(1), entered later: m(1) had service when its deadline ended, so it is owed again.
+    const back = await call(president.cookie, "POST", `/api/census/households/${inactive.id}/reactivate`, { since: dayOf(m(1), 20) });
+    assert.equal(back.statusCode, 200, back.body);
+    assert.deepEqual(await owedOf(inactive.id), { months: [m(2), m(1)], lateFees: [m(2), m(1)] });
+    const [house] = await t.db.select().from(households).where(eq(households.id, inactive.id));
+    assert.equal(house!.status, "active");
   });
 
   it("owes no late fee for a month whose late fee in Configuración is L 0", async () => {

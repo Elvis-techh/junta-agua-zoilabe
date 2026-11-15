@@ -15,9 +15,10 @@
  *    Configuración → Mora. Earlier months have only the late fees typed in
  *    from the paper book through Otro ingreso (owner, 13 November 2026).
  *    Until that month is set, the app adds none.
- *  - Only an active house with water (connected or shared) builds up late
- *    fees. The census keeps only a house's status now, not since when, so
- *    this asks about today's status.
+ *  - A month owes a late fee only if the house had service in it: active and
+ *    with water (connected or shared) on the day its deadline ended, by its
+ *    status history (src/lib/householdStatus.ts). A month without service is
+ *    not owed at all, so it owes no late fee either.
  *  - A late fee is paid by a "Mora" entry for its month (Otro ingreso), once:
  *    after that the month owes no late fee. A reversed entry does not count.
  *  - Nothing is written: late fees are worked out each time from the
@@ -26,8 +27,9 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 
 import type { DbOrTx } from "../db/client.js";
-import { categories, households, paymentMonths, transactions } from "../db/schema.js";
+import { categories, paymentMonths, transactions } from "../db/schema.js";
 import { FEE_CATEGORIES, firstOfMonth } from "./fees.js";
+import { monthsWithService } from "./householdStatus.js";
 import type { MonthState } from "./payments.js";
 import { monthStates, monthsBetween, owedMonths, owesFrom } from "./payments.js";
 import { deadline, feeOn, isPastDeadline, lateFeesFrom, monthDeadline } from "./settings.js";
@@ -38,32 +40,13 @@ export interface LateFee {
   amountCentavos: number;
 }
 
-/** Why a house builds up no late fees, when it does not. */
-export type NoLateFees = "not_set" | "inactive" | "not_connected";
-
 export interface HouseLateFees {
   /** The first month the app adds late fees from (Configuración → Mora), or null while none is set. */
   from: string | null;
-  /** Null when the house builds up late fees, or why it does not. */
-  none: NoLateFees | null;
+  /** "not_set" while Configuración → Mora has no month, so no late fee is added; otherwise null. */
+  none: "not_set" | null;
   months: LateFee[];
   totalCentavos: number;
-}
-
-/** Whether a house builds up late fees today: active, with water (connected or shared). */
-function standing(db: DbOrTx, householdId: string): NoLateFees | null {
-  const house = db
-    .select({ status: households.status, waterConnection: households.waterConnection })
-    .from(households)
-    .where(eq(households.id, householdId))
-    .get();
-  if (!house) {
-    throw new Error(`No household ${householdId}`);
-  }
-  if (house.status !== "active") {
-    return "inactive";
-  }
-  return house.waterConnection === "not_connected" ? "not_connected" : null;
 }
 
 /** How much of each month arrived by that month's deadline, from payments that were not reversed. */
@@ -111,19 +94,20 @@ export function lateFeesPaid(db: DbOrTx, householdId: string): Set<string> {
   return new Set(rows.flatMap((row) => row.monthsCovered ?? []));
 }
 
-/** The late fees a house owes on `today`, oldest month first, or why it builds up none. */
+/** The late fees a house owes on `today`, oldest month first. */
 export function lateFeesOf(db: DbOrTx, householdId: string, today: string, timeZone: string): HouseLateFees {
   const from = lateFeesFrom(db, today);
-  const none = from === null ? "not_set" : standing(db, householdId);
-  if (from === null || none !== null) {
-    return { from, none, months: [], totalCentavos: 0 };
+  if (from === null) {
+    return { from, none: "not_set", months: [], totalCentavos: 0 };
   }
 
   const owesSince = owesFrom(db, householdId, timeZone).month;
   const start = from > owesSince ? from : owesSince;
   const rule = deadline(db, today);
   const lateAfter = (month: string) => monthDeadline(month, rule).lateAfter;
-  const months = monthsBetween(start, firstOfMonth(today)).filter((month) => isPastDeadline(month, today, rule));
+  const pastDeadline = monthsBetween(start, firstOfMonth(today)).filter((month) => isPastDeadline(month, today, rule));
+  const served = monthsWithService(db, householdId, pastDeadline, rule);
+  const months = pastDeadline.filter((month) => served.has(month));
   const states = monthStates(db, householdId, months);
   const inTime = paidInTime(db, householdId, months, lateAfter);
   const paid = lateFeesPaid(db, householdId);
@@ -143,7 +127,7 @@ export function lateFeesOf(db: DbOrTx, householdId: string, today: string, timeZ
 /** The months a house owes on `today`, oldest first: not paid in full, from when it owes, once their deadline is over. */
 export function owedNow(db: DbOrTx, householdId: string, today: string, timeZone: string): MonthState[] {
   const rule = deadline(db, today);
-  return owedMonths(db, householdId, owesFrom(db, householdId, timeZone).month, firstOfMonth(today)).filter((state) =>
+  return owedMonths(db, householdId, owesFrom(db, householdId, timeZone).month, firstOfMonth(today), rule).filter((state) =>
     isPastDeadline(state.month, today, rule),
   );
 }
