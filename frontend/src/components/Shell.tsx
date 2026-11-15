@@ -10,6 +10,7 @@ import { ArrearsScreen } from "../screens/Arrears.tsx";
 import { CensusScreen } from "../screens/Census.tsx";
 import type { PaymentPreset } from "../screens/Collect.tsx";
 import { CollectScreen, PaymentScreen } from "../screens/Collect.tsx";
+import { ExpenseScreen } from "../screens/Expense.tsx";
 import { HistoryScreen } from "../screens/History.tsx";
 import { HomeScreen } from "../screens/Home.tsx";
 import { HouseholdScreen } from "../screens/Household.tsx";
@@ -117,6 +118,9 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
       return (
         <IncomeScreen key={route} householdId={route.slice("/finanzas/ingreso/".length)} canReverse={can("finance:reverse")} onOpen={go} />
       );
+    }
+    if (route === "/finanzas/gasto" && can("finance:record") && can("finance:view")) {
+      return <ExpenseScreen key={route} canReverse={can("finance:reverse")} onOpen={go} />;
     }
     if (route === "/usuarios" && can("users:manage")) {
       return <UsersScreen me={me} />;
