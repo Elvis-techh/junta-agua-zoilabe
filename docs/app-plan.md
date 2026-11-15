@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 197, taken 2026-11-15.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 200, taken 2026-11-15.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -414,17 +414,19 @@ Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fee
 - [x] Connection fee in Configuración, added by the owner on 14 November 2026, and charged from Otro ingreso (PR #37, merged on 14 November 2026).
 - [x] Month-end late fees and "Quién debe": the app adds a late fee by itself only from a month set in Configuración → Mora. Only active houses with water build them up. They are worked out each time from the payments and never written down. The household's file shows them under "Lo que debe", and "Quién debe" lists who owes, the most owed first (PR #38, merged on 14 November 2026).
 - [x] The same home screen for every role: Inicio shows the role's usual buttons first, then every other built screen under "Otras tareas" (PR #39, merged on 14 November 2026).
+- [x] A status history for each house: a month is owed, and owes a late fee, only if on the day its deadline and grace days end the house was active and had water. Desactivar, Reactivar and a change of water ask "¿Desde cuándo?", and the household's file shows each entry under "Estado y agua" (PR #40, merged on 15 November 2026).
 
 **What comes next**
 
 Phase 2 is under way: the app sets fees, records monthly fee payments and other income, shows what each house owes with its late fees, and reverses a payment recorded by mistake. Next is expenses: category, supplier, amount and receipt photo. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
 
-One pull request is waiting: #40, a status history for each house, so a month is charged only if the house was active and had water then. It needs the owner to try it on the test copy before it is merged. Other income (PR #36), the connection fee (PR #37), month-end late fees (PR #38) and the same home screen for every role (PR #39) were merged on 14 November 2026. The start month (PR #32) was closed without merging.
+Nothing is waiting to be merged. The status history (PR #40) was merged on 15 November 2026, after PR #36 to #39 on 14 November 2026. The start month (PR #32) was closed without merging.
 
-**Where to pick up next (14 November 2026, evening)**
+**Where to pick up next (15 November 2026)**
 
-- **Next: try PR #40 (status history) on the test copy**, following "Trying the status history" in the README, then merge it. A month is owed, and owes a late fee, only if on the day its deadline and grace days end the house was active and had water. Desactivar, Reactivar and a change of water ask "¿Desde cuándo?". One question for the owner: should Quién debe also list a house that is inactive now but has old unpaid months? It lists only active houses with water today.
-- **After it:** expenses, the opening balance, household statements and digital receipts.
+- **Next piece: expenses** (category, supplier, amount and receipt photo). Categories: repairs and materials, electricity, chlorine, stipend, transport, other. Photos stay on the computer until the bucket is connected. Treasurer's "Gasto" button. A wrong expense is undone with a reversal, as a payment is.
+- **Open for the owner, not code:** try the status history on the test copy ("Trying the status history" in the README), and say whether Quién debe should also list a house that is inactive now but has old unpaid months. It lists only active houses with water today.
+- **After expenses:** the opening balance, household statements and digital receipts.
 - **Still open for the board:** how to run Phase 2's "done when" test, and the data-separation check on the droplet before the first deployment.
 - **How work goes:** one branch and one pull request per piece, tried on the test copy at prueba-agua.basculacentral.com before merging. The plan snapshot in the repository (docs/app-plan.md) is refreshed from this doc in each pull request.
 
@@ -445,7 +447,7 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - [x] What each house owes: every month not paid in full from its first entered payment (or the month it was registered, if earlier) once its payment deadline and grace days in Configuración are over, with its history typed in through Cobrar (decided 13 November, replacing the start month of 7 November). Merged in PR #33 on 13 November 2026.
 - [x] Other income: late fee, reconnection fee, connection fee, donation and other. Merged in PR #36 and PR #37 on 14 November 2026.
 - [x] Month-end late fees and the arrears list: active, connected households with unpaid months and the late fee owed for each. Merged in PR #38 on 14 November 2026.
-- [ ] A status history for each house: a month is charged only if the house was active and had water on its deadline day (decided 14 November). Waiting to be tried on the test copy in PR #40.
+- [x] A status history for each house: a month is charged only if the house was active and had water on its deadline day (decided 14 November). Merged in PR #40 on 15 November 2026.
 - [ ] Expenses: category, supplier, amount and receipt photo. Photos stay on the computer until the bucket is connected.
 - [ ] Opening balance, entered once. The phase table does not name it, but Phase 2's test compares balances.
 - [ ] Household statements.
