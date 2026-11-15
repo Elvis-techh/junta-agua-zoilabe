@@ -67,7 +67,8 @@ export function incomeCategoryId(tx: DbOrTx, name: string): number {
 
 /**
  * When an entry `o` counts as using the same paper receipt as the entry the
- * columns describe: the same number, `o` not a reversal and not reversed,
+ * columns describe: the same number, `o` money in (an expense's number is
+ * its supplier's invoice, from another book), not a reversal and not reversed,
  * and not the other line of one receipt. A house's monthly fee and its late
  * fee are often written on one receipt, the same day: entries of a
  * different category for the same house on the same day are not repeats.
@@ -76,6 +77,7 @@ export function incomeCategoryId(tx: DbOrTx, name: string): number {
  */
 function usesSameReceipt(entry: { number: SQL | string; householdId: SQL | string | null; occurredOn: SQL | string; categoryId: SQL | number }): SQL {
   return sql`o.paper_receipt_number = ${entry.number}
+    AND o.kind = 'income'
     AND o.reverses_id IS NULL
     AND NOT EXISTS (SELECT 1 FROM transactions r WHERE r.reverses_id = o.id)
     AND NOT (

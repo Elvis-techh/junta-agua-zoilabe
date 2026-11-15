@@ -866,6 +866,30 @@ textarea:focus-visible {
   gap: 10px;
 }
 
+/* Gasto: the photo of a receipt, whole on the screen whatever its shape, so the button under it stays in reach. */
+.receipt-photo {
+  display: block;
+  width: 100%;
+  max-height: min(26vh, 200px);
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+/* On "¿Está correcto?": only to show that the photo is there. */
+.receipt-photo.small {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+}
+
+/* Opened from an expense's card: as large as the dialog allows, to read it. */
+.dialog .receipt-photo {
+  max-height: 60vh;
+}
+
 .household-card {
   text-align: left;
   font: inherit;

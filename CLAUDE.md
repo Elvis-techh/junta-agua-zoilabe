@@ -71,6 +71,14 @@ one more thing to run and back up there.
   its length does not give the country away.
 - **Text comparisons that must understand Spanish** happen in JavaScript or
   through `search_text()`. SQLite's `lower()` and `LIKE` only know A to Z.
+- **Receipt photos are files, not rows.** `backend/src/lib/receiptPhotos.ts`
+  writes each one into the `receipts` folder beside the database file (inside
+  the one folder the API may write on the droplet) before the transaction
+  starts, and `receipt_files` points to it by the name it will have in the
+  bucket. A photo is served only by the API, to someone with `finance:view`.
+  The phone shrinks it first (`frontend/src/photo.ts`): a request must stay
+  under Nginx's 1 MB, so never send a photo as it comes from the camera, and
+  never raise that limit on the droplet for it.
 - **Who can open the file** is the operating system's job: the `zoilabe` user
   alone (docs/deployment-shared-droplet.md, separation checklist).
 - **Keep a move to PostgreSQL possible.** `docs/postgres-readiness.md` lists
@@ -117,6 +125,8 @@ close the keyboard to look for a button. When a screen is built or changed:
 - **"Hay más abajo"** (`MoreBelow`) is already on every screen and dialog, and
   measures for itself. Do not add another, and do not rely on it to excuse a
   screen that could simply fit: put short answers side by side first.
+- **A photo is taken through the two hidden file inputs of Gasto's photo
+  screen** (camera, or one already on the phone) and `shrinkPhoto`.
 - **Money is typed through `AmountInput`**, months and dates through `MonthField`
   and `DateField`. A dialog is always `Dialog`, which holds the screen behind it.
 - **Look at it** at phone size with the height cut to about 380 px, which is

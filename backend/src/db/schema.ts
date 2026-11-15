@@ -446,12 +446,19 @@ export const transactions = sqliteTable(
     monthsCovered: json<string[]>("months_covered"),
     paymentMethod: text("payment_method", { enum: ["cash", "transfer", "other"] }),
     bankReference: text("bank_reference"),
-    /** The number printed on the paper receipt handed to the payer. */
+    /**
+     * Income: the number printed on the paper receipt handed to the payer.
+     * Expense: the number on the supplier's invoice or receipt, when it has one.
+     */
     paperReceiptNumber: text("paper_receipt_number"),
     payerName: text("payer_name"),
     supplier: text("supplier"),
     note: text("note"),
     reversesId: uuid("reverses_id"),
+    /**
+     * Why this entry is not the usual one: why a reversal was made, why other
+     * income is not Configuración's amount, or why an expense has no photo.
+     */
     reason: text("reason"),
     /** Made on the phone, so a retry on weak signal cannot record the same payment twice. */
     submissionId: uuid("submission_id"),

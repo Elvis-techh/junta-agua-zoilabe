@@ -157,7 +157,19 @@ changing how money, permissions or the history log work.
     existed start active since they were registered, and those inactive now
     are inactive since their last "desactivó" in Historial. See "Trying the
     status history" below.
-  - Next: expenses (category, supplier, amount and receipt photo).
+  - **Expenses (Gasto): built.** The treasurer's **Gasto** button: what kind
+    of expense (the categories of Module 2), who was paid, the amount and
+    date, how it was paid, and a photo of the receipt or invoice, then "¿Está
+    correcto?". Owner decisions of 15 November 2026, where the plan did not
+    say: the photo is asked for every time, and an expense with no paper is
+    saved only with **No hay recibo** and a written reason, marked "Sin
+    foto"; it asks how it was paid, as Cobrar does; the number on the
+    supplier's invoice is optional, and the same number from the same
+    supplier is flagged, not blocked. "Otro gasto" says what it is. A wrong
+    expense is undone with **Anular**, as a payment is. Photos stay on the
+    computer, in a folder beside the database file, until the storage bucket
+    is connected (see "The database" below). See "Trying Gasto" below.
+  - Next: the opening balance, entered once.
 
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
@@ -417,6 +429,36 @@ Every entry and every Anular is in Historial (Finanzas). Only roles with
 registro de dinero" may undo; the server checks again whatever the screen
 shows.
 
+### Trying Gasto
+
+1. On **Inicio**, tap **Gasto** (the treasurer's second button; under
+   **Otras tareas** for the other roles).
+2. Pick **Cloro**, then type who was paid ("Ferretería El Puente"), the
+   amount and the date.
+3. Pick **Efectivo**. The invoice number may be left empty.
+4. On **Foto del recibo**, tap **Tomar foto** (the phone's camera opens) or
+   **Elegir foto** (one already on the phone). The photo shows on the
+   screen. **Siguiente** without a photo is refused.
+5. Check "¿Está correcto?" and **Sí, guardar**. The expense is under
+   **Últimos gastos** on Gasto's first screen; **Ver la foto** opens its
+   photo.
+6. Record one with **No hay recibo**: it asks why, and the expense shows
+   "Sin foto" with that reason.
+7. Record two expenses with the same invoice number from the same supplier:
+   the second asks before saving, and both are then marked "Número de
+   factura repetido: revisar". The same number from another supplier, or on
+   one of the board's own receipts in Cobrar, is not a repeat.
+8. Pick **Otro gasto**: it asks "¿De qué es el gasto?".
+9. **Anular** an expense, with a reason: it stays, crossed out and marked
+   "Anulado", with its photo.
+
+Every expense and every Anular is in Historial (Finanzas). Only roles with
+"Registrar pagos y gastos" may record, only those with "Corregir un registro
+de dinero" may undo, and only those with "Ver finanzas" get a photo; the
+server checks again whatever the screen shows. The phone makes each photo
+small before sending it (about half a megabyte), so it goes through on weak
+signal.
+
 ### Trying Quién debe
 
 With a base fee and a late fee in Configuración → Cuotas from a past month
@@ -525,6 +567,15 @@ catches any entry changed that way.
 `BACKUP_ENCRYPTION_KEY` (`openssl rand -base64 32`). `npm run db:restore`
 puts a backup into a new file and checks it: see
 [docs/restore.md](docs/restore.md).
+
+Photos of expense receipts are not in the database file. Until the storage
+bucket is connected (App Plan, Phase 2) they stay on the computer, one JPEG
+each, in the folder `receipts` beside the database file (set `RECEIPTS_PATH`
+in `backend/.env` to put it elsewhere); the `receipt_files` table says which
+expense each belongs to. They are read only through the API, by someone who
+may see finances. **`npm run db:backup` does not copy them yet**: on the
+droplet they must go to the bucket, or into the backup, before real expenses
+are entered.
 
 Moving to PostgreSQL one day: [docs/postgres-readiness.md](docs/postgres-readiness.md)
 says when it would be worth it, what changes, and how to move the data

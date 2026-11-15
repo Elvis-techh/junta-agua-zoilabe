@@ -27,15 +27,15 @@ describe("home buttons", () => {
       assert.equal(new Set(others).size, others.length, role.code);
       assert.ok(!others.some((route) => homeButtons(role.code, everything).some((b) => b.route === route)), role.code);
     }
-    for (const route of ["/finanzas/cobrar", "/censo/registrar", "/usuarios", "/historial", "/configuracion"]) {
+    for (const route of ["/finanzas/cobrar", "/finanzas/gasto", "/censo/registrar", "/usuarios", "/historial", "/configuracion"]) {
       assert.ok(expected.has(route as never), route);
     }
     const forAdmin = otherButtons("administrador", everything).map((b) => b.label);
-    for (const label of ["Registrar familia", "Buscar", "Lista", "Cobrar", "Historial"]) {
+    for (const label of ["Registrar familia", "Buscar", "Lista", "Cobrar", "Gasto", "Historial"]) {
       assert.ok(forAdmin.includes(label), label);
     }
     // Already among the administrator's own buttons, so not again; and never a screen not built yet.
-    for (const label of ["Usuarios", "Configuración", "Censo", "Gasto"]) {
+    for (const label of ["Usuarios", "Configuración", "Censo", "Resumen del mes"]) {
       assert.ok(!forAdmin.includes(label), label);
     }
   });

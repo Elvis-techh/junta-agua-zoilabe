@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { HONDURAS_TIME_ZONE } from "../lib/time.js";
@@ -15,6 +15,13 @@ export type AppConfig = {
   frontendOrigins: string[];
   /** The database file. Its folder holds its WAL companions too, and must be writable. */
   databasePath: string;
+  /**
+   * The folder expense receipt photos are kept in until the storage bucket is
+   * connected (App Plan, Phase 2). Beside the database file unless
+   * RECEIPTS_PATH says otherwise, so it is inside the one folder the API may
+   * write on the droplet.
+   */
+  receiptsPath: string;
   /**
    * How Fastify derives `request.ip`, which the rate limits key on. `false`
    * trusts nothing (local development); on the droplet, Nginx's own address
@@ -62,6 +69,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error("APP_URL must be an https:// address in production.");
   }
 
+  const databasePath = env.DATABASE_PATH ? resolve(env.DATABASE_PATH) : DEFAULT_DATABASE_PATH;
+
   return {
     nodeEnv,
     host: env.HOST ?? "127.0.0.1",
@@ -71,7 +80,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       .split(",")
       .map((origin) => origin.trim())
       .filter(Boolean),
-    databasePath: env.DATABASE_PATH ? resolve(env.DATABASE_PATH) : DEFAULT_DATABASE_PATH,
+    databasePath,
+    receiptsPath: env.RECEIPTS_PATH ? resolve(env.RECEIPTS_PATH) : join(dirname(databasePath), "receipts"),
     trustProxy: parseTrustProxy(env.TRUST_PROXY),
     loginAttemptsPerMinute: positiveInteger("LOGIN_ATTEMPTS_PER_MINUTE", 10),
     requestsPerMinute: positiveInteger("REQUESTS_PER_MINUTE", 300),

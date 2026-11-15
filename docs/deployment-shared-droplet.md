@@ -64,6 +64,10 @@ The App Plan's "Still open" item. Each line says how to prove it.
   `SPACES_PREFIX` only.
 - [ ] **Own nightly backup.** `systemctl list-timers` shows
   `zoilabe-backup.timer` beside Lindero's, at a different time.
+- [ ] **Receipt photos are backed up too.** They are files in
+  `/opt/zoilabe/backend/data/receipts`, beside the database file, and the
+  nightly backup copies the database file only. Before real expenses are
+  entered, the photos go to the bucket or into the backup (not built yet).
 - [ ] **One app restores without touching the others.** A restore test on a
   fresh droplet (docs/restore.md) brings back this app alone.
 
