@@ -546,7 +546,7 @@ export const documents = sqliteTable(
   "documents",
   {
     id: serial("id"),
-    kind: text("kind", { enum: ["household_statement"] }).notNull(),
+    kind: text("kind", { enum: ["household_statement", "receipt"] }).notNull(),
     householdId: uuid("household_id").references(() => households.id),
     /** What it was made for: a statement's first month and the day it was made. */
     details: json<Record<string, unknown>>("details").notNull(),

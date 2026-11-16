@@ -113,11 +113,17 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
       return <ArrearsScreen onOpen={go} />;
     }
     if (route === "/finanzas/ingreso" && can("finance:record") && can("finance:view") && can("census:view")) {
-      return <IncomeScreen key={route} canReverse={can("finance:reverse")} onOpen={go} />;
+      return <IncomeScreen key={route} canReverse={can("finance:reverse")} canHandOut={can("export:finance")} onOpen={go} />;
     }
     if (route.startsWith("/finanzas/ingreso/") && can("finance:record") && can("finance:view") && can("census:view")) {
       return (
-        <IncomeScreen key={route} householdId={route.slice("/finanzas/ingreso/".length)} canReverse={can("finance:reverse")} onOpen={go} />
+        <IncomeScreen
+          key={route}
+          householdId={route.slice("/finanzas/ingreso/".length)}
+          canReverse={can("finance:reverse")}
+          canHandOut={can("export:finance")}
+          onOpen={go}
+        />
       );
     }
     if (route.startsWith("/finanzas/estado/") && can("finance:view") && can("census:view")) {

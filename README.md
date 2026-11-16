@@ -181,8 +181,16 @@ changing how money, permissions or the history log work.
     button, with a second button that opens the family's WhatsApp chat with
     the same statement as text; and the treasurer chooses the month its
     payments start from. See "Trying Estado de cuenta" below.
-  - Next: digital receipts on request. The opening balance waits for the
-    board to decide how it is counted.
+  - **Digital receipts (Recibo digital): built.** On a payment or other-income
+    card in a household's file, **Recibo** opens the entry as a receipt and,
+    with **Hacer y compartir**, draws it as a picture to send by WhatsApp,
+    exactly like a statement and sharing its document number. Owner decision
+    of 16 November 2026: receipts cover other income (late fees,
+    reconnections, donations, other) as well as monthly fees, and one running
+    count numbers every document. An expense has no resident receipt, and a
+    payment that was undone has none. The paper receipt still stands; this is
+    made only on request. See "Trying el recibo digital" below.
+  - Next: the opening balance, once the board decides how it is counted.
 
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
@@ -500,6 +508,30 @@ Looking at a statement needs "Ver finanzas"; handing one out needs "Imprimir
 y exportar finanzas". The server checks again whatever the screen shows.
 Each **Hacer para enviar** takes a new number, also for the same house on
 the same day.
+
+### Trying el recibo digital
+
+With a family that has at least one payment and one other-income entry (a
+late fee, say):
+
+1. Open the family's file and scroll to **Pagos**. On a payment's card, tap
+   **Recibo**.
+2. The receipt shows the house, who paid, the concept ("Cuota de … de 2026"),
+   the amount, the date, how it was paid and the paper receipt number.
+3. Tap **Hacer y compartir**: it gets its number ("Recibo nº 2", the next
+   after any statement), and offers **Compartir la imagen**, **Enviar como
+   texto** and **Guardar la imagen**, the same as a statement.
+4. Do the same on an **Otros ingresos** card: a late fee reads "Mora de … de
+   2026", a donation its note. From **Cobrar → Otro ingreso**, a receipt can
+   be made for a donation from outside the census too (no house, image only).
+5. A reversed payment or income shows no **Recibo** button, and the server
+   refuses a receipt for one.
+6. In **Historial → Impresiones**: "… hizo el recibo nº 2 de una cuota
+   mensual: … , recibo de papel nº …".
+
+Looking needs "Ver finanzas"; making one needs "Imprimir y exportar
+finanzas". The number is the same running count a statement uses, so a
+statement and a receipt never share a number.
 
 ### Trying Quién debe
 

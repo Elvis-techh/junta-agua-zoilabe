@@ -136,10 +136,10 @@ export function statementLines(statement: Statement, document: StatementDocument
   return lines;
 }
 
-/** The statement as a WhatsApp message: the same lines, as plain text. */
-export function statementText(statement: Statement, document: StatementDocument): string {
+/** Any document's lines as a WhatsApp message: headings and totals in bold, rows bulleted. */
+export function linesToText(lines: readonly StatementLine[]): string {
   const out: string[] = [];
-  for (const line of statementLines(statement, document)) {
+  for (const line of lines) {
     switch (line.kind) {
       case "title":
         out.push(`*${line.text}*`);
@@ -162,6 +162,11 @@ export function statementText(statement: Statement, document: StatementDocument)
     }
   }
   return out.join("\n");
+}
+
+/** The statement as a WhatsApp message: the same lines, as plain text. */
+export function statementText(statement: Statement, document: StatementDocument): string {
+  return linesToText(statementLines(statement, document));
 }
 
 /** The family's WhatsApp chat with the statement written in it, or null when there is no number to send it to. */

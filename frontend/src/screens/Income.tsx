@@ -16,6 +16,7 @@ import { PAYMENT_METHODS } from "../payments.ts";
 import { formatDate } from "../time.ts";
 import { isTouchScreen } from "../viewport.ts";
 import { HouseholdStatus } from "./Census.tsx";
+import { ReceiptDialog } from "./Receipt.tsx";
 
 /** "3 de marzo de 2026" for a calendar date. */
 const calendarDate = (date: string) => formatDate(`${date}T12:00:00Z`);
@@ -40,10 +41,12 @@ type Step = "type" | "house" | "month" | "amount" | "receipt" | "payer" | "revie
 export function IncomeScreen({
   householdId,
   canReverse,
+  canHandOut,
   onOpen,
 }: {
   householdId?: string | undefined;
   canReverse: boolean;
+  canHandOut: boolean;
   onOpen: Go;
 }) {
   const [setup, setSetup] = useState<IncomeSetup | null>(null);
@@ -241,7 +244,7 @@ export function IncomeScreen({
           <button className="btn go block" onClick={() => (type ? next() : setError("Elija qué ingreso es."))}>
             Siguiente
           </button>
-          {!householdId && <IncomeEntries title="Últimos ingresos" canReverse={canReverse} />}
+          {!householdId && <IncomeEntries title="Últimos ingresos" canReverse={canReverse} canHandOut={canHandOut} />}
         </main>
       );
 
@@ -563,11 +566,12 @@ function HouseSearch({ onPick }: { onPick: (house: House) => void }) {
  * outside the census can be found). Each can be undone with "Anular".
  * Nothing shows for a house with none.
  */
-export function IncomeEntries({ householdId, title, canReverse }: { householdId?: string; title: string; canReverse: boolean }) {
+export function IncomeEntries({ householdId, title, canReverse, canHandOut, phone }: { householdId?: string; title: string; canReverse: boolean; canHandOut?: boolean; phone?: string | null }) {
   const [entries, setEntries] = useState<IncomeEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reversing, setReversing] = useState<IncomeEntry | null>(null);
   const [reversed, setReversed] = useState<IncomeEntry | null>(null);
+  const [receiptFor, setReceiptFor] = useState<IncomeEntry | null>(null);
 
   const load = useCallback(() => {
     api<{ entries: IncomeEntry[] }>("GET", `/finance/income${householdId ? `?householdId=${householdId}` : ""}`)
@@ -591,7 +595,13 @@ export function IncomeEntries({ householdId, title, canReverse }: { householdId?
         </p>
       )}
       {entries?.map((entry) => (
-        <IncomeCard key={entry.id} entry={entry} showHouse={!householdId} onReverse={canReverse ? () => setReversing(entry) : undefined} />
+        <IncomeCard
+          key={entry.id}
+          entry={entry}
+          showHouse={!householdId}
+          onReverse={canReverse ? () => setReversing(entry) : undefined}
+          onReceipt={canHandOut && !entry.reversed ? () => setReceiptFor(entry) : undefined}
+        />
       ))}
       {reversing && (
         <ReverseIncomeDialog
@@ -604,11 +614,14 @@ export function IncomeEntries({ householdId, title, canReverse }: { householdId?
           }}
         />
       )}
+      {receiptFor && (
+        <ReceiptDialog transactionId={receiptFor.id} phone={phone} canHandOut onClose={() => setReceiptFor(null)} />
+      )}
     </section>
   );
 }
 
-export function IncomeCard({ entry, showHouse, onReverse }: { entry: IncomeEntry; showHouse: boolean; onReverse?: (() => void) | undefined }) {
+export function IncomeCard({ entry, showHouse, onReverse, onReceipt }: { entry: IncomeEntry; showHouse: boolean; onReverse?: (() => void) | undefined; onReceipt?: (() => void) | undefined }) {
   return (
     <div className="card stack" style={{ gap: 4 }}>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
@@ -642,10 +655,19 @@ export function IncomeCard({ entry, showHouse, onReverse }: { entry: IncomeEntry
         </>
       )}
       {entry.note && <div className="muted">{entry.type === "other" ? "De qué es" : "Nota"}: {entry.note}</div>}
-      {onReverse && !entry.reversed && (
-        <button className="btn" style={{ justifySelf: "start" }} onClick={onReverse}>
-          <Icon name="x" /> Anular
-        </button>
+      {((onReceipt && !entry.reversed) || (onReverse && !entry.reversed)) && (
+        <div className="row">
+          {onReceipt && !entry.reversed && (
+            <button className="btn" onClick={onReceipt}>
+              <Icon name="whatsapp" /> Recibo
+            </button>
+          )}
+          {onReverse && !entry.reversed && (
+            <button className="btn" onClick={onReverse}>
+              <Icon name="x" /> Anular
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
