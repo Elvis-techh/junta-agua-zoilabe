@@ -21,7 +21,7 @@
 import type Database from "better-sqlite3";
 
 /** Tables whose rows are only ever added: no UPDATE, not even by mistake. */
-export const APPEND_ONLY_TABLES = ["audit_log", "transactions", "payment_months", "household_status_changes"] as const;
+export const APPEND_ONLY_TABLES = ["audit_log", "transactions", "payment_months", "household_status_changes", "documents"] as const;
 
 /**
  * The append-only tables the very first migration makes, so a database

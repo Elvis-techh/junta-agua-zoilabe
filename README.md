@@ -169,7 +169,20 @@ changing how money, permissions or the history log work.
     expense is undone with **Anular**, as a payment is. Photos stay on the
     computer, in a folder beside the database file, until the storage bucket
     is connected (see "The database" below). See "Trying Gasto" below.
-  - Next: the opening balance, entered once.
+  - **Household statements (Estado de cuenta): built.** From a household's
+    file, **Estado de cuenta** shows what the house paid from a month the
+    treasurer chooses (January of this year to start with) and what it owes
+    today: the same months and late fees as **Lo que debe**. Payments that
+    were undone are left out. **Hacer para enviar** gives it a document
+    number (one counter for every document the app hands out), puts it in
+    Historial under Impresiones, and draws it as a picture with the board's
+    name, the date and time and who made it. Owner decisions of 15 November
+    2026: the statement is a picture, shared through the phone's own Share
+    button, with a second button that opens the family's WhatsApp chat with
+    the same statement as text; and the treasurer chooses the month its
+    payments start from. See "Trying Estado de cuenta" below.
+  - Next: digital receipts on request. The opening balance waits for the
+    board to decide how it is counted.
 
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
@@ -459,6 +472,35 @@ server checks again whatever the screen shows. The phone makes each photo
 small before sending it (about half a megabyte), so it goes through on weak
 signal.
 
+### Trying Estado de cuenta
+
+With a family that has some payments and owes some months (see "Trying Lo
+que debe"):
+
+1. Open the family's file and tap **Estado de cuenta**, under Acciones.
+2. The statement shows the payments from January of this year, each with
+   its date and receipt number, then **Lo que debe hoy** with the same months
+   and late fees as the file, and the total.
+3. Change **Pagos desde** to an older or a later month: the list of payments
+   changes, what is owed does not.
+4. Tap **Hacer para enviar**. The statement gets its number ("Estado de
+   cuenta nº 1") and shows as a picture.
+5. **Compartir la imagen** opens the phone's share sheet: pick WhatsApp and
+   the family's chat. On a computer, or a phone that cannot share a picture,
+   it says so: use **Guardar la imagen** and attach it in WhatsApp.
+6. **Enviar como texto** opens the family's WhatsApp chat with the same
+   statement written out. It is there only for a family with a number, and
+   for a user who may see the whole number.
+7. In **Historial**, under Impresiones: "… hizo el estado de cuenta nº 1 de
+   la vivienda Z-0001 (…), desde enero de 2026".
+8. Undo one of the family's payments (**Anular pago**) and open the
+   statement again: that payment is gone from it, and its month is owed.
+
+Looking at a statement needs "Ver finanzas"; handing one out needs "Imprimir
+y exportar finanzas". The server checks again whatever the screen shows.
+Each **Hacer para enviar** takes a new number, also for the same house on
+the same day.
+
 ### Trying Quién debe
 
 With a base fee and a late fee in Configuración → Cuotas from a past month
@@ -555,7 +597,8 @@ starting the API.
 The file refuses, by itself, to delete any row of any table, and to change
 any row of the history log (`audit_log`) or of the money entries
 (`transactions`, and `payment_months`, how each payment was shared among
-months) or of a house's status history (`household_status_changes`):
+months) or of a house's status history (`household_status_changes`) or of
+the documents handed out (`documents`, whose number is never given twice):
 triggers that `src/db/guards.ts` puts back after every
 migration. That includes the delete hidden inside SQLite's `INSERT OR
 REPLACE`. Taking one away would take a deliberate `DROP TRIGGER` with

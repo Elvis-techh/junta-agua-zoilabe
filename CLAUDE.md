@@ -41,8 +41,8 @@ one more thing to run and back up there.
 
 - **Nothing is deleted, and history never changes, in the file itself.**
   `applyGuards` (`backend/src/db/guards.ts`) gives every table a trigger that
-  refuses DELETE, and `audit_log`, `transactions`, `payment_months` and
-  `household_status_changes` one that refuses UPDATE. It runs after every
+  refuses DELETE, and `audit_log`, `transactions`, `payment_months`,
+  `household_status_changes` and `documents` one that refuses UPDATE. It runs after every
   migration and on every start, so
   a new table is guarded without a line there (an append-only one is added
   to `APPEND_ONLY_TABLES`). `createDb` switches on `recursive_triggers`,
@@ -71,6 +71,11 @@ one more thing to run and back up there.
   its length does not give the country away.
 - **Text comparisons that must understand Spanish** happen in JavaScript or
   through `search_text()`. SQLite's `lower()` and `LIKE` only know A to Z.
+- **Every document the app hands out takes its number from `documents`**
+  (a statement today; receipts and reports later): one row per document, in
+  the same transaction as its history entry under "exports". The row keeps
+  what it was made for, not its contents. Looking at something on the screen
+  is not a document; sending, saving or printing it is.
 - **Receipt photos are files, not rows.** `backend/src/lib/receiptPhotos.ts`
   writes each one into the `receipts` folder beside the database file (inside
   the one folder the API may write on the droplet) before the transaction
@@ -125,6 +130,9 @@ close the keyboard to look for a button. When a screen is built or changed:
 - **"Hay más abajo"** (`MoreBelow`) is already on every screen and dialog, and
   measures for itself. Do not add another, and do not rely on it to excuse a
   screen that could simply fit: put short answers side by side first.
+- **A document is drawn from lines** (`frontend/src/statement.ts`): the
+  screen, the picture (`statementImage.ts`) and the WhatsApp text all read
+  the same list, so they cannot say different things. No PDF library.
 - **A photo is taken through the two hidden file inputs of Gasto's photo
   screen** (camera, or one already on the phone) and `shrinkPhoto`.
 - **Money is typed through `AmountInput`**, months and dates through `MonthField`

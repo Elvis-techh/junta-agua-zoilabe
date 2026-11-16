@@ -866,6 +866,45 @@ textarea:focus-visible {
   gap: 10px;
 }
 
+/* Estado de cuenta: the statement's lines, on the screen as on its picture. */
+.statement {
+  display: grid;
+  gap: 6px;
+}
+
+.statement-line.title {
+  font-weight: 700;
+  color: var(--primary, #0b5c8c);
+}
+
+.statement-line.heading {
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.statement-line.total {
+  font-weight: 700;
+}
+
+.statement-line.small,
+.statement-sub {
+  font-size: 0.9rem;
+}
+
+.statement-line.small {
+  color: var(--muted, #55626d);
+}
+
+.statement-picture {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
 /* Gasto: the photo of a receipt, whole on the screen whatever its shape, so the button under it stays in reach. */
 .receipt-photo {
   display: block;

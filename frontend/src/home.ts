@@ -14,7 +14,8 @@ export type Route =
   | "/finanzas/quien-debe"
   | `/censo/vivienda/${string}`
   | `/finanzas/cobrar/${string}`
-  | `/finanzas/ingreso/${string}`;
+  | `/finanzas/ingreso/${string}`
+  | `/finanzas/estado/${string}`;
 
 /** The screen for an address, or Inicio for one this app does not have. */
 export function routeOf(path: string): Route {
@@ -33,7 +34,7 @@ export function routeOf(path: string): Route {
   if ((fixed as string[]).includes(path)) {
     return path as Route;
   }
-  if (/^\/(censo\/vivienda|finanzas\/cobrar|finanzas\/ingreso)\/[0-9a-f-]{36}$/.test(path)) {
+  if (/^\/(censo\/vivienda|finanzas\/cobrar|finanzas\/ingreso|finanzas\/estado)\/[0-9a-f-]{36}$/.test(path)) {
     return path as Route;
   }
   return "/";
