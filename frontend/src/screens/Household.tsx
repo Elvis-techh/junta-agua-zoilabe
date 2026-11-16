@@ -183,6 +183,11 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
           <Icon name="receipt" /> Otro ingreso: mora, reconexión…
         </button>
       )}
+      {can("finance:view") && (
+        <button className="btn block" onClick={() => onOpen(`/finanzas/estado/${file.id}`)}>
+          <Icon name="paper" /> Estado de cuenta
+        </button>
+      )}
       {sensitiveVisible && owner.phone && (
         <a className="btn go block" href={whatsappLink(owner.phone, owner.fullName, file.code)} target="_blank" rel="noreferrer">
           <Icon name="whatsapp" /> Compartir por WhatsApp

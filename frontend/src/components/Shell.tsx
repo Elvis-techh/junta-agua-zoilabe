@@ -18,6 +18,7 @@ import { IncomeScreen } from "../screens/Income.tsx";
 import type { RegisterPreset } from "../screens/Register.tsx";
 import { RegisterScreen } from "../screens/Register.tsx";
 import { SettingsScreen } from "../screens/Settings.tsx";
+import { StatementScreen } from "../screens/Statement.tsx";
 import { UsersScreen } from "../screens/Users.tsx";
 import { Dialog } from "./Dialog.tsx";
 import { MoreBelow } from "./MoreBelow.tsx";
@@ -118,6 +119,9 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
       return (
         <IncomeScreen key={route} householdId={route.slice("/finanzas/ingreso/".length)} canReverse={can("finance:reverse")} onOpen={go} />
       );
+    }
+    if (route.startsWith("/finanzas/estado/") && can("finance:view") && can("census:view")) {
+      return <StatementScreen key={route} householdId={route.slice("/finanzas/estado/".length)} canHandOut={can("export:finance")} onOpen={go} />;
     }
     if (route === "/finanzas/gasto" && can("finance:record") && can("finance:view")) {
       return <ExpenseScreen key={route} canReverse={can("finance:reverse")} onOpen={go} />;

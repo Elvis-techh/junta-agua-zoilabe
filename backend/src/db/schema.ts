@@ -535,6 +535,29 @@ export const receiptFiles = sqliteTable("receipt_files", {
   createdBy: uuid("created_by").references(() => users.id),
 });
 
+/**
+ * Every document the app hands out (App Plan, Module 5: "every printout
+ * carries … a document number"): its `id` is that number, given in order,
+ * one counter for every kind. A row says what the document was and for
+ * which filters, not its contents: those are worked out from the entries.
+ * Append-only: a number, once given, is never changed or given again.
+ */
+export const documents = sqliteTable(
+  "documents",
+  {
+    id: serial("id"),
+    kind: text("kind", { enum: ["household_statement"] }).notNull(),
+    householdId: uuid("household_id").references(() => households.id),
+    /** What it was made for: a statement's first month and the day it was made. */
+    details: json<Record<string, unknown>>("details").notNull(),
+    createdAt: createdAt(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id),
+  },
+  (table) => [index("documents_household_idx").on(table.householdId)],
+);
+
 // ---------------------------------------------------------------------------
 // History log and configuration
 // ---------------------------------------------------------------------------
