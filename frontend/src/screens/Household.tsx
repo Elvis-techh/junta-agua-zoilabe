@@ -27,6 +27,7 @@ import { isTouchScreen } from "../viewport.ts";
 import { formatDate, formatDateTime, todayInHonduras } from "../time.ts";
 import { HouseholdStatus } from "./Census.tsx";
 import { IncomeEntries } from "./Income.tsx";
+import { ReceiptDialog } from "./Receipt.tsx";
 
 /** "3 de marzo de 2026" for a calendar date such as the paper form's. */
 const calendarDate = (date: string) => formatDate(`${date}T12:00:00Z`);
@@ -166,11 +167,21 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
           householdId={file.id}
           canReverse={can("finance:reverse")}
           canRecord={can("finance:record")}
+          canHandOut={can("export:finance")}
+          phone={owner.phone}
           onOpen={onOpen}
         />
       )}
 
-      {can("finance:view") && <IncomeEntries householdId={file.id} title="Otros ingresos" canReverse={can("finance:reverse")} />}
+      {can("finance:view") && (
+        <IncomeEntries
+          householdId={file.id}
+          title="Otros ingresos"
+          canReverse={can("finance:reverse")}
+          canHandOut={can("export:finance")}
+          phone={owner.phone}
+        />
+      )}
 
       <h2>Acciones</h2>
       {can("finance:record") && can("finance:view") && (
@@ -310,17 +321,22 @@ export function HouseholdPayments({
   householdId,
   canReverse,
   canRecord,
+  canHandOut,
+  phone,
   onOpen,
 }: {
   householdId: string;
   canReverse: boolean;
   canRecord: boolean;
+  canHandOut?: boolean;
+  phone?: string | null;
   onOpen: Go;
 }) {
   const [payments, setPayments] = useState<Payment[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reversing, setReversing] = useState<Payment | null>(null);
   const [reversed, setReversed] = useState<Payment | null>(null);
+  const [receiptFor, setReceiptFor] = useState<Payment | null>(null);
 
   const load = useCallback(() => {
     api<{ payments: Payment[] }>("GET", `/finance/households/${householdId}/payments`)
@@ -351,7 +367,12 @@ export function HouseholdPayments({
       {payments
         ?.slice(0, 12)
         .map((payment) => (
-          <PaymentCard key={payment.id} payment={payment} onReverse={canReverse ? () => setReversing(payment) : undefined} />
+          <PaymentCard
+            key={payment.id}
+            payment={payment}
+            onReverse={canReverse ? () => setReversing(payment) : undefined}
+            onReceipt={canHandOut && !payment.reversed ? () => setReceiptFor(payment) : undefined}
+          />
         ))}
       {reversing && (
         <ReverseDialog
@@ -364,11 +385,14 @@ export function HouseholdPayments({
           }}
         />
       )}
+      {receiptFor && (
+        <ReceiptDialog transactionId={receiptFor.id} phone={phone} canHandOut onClose={() => setReceiptFor(null)} />
+      )}
     </section>
   );
 }
 
-export function PaymentCard({ payment, onReverse }: { payment: Payment; onReverse?: () => void }) {
+export function PaymentCard({ payment, onReverse, onReceipt }: { payment: Payment; onReverse?: () => void; onReceipt?: () => void }) {
   return (
     <div className="card stack" style={{ gap: 4 }}>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
@@ -400,10 +424,19 @@ export function PaymentCard({ payment, onReverse }: { payment: Payment; onRevers
         </>
       )}
       {payment.note && <div className="muted">Nota: {payment.note}</div>}
-      {onReverse && !payment.reversed && (
-        <button className="btn" style={{ justifySelf: "start" }} onClick={onReverse}>
-          <Icon name="x" /> Anular pago
-        </button>
+      {((onReceipt && !payment.reversed) || (onReverse && !payment.reversed)) && (
+        <div className="row">
+          {onReceipt && !payment.reversed && (
+            <button className="btn" onClick={onReceipt}>
+              <Icon name="whatsapp" /> Recibo
+            </button>
+          )}
+          {onReverse && !payment.reversed && (
+            <button className="btn" onClick={onReverse}>
+              <Icon name="x" /> Anular pago
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
