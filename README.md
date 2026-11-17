@@ -190,7 +190,22 @@ changing how money, permissions or the history log work.
     count numbers every document. An expense has no resident receipt, and a
     payment that was undone has none. The paper receipt still stands; this is
     made only on request. See "Trying el recibo digital" below.
-  - Next: the opening balance, once the board decides how it is counted.
+  - **Opening balance (Saldo de la junta): built.** A new **Saldo de la
+    junta** button on Inicio. The treasurer enters, once, the cash in the box
+    and the money in the bank on the first day of the month the app's money
+    begins. The screen then shows **Dinero ahora**: the cash and the bank,
+    plus everything that came in and went out from that month on, and a line
+    "Pagado con «Otro»" only when something was paid that way. Owner
+    decisions of 17 November 2026: two figures, cash and bank, with "Otro"
+    on its own line so it is never mixed into the cash counted at month
+    close; entries dated before the opening month (typed in from the paper
+    book) are already inside the balance and count only for what each house
+    owes; a wrong balance is fixed with **Corregir** and a written reason,
+    which keeps the old one, until the first month is closed; it needs no
+    approval of its own, because the first month close shows it and already
+    takes a second person. See "Trying Saldo de la junta" below.
+  - Next: the month close (Preparar cierre, Aprobar cierre), which starts
+    from the opening balance.
 
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
@@ -532,6 +547,31 @@ late fee, say):
 Looking needs "Ver finanzas"; making one needs "Imprimir y exportar
 finanzas". The number is the same running count a statement uses, so a
 statement and a receipt never share a number.
+
+### Trying Saldo de la junta
+
+1. On Inicio, tap **Saldo de la junta**. Before anything is entered it asks
+   for **Mes en que empieza**, **Efectivo en caja** and **En el banco**.
+   Type 0 where there is nothing. A month that has not come yet is refused.
+2. **Guardar saldo inicial**. The screen shows **Dinero ahora**: the same
+   two amounts, because nothing has come in since.
+3. Record a payment in cash (Cobrar), a donation by transfer (Otro ingreso)
+   and an expense in cash (Gasto), all dated today. Back in Saldo de la
+   junta: the payment adds to the box, the transfer to the bank, the expense
+   comes off the box. Something paid with "Otro" shows on its own line.
+4. Record a payment dated in a month before the opening month, as when
+   typing in the paper book: the money does not change. That house's
+   **Lo que debe** does.
+5. **Anular** the transfer donation: the bank goes back down. Anular the old
+   payment from step 4: the money does not change, since it never counted.
+6. Tap **Corregir**, change an amount or the month, and write why. The new
+   balance shows, with "Antes: …" under it. In **Historial**, under
+   Finanzas: "… anotó el saldo inicial: …" and "… corrigió el saldo inicial:
+   … (antes …)", with the reason.
+
+Looking needs "Ver finanzas"; entering needs "Registrar pagos y gastos";
+correcting needs "Corregir un registro de dinero". Once a month is closed
+(month close is not built yet), Corregir is gone and the server refuses it.
 
 ### Trying Quién debe
 

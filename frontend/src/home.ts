@@ -12,6 +12,7 @@ export type Route =
   | "/finanzas/ingreso"
   | "/finanzas/gasto"
   | "/finanzas/quien-debe"
+  | "/finanzas/saldo"
   | `/censo/vivienda/${string}`
   | `/finanzas/cobrar/${string}`
   | `/finanzas/ingreso/${string}`
@@ -30,6 +31,7 @@ export function routeOf(path: string): Route {
     "/finanzas/ingreso",
     "/finanzas/gasto",
     "/finanzas/quien-debe",
+    "/finanzas/saldo",
   ];
   if ((fixed as string[]).includes(path)) {
     return path as Route;
@@ -58,6 +60,7 @@ const B = {
   gasto: { label: "Gasto", icon: "receipt", route: "/finanzas/gasto", permission: "finance:record" },
   resumen: { label: "Resumen del mes", icon: "chart" },
   quienDebe: { label: "Quién debe", icon: "alert", route: "/finanzas/quien-debe", permission: "finance:view" },
+  saldo: { label: "Saldo de la junta", icon: "chart", route: "/finanzas/saldo", permission: "finance:view" },
   aprobar: { label: "Aprobar cierre", icon: "check" },
   reportes: { label: "Reportes", icon: "print" },
   historial: { label: "Historial", icon: "clock", route: "/historial", permission: "log:view" },
