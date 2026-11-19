@@ -59,7 +59,7 @@ same.
 | IDs | UUID text | `uuid` |
 | Instants (created, signed in…) | ISO-8601 UTC text, `2026-10-23T18:04:05.123Z` | `timestamptz`, to the millisecond |
 | Calendar dates | `2026-10-23` text | `date` |
-| Money | whole centavos, 64-bit integer | `bigint` (`integer` for fee amounts) |
+| Money | whole centavos, 64-bit integer | `bigint` |
 | Yes/no | 0 or 1 | `boolean` |
 | History before/after, settings | JSON text | `jsonb` |
 | Guest permissions, months covered | JSON list | `text[]`, `date[]` |
@@ -155,8 +155,11 @@ These cost nothing now and keep the move a copy rather than a cleanup:
 - No NUL characters in text, and JSON only through Drizzle's `json` columns.
   PostgreSQL refuses both kinds of bad value; the pre-flight check below
   finds them.
-- A fee amount stays under L 21,474,836.47: `fee_rates` and
-  `household_fees` are `integer` in PostgreSQL. Transactions are `bigint`.
+- Every money column is `bigint`, which the schema's `bigint` helper
+  becomes: amounts go up to L 999,999,999.99 (owner, 19 November 2026),
+  past PostgreSQL's 32-bit `integer` (L 21,474,836.47). `fee_rates` and
+  `household_fees` were `integer` until then; in SQLite both are the same
+  column, so the change needed no migration.
 
 ## Move day
 

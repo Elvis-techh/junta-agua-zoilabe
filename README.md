@@ -39,6 +39,16 @@ changing how money, permissions or the history log work.
   Usuarios, Historial and Configuración, as Vivienda, Gasto, Otro ingreso,
   Estado de cuenta and a payment already had ("‹ Censo", "‹ Cobrar"…). The
   phone's own back still works too; not everyone knows it is there.
+- **Every amount takes up to L 999,999,999.99** (owner, 19 November 2026),
+  since nobody knows how much a payment, an expense or the board's money
+  will one day be: Cobrar, Otro ingreso, Gasto, the fees in Configuración, a
+  family's different amount in Registrar familia, and Saldo de la junta.
+  Each field takes nine digits before the point and two after, on the phone
+  and on the server (`MAX_AMOUNT_CENTAVOS` in `backend/src/lib/money.ts`,
+  `AMOUNT_WHOLE_DIGITS` in `frontend/src/census.ts`; a test fails if the two
+  differ). Until then most fields stopped at L 99,999.99, and a different
+  amount at L 10,000.00. An amount longer than 9,999,999.99 is drawn a
+  little smaller, so it still fits beside the field next to it.
 - **Phase 1 (Census): merged.** Registrar familia (one question per screen,
   with the fee question), paper entry mode, duplicate check, search and
   list, household file, offline queue, inactive status, and Configuración →
@@ -243,10 +253,7 @@ changing how money, permissions or the history log work.
     owes; a wrong balance is fixed with **Corregir** and a written reason,
     which keeps the old one, until the first month is closed; it needs no
     approval of its own, because the first month close shows it and already
-    takes a second person. **Efectivo en caja** and **En el banco** take
-    up to L 999,999,999.99, since nobody knows how much the box or the
-    account will one day hold (owner, 19 November 2026); every other money
-    field still stops at L 99,999.99. See "Trying Saldo de la junta" below.
+    takes a second person. See "Trying Saldo de la junta" below.
   - Next: the month close (Preparar cierre, Aprobar cierre), which starts
     from the opening balance.
 
@@ -603,8 +610,8 @@ statement and a receipt never share a number.
 1. On Inicio, tap **Saldo de la junta**. Before anything is entered it asks
    for **Mes en que empieza**, **Efectivo en caja** and **En el banco**.
    Type 0 where there is nothing. A month that has not come yet is refused.
-   Each amount takes up to nine digits before the point: type 2500000 and
-   it shows 2,500,000.
+   Each amount takes up to nine digits before the point, as every amount
+   field does: type 2500000 and it shows 2,500,000.
 2. **Guardar saldo inicial**. The screen shows **Dinero ahora**: the same
    two amounts, because nothing has come in since.
 3. Record a payment in cash (Cobrar), a donation by transfer (Otro ingreso)

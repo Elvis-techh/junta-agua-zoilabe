@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import type { Registration } from "../src/census.ts";
 import {
+  AMOUNT_WHOLE_DIGITS,
   amountCaret,
   capitalizeName,
   formatAmountTyping,
@@ -39,10 +40,13 @@ describe("census helpers", () => {
     assert.equal(parseLempiras("1,250.50"), 125050);
     assert.equal(parseLempiras("L 12,345.67"), 1234567);
     assert.equal(parseLempiras("L. 1,000"), 100000);
+    assert.equal(parseLempiras("100,000"), 10000000);
+    // Up to L 999,999,999.99, the most any amount field takes (owner, 19 November 2026).
+    assert.equal(parseLempiras("L 999,999,999.99"), 99999999999);
+    assert.equal(parseLempiras("1,000,000,000"), null);
     // Not where a thousands comma goes, so not an amount.
     assert.equal(parseLempiras("1,0000"), null);
     assert.equal(parseLempiras("12,34,567"), null);
-    assert.equal(parseLempiras("100,000"), null);
   });
 
   it("adds the thousands commas to an amount while it is typed", () => {
@@ -53,7 +57,10 @@ describe("census helpers", () => {
       ["1000", "1,000"],
       ["1,0000", "10,000"],
       ["12345", "12,345"],
-      ["123456", "12,345"],
+      ["123456", "123,456"],
+      ["123456789", "123,456,789"],
+      ["1234567890", "123,456,789"],
+      ["999999999.99", "999,999,999.99"],
       ["1250.", "1,250."],
       ["1250.5", "1,250.5"],
       ["1250.505", "1,250.50"],
@@ -70,8 +77,16 @@ describe("census helpers", () => {
     }
   });
 
+  it("takes as many lempira digits as the server", async () => {
+    // Read at run time: the two workspaces do not import each other's code.
+    const server = (await import(new URL("../../backend/src/lib/money.ts", import.meta.url).href)) as {
+      MAX_AMOUNT_CENTAVOS: number;
+    };
+    assert.equal(10 ** AMOUNT_WHOLE_DIGITS * 100 - 1, server.MAX_AMOUNT_CENTAVOS);
+  });
+
   it("reads back to the same centavos whatever the field shows", () => {
-    for (const [typed, centavos] of [["1000", 100000], ["1250.5", 125050], ["99999.99", 9999999], ["0", 0]] as const) {
+    for (const [typed, centavos] of [["1000", 100000], ["1250.5", 125050], ["99999.99", 9999999], ["999999999.99", 99999999999], ["0", 0]] as const) {
       assert.equal(parseLempiras(formatAmountTyping(typed)), centavos, typed);
     }
   });
