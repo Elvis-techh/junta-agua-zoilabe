@@ -172,6 +172,10 @@ describe("Gasto: expenses with a photo of the receipt or invoice", () => {
   it("checks the rest of what it asks: who was paid, the amount, the date, the transfer's reference, what another expense is", async () => {
     assert.match((await record({ supplier: " " })).json().message, /^Escriba a quién se le pagó\.$/);
     assert.match((await record({ amountCentavos: 0 })).json().message, /^Escriba el monto que se pagó\.$/);
+    assert.match((await record({ amountCentavos: 100_000_000_000 })).json().message, /^El monto es demasiado alto\.$/);
+    // Up to L 999,999,999.99, the most any amount field takes (owner, 19 November 2026).
+    const large = await record({ amountCentavos: 99_999_999_999 });
+    assert.equal(large.statusCode, 201, large.body);
     assert.match((await record({ occurredOn: "2999-01-01" })).json().message, /^La fecha del gasto no puede ser después de hoy\.$/);
     assert.match((await record({ paymentMethod: "transfer" })).json().message, /referencia de la transferencia/);
     assert.match((await record({ categoryId: otherExpense })).json().message, /^Escriba de qué es el gasto\.$/);

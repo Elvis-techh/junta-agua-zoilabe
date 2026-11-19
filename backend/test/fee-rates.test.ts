@@ -74,6 +74,8 @@ describe("Configuración → Cuotas", () => {
     const bad = [
       { kind: "base_monthly", amountCentavos: 70.5, startsOn: lastYear },
       { kind: "base_monthly", amountCentavos: -100, startsOn: lastYear },
+      // Past L 999,999,999.99, the most any amount field takes.
+      { kind: "base_monthly", amountCentavos: 100_000_000_000, startsOn: lastYear },
       { kind: "base_monthly", amountCentavos: 7000, startsOn: `${today.slice(0, 7)}-15` },
       { kind: "base_monthly", amountCentavos: 7000, startsOn: "2026-13-01" },
       { kind: "water", amountCentavos: 7000, startsOn: lastYear },
@@ -106,6 +108,12 @@ describe("Configuración → Cuotas", () => {
     const lateFee = await call(president.cookie, "POST", { kind: "late_fee", amountCentavos: 0, startsOn: lastYear });
     assert.equal(lateFee.statusCode, 201);
     assert.equal(feeOn(t.db, "late_fee", today), 0);
+  });
+
+  it("takes a fee up to L 999,999,999.99 (owner, 19 November 2026)", async () => {
+    const connection = await call(president.cookie, "POST", { kind: "connection", amountCentavos: 99_999_999_999, startsOn: lastYear });
+    assert.equal(connection.statusCode, 201, connection.body);
+    assert.equal(feeOn(t.db, "connection", today), 99_999_999_999);
   });
 
   it("lets a change start this month", async () => {

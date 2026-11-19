@@ -229,12 +229,14 @@ describe("Otro ingreso: late fees, reconnections, connections, donations and oth
     const noName = await record({ type: "donation", householdId: undefined, month: undefined, amountCentavos: 100000 });
     assert.equal(noName.statusCode, 400);
     assert.match(noName.json().message, /nombre de quien pagó/);
-    const donation = await record({ type: "donation", householdId: undefined, month: undefined, amountCentavos: 100000, payerName: "Iglesia de la aldea" });
+    const donation = await record({ type: "donation", householdId: undefined, month: undefined, amountCentavos: 99_999_999_999, payerName: "Iglesia de la aldea" });
     assert.equal(donation.statusCode, 201, donation.body);
     assert.equal(donation.json().entry.householdId, null);
     assert.equal(donation.json().entry.payerName, "Iglesia de la aldea");
-    // Any amount: a donation has no amount in Configuración.
-    assert.equal(donation.json().entry.amountCentavos, 100000);
+    // Any amount up to L 999,999,999.99: a donation has no amount in Configuración.
+    assert.equal(donation.json().entry.amountCentavos, 99_999_999_999);
+    const tooMuch = { type: "donation", householdId: undefined, month: undefined, amountCentavos: 100_000_000_000, payerName: "Iglesia de la aldea" };
+    assert.match((await record(tooMuch)).json().message, /^El monto es demasiado alto\.$/);
 
     const connection = await record({ type: "connection", month: undefined, amountCentavos: 150000 });
     assert.equal(connection.statusCode, 201, connection.body);

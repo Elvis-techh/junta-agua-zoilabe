@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { MoneyNow } from "../src/balance.ts";
-import { BALANCE_WHOLE_DIGITS, amountText, moneyLines, openingLine, readFigures } from "../src/balance.ts";
+import { amountText, moneyLines, openingLine, readFigures } from "../src/balance.ts";
 import { formatAmountTyping, parseLempiras } from "../src/census.ts";
 import { homeButtons, otherButtons, routeOf } from "../src/home.ts";
 
@@ -28,18 +28,16 @@ describe("Saldo de la junta", () => {
     assert.match((readFigures({ month: "2026-11", cash: "1", bank: "" }, "2026-11-01") as { problem: string }).problem, /banco/);
   });
 
-  it("takes cash and bank bigger than any fee or payment, up to L 999,999,999.99", () => {
+  it("takes cash and bank up to L 999,999,999.99", () => {
     assert.deepEqual(readFigures({ month: "2026-10", cash: "1,250,000.50", bank: "999,999,999.99" }, "2026-11-01"), {
       month: "2026-10-01",
       cashCentavos: 125000050,
       bankCentavos: 99999999999,
     });
-    assert.equal(formatAmountTyping("1250000", BALANCE_WHOLE_DIGITS), "1,250,000");
-    assert.equal(formatAmountTyping("12345678901", BALANCE_WHOLE_DIGITS), "123,456,789");
+    assert.equal(formatAmountTyping("1250000"), "1,250,000");
+    assert.equal(formatAmountTyping("12345678901"), "123,456,789");
     assert.equal(amountText(250_000_000), "2,500,000");
-    // The other amount fields still stop at L 99,999.99.
-    assert.equal(formatAmountTyping("1250000"), "12,500");
-    assert.equal(parseLempiras("1,250,000"), null);
+    assert.equal(parseLempiras("1,000,000,000"), null);
   });
 
   it("shows cash and bank, and the Otro line only when something was paid that way", () => {
