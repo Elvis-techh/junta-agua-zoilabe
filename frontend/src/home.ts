@@ -56,6 +56,8 @@ const B = {
   censo: { label: "Censo", icon: "list", route: "/censo", permission: "census:view" },
   cobrar: { label: "Cobrar", icon: "cash", route: "/finanzas/cobrar", permission: "finance:record" },
   gasto: { label: "Gasto", icon: "receipt", route: "/finanzas/gasto", permission: "finance:record" },
+  // Money from someone outside the census, and the latest entries to undo (Anular); for a house, Cobrar asks (19 November 2026).
+  ingreso: { label: "Otro ingreso", icon: "plus", route: "/finanzas/ingreso", permission: "finance:record" },
   resumen: { label: "Resumen del mes", icon: "chart" },
   quienDebe: { label: "Quién debe", icon: "alert", route: "/finanzas/quien-debe", permission: "finance:view" },
   aprobar: { label: "Aprobar cierre", icon: "check" },

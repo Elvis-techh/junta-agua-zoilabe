@@ -2,6 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 
 import type { Me } from "../api.ts";
 import { api } from "../api.ts";
+import type { IncomePreset } from "../collect.ts";
 import type { Route } from "../home.ts";
 import { navigation, routeOf, tabOf } from "../home.ts";
 import { Icon } from "../icons.tsx";
@@ -26,8 +27,8 @@ import { MoreBelow } from "./MoreBelow.tsx";
 /** How often waiting census entries are tried again while the app is open. */
 const RETRY_MS = 30_000;
 
-/** What a screen is opened with: a census start, or a payment to record again. */
-export type Preset = RegisterPreset | PaymentPreset;
+/** What a screen is opened with: a census start, a payment to record again, or what Cobrar was told is being paid. */
+export type Preset = RegisterPreset | PaymentPreset | IncomePreset;
 
 export type Go = (route: Route, preset?: Preset) => void;
 
@@ -100,7 +101,7 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
       return <HouseholdScreen key={route} me={me} id={route.slice("/censo/vivienda/".length)} onOpen={go} />;
     }
     if (route === "/finanzas/cobrar" && can("finance:record") && can("census:view")) {
-      return <CollectScreen onOpen={go} canRecordOther={can("finance:view")} />;
+      return <CollectScreen onOpen={go} canSeeOwed={can("finance:view")} />;
     }
     if (route.startsWith("/finanzas/cobrar/") && can("finance:record") && can("finance:view")) {
       const again = preset && "again" in preset ? preset.again : undefined;
@@ -108,18 +109,20 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
         <PaymentScreen key={`${route}${again?.id ?? ""}`} id={route.slice("/finanzas/cobrar/".length)} again={again} onOpen={go} />
       );
     }
-    // Otro ingreso: it finds the house in the census, by search from Cobrar or by id from a house's file.
     if (route === "/finanzas/quien-debe" && can("finance:view")) {
       return <ArrearsScreen onOpen={go} />;
     }
+    // Otro ingreso: from Inicio it finds the house in the census (or none); from Cobrar or a house's file, by id.
     if (route === "/finanzas/ingreso" && can("finance:record") && can("finance:view") && can("census:view")) {
       return <IncomeScreen key={route} canReverse={can("finance:reverse")} canHandOut={can("export:finance")} onOpen={go} />;
     }
     if (route.startsWith("/finanzas/ingreso/") && can("finance:record") && can("finance:view") && can("census:view")) {
+      const chosen = preset && "incomeType" in preset ? preset : undefined;
       return (
         <IncomeScreen
-          key={route}
+          key={`${route}${chosen?.incomeType ?? ""}`}
           householdId={route.slice("/finanzas/ingreso/".length)}
+          preset={chosen}
           canReverse={can("finance:reverse")}
           canHandOut={can("export:finance")}
           onOpen={go}

@@ -59,7 +59,13 @@ changing how money, permissions or the history log work.
     receipt's number, then "¿Está correcto?". See "Trying Cobrar" below.
     Owner decisions of 6 November 2026: the money fills the chosen months
     oldest first; a payment larger than those months owe is refused; a month
-    keeps the price it had when its first money arrived.
+    keeps the price it had when its first money arrived. Owner decision of
+    19 November 2026: Cobrar opens on every house in the census, by name, to
+    scroll or search; tapping one asks **¿Qué está pagando?** (Cuota
+    mensual, Mora, Reconexión, Conexión, Donación, Otro ingreso), and the
+    monthly fee goes on to the months while the others go to Otro ingreso
+    for that house, already answered. **Quién debe** stays on Cobrar, at the
+    top; **Otro ingreso** left it for its own button on Inicio.
   - **Removing a fee amount (Quitar): built.** Until a payment covers its
     month, with a reason (owner decision of 6 November 2026).
   - **Every role holds every permission: built.** Owner decision of
@@ -80,7 +86,7 @@ changing how money, permissions or the history log work.
     file.
   - **Corrections (Anular pago): built.** A payment recorded by mistake is
     undone from the household's file with a reason: a reversal
-    entry with the opposite amount that points to the original. See step 7
+    entry with the opposite amount that points to the original. See step 8
     of "Trying Cobrar" below. Owner decisions of 7 November 2026: only a
     whole payment is reversed (a wrong amount or month is reversed and
     recorded again); the reversal is dated the day it is made and counts in
@@ -125,7 +131,8 @@ changing how money, permissions or the history log work.
     13 November 2026 for months from the paper book. A house's late fee for a
     month is recorded once. A
     connection fee, a donation or other income may be from someone outside
-    the census, and other income says what it is. An entry recorded by
+    the census (entered from **Otro ingreso** on Inicio, under **Otras
+    tareas**), and other income says what it is. An entry recorded by
     mistake is undone with **Anular**, as a payment is. A house's monthly fee
     and its late fee written on one receipt, the same day, do not count as a
     repeated receipt number. See "Trying Otro ingreso" below.
@@ -341,28 +348,33 @@ With a base fee set in Configuración → Cuotas, and a family registered, tap
 **Cobrar** on Inicio (among the treasurer's own buttons, and under **Otras
 tareas** for every other role), or **Registrar pago** on a household's file. A payment needs signal: it is not kept on the phone.
 
-1. Search for the house by name or code and tap it.
-2. **¿Qué meses paga?** Each month shows what it still owes ("L 70.00",
+1. Every house in the census is listed by name: scroll to it, or type part of
+   the name or the code to narrow the list. Tap it.
+2. **¿Qué está pagando?** Tap **Cuota mensual**. (Mora, Reconexión,
+   Conexión, Donación and Otro ingreso go to Otro ingreso for that house,
+   without asking again what it is; **Atrás** there comes back to Cobrar.
+   See "Trying Otro ingreso".)
+3. **¿Qué meses paga?** Each month shows what it still owes ("L 70.00",
    "Faltan L 40.00") or "Pagado". The list starts three months back and runs
    a year ahead; **Ver meses anteriores** adds older ones. Owed months older
    than that come first, under **Debe de antes**. Tap the months written on
    the paper receipt.
-3. **¿Cuánto pagó?** starts on the full amount. Paying less fills the
+4. **¿Cuánto pagó?** starts on the full amount. Paying less fills the
    chosen months oldest first, so only the last one is left partly paid. More
    than they owe is refused, as is an amount that does not reach every month
    chosen: the screen says what to change. The date may be earlier than today
    (a receipt typed in later), never later, and never in a closed month.
-4. **Recibo de papel**: cash, transfer (which asks for its reference) or
+5. **Recibo de papel**: cash, transfer (which asks for its reference) or
    other, and the receipt's number. **¿Quién pagó?** starts on the owner's
    name; a note is optional.
-5. **¿Está correcto?** shows how much goes to each month. **Sí, guardar**.
+6. **¿Está correcto?** shows how much goes to each month. **Sí, guardar**.
    A receipt number already used asks first: if the receipt book started
    again, save it anyway, and both entries show "Número de recibo repetido:
    revisar".
-6. The household's file lists its payments under **Pagos**, and each one is in
+7. The household's file lists its payments under **Pagos**, and each one is in
    **Historial** (Finanzas): "Tina (Tesorero/a) registró un pago de L 100.00
    de María López por noviembre y diciembre de 2026 …".
-7. A payment recorded by mistake: on the household's file, tap **Anular
+8. A payment recorded by mistake: on the household's file, tap **Anular
    pago** on its card, write why and tap **Anular pago**. The
    whole payment is undone with today's date, and its months go back to how
    they were before it (a month whose only money it was costs today's price
@@ -425,7 +437,9 @@ Cuotas from a past month (for example L 50, L 200 and L 1,500 from January
 2025):
 
 1. Open a family's file and tap **Otro ingreso: mora, reconexión…** (or open
-   **Cobrar** and tap **Otro ingreso** under the search).
+   **Cobrar**, tap the family and pick **Mora**, which goes straight to the
+   month; or tap **Otro ingreso** on Inicio, under **Otras tareas**, and
+   pick the family).
 2. Pick **Mora**, then the month written on the receipt or in the paper
    book. The next screen fills in L 50, the late fee of that month. Type
    another amount and it asks "¿Por qué es otro monto?".
@@ -437,7 +451,7 @@ Cuotas from a past month (for example L 50, L 200 and L 1,500 from January
 5. Pick **Reconexión**, or **Conexión**: the amount is the reconnection or
    connection fee of the payment's date. With no connection fee set in
    Configuración, a connection is refused until one is.
-6. From **Cobrar → Otro ingreso**, pick **Donación**, then **No es de una
+6. From **Otro ingreso** on Inicio, pick **Donación**, then **No es de una
    vivienda del censo**, and type who gave it. It shows under **Últimos
    ingresos** on that first screen.
 7. **Anular** an entry, with a reason: it stays, marked "Anulado", and its
@@ -522,7 +536,7 @@ late fee, say):
    after any statement), and offers **Compartir la imagen**, **Enviar como
    texto** and **Guardar la imagen**, the same as a statement.
 4. Do the same on an **Otros ingresos** card: a late fee reads "Mora de … de
-   2026", a donation its note. From **Cobrar → Otro ingreso**, a receipt can
+   2026", a donation its note. From **Otro ingreso** on Inicio, a receipt can
    be made for a donation from outside the census too (no house, image only).
 5. A reversed payment or income shows no **Recibo** button, and the server
    refuses a receipt for one.
@@ -539,8 +553,8 @@ With a base fee and a late fee in Configuración → Cuotas from a past month
 (for example L 70 and L 50 from January 2025), and a family whose history is
 typed in through Cobrar:
 
-1. Open **Quién debe** (on the treasurer's home screen, or under the search
-   in **Cobrar**). It lists the houses that owe months, but no late fees yet:
+1. Open **Quién debe** (on the treasurer's home screen, or at the top of
+   **Cobrar**). It lists the houses that owe months, but no late fees yet:
    it says the month in Configuración → Mora is missing.
 2. In **Configuración** → **Mora**, pick the month from which the app counts
    late fees by itself (say June 2025) and **Guardar mes**. It is in

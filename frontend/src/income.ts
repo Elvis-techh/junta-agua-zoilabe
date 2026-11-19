@@ -26,6 +26,33 @@ export function needsHouse(type: IncomeType): boolean {
   return type === "late_fee" || type === "reconnection";
 }
 
+export type IncomeStep = "type" | "house" | "month" | "amount" | "receipt" | "payer" | "review";
+
+/**
+ * The screens an entry asks, in order: what it is only when Cobrar has not
+ * already asked, the house only when it is not chosen yet, the month only
+ * for a late fee, then the amount, the paper receipt, who paid and
+ * "¿Está correcto?".
+ */
+export function incomeSteps(answers: { askType: boolean; houseChosen: boolean; type: IncomeType | null }): IncomeStep[] {
+  return [
+    ...(answers.askType ? (["type"] as const) : []),
+    ...(answers.houseChosen ? [] : (["house"] as const)),
+    ...(answers.type === "late_fee" ? (["month"] as const) : []),
+    "amount",
+    "receipt",
+    "payer",
+    "review",
+  ];
+}
+
+/** "Paso 2 de 4": the steps that count, which leave out what it is and the review. */
+export function stepCount(order: readonly IncomeStep[], step: IncomeStep | "saved"): { at: number; of: number } | null {
+  const counted: IncomeStep[] = order.filter((s) => s !== "type" && s !== "review");
+  const at = counted.indexOf(step as IncomeStep);
+  return at < 0 ? null : { at: at + 1, of: counted.length };
+}
+
 /** One amount from Configuración and the month it starts. */
 export interface Rate {
   startsOn: string;
