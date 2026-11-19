@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api } from "../api.ts";
 import type { BalanceData, Figures, OpeningBalance } from "../balance.ts";
-import { amountText, moneyLines, openingLine, readFigures } from "../balance.ts";
+import { BALANCE_WHOLE_DIGITS, amountText, moneyLines, openingLine, readFigures } from "../balance.ts";
 import { monthLabel } from "../calendar.ts";
 import { AmountInput } from "../components/AmountInput.tsx";
 import { MonthField } from "../components/CalendarField.tsx";
@@ -130,11 +130,21 @@ function FiguresFields({ figures, thisMonth, onChange }: { figures: Figures; thi
       <div className="row">
         <label style={{ flex: 1, minWidth: 130 }}>
           Efectivo en caja
-          <AmountInput value={figures.cash} onChange={(cash) => onChange({ ...figures, cash })} placeholder="L" />
+          <AmountInput
+            value={figures.cash}
+            onChange={(cash) => onChange({ ...figures, cash })}
+            wholeDigits={BALANCE_WHOLE_DIGITS}
+            placeholder="L"
+          />
         </label>
         <label style={{ flex: 1, minWidth: 130 }}>
           En el banco
-          <AmountInput value={figures.bank} onChange={(bank) => onChange({ ...figures, bank })} placeholder="L" />
+          <AmountInput
+            value={figures.bank}
+            onChange={(bank) => onChange({ ...figures, bank })}
+            wholeDigits={BALANCE_WHOLE_DIGITS}
+            placeholder="L"
+          />
         </label>
       </div>
     </>

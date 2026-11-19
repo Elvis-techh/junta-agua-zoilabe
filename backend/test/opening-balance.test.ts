@@ -111,6 +111,8 @@ describe("Saldo de la junta: the opening balance and the money now", () => {
     assert.equal(future.statusCode, 400);
     assert.match(future.json().message, /todavía no llega/);
     assert.equal((await enter({ month: thisMonth, cashCentavos: -1, bankCentavos: 0 })).statusCode, 400);
+    // A billion lempiras is past what the field takes.
+    assert.equal((await enter({ month: thisMonth, cashCentavos: 0, bankCentavos: 100_000_000_000 })).statusCode, 400);
     assert.equal((await enter({ month: `${today.slice(0, 7)}-15`, cashCentavos: 1, bankCentavos: 0 })).statusCode, 400);
   });
 
@@ -153,7 +155,8 @@ describe("Saldo de la junta: the opening balance and the money now", () => {
 
   it("corrects it with a reason, pointing to the entry it replaces, and counts again from the new month", async () => {
     const { opening } = await read();
-    const figures = { month: lastMonth, cashCentavos: 240000, bankCentavos: 1000000 };
+    // Over a million lempiras in the bank: more than the other amount fields take.
+    const figures = { month: lastMonth, cashCentavos: 240000, bankCentavos: 250_000_000 };
 
     assert.equal((await correct(randomUUID(), { ...figures, reason: "Contamos de nuevo" })).statusCode, 404);
     assert.equal((await correct(opening!.id, { ...figures, reason: "" })).statusCode, 400);
@@ -171,6 +174,7 @@ describe("Saldo de la junta: the opening balance and the money now", () => {
     assert.equal(data.entries[0]!.createdBy, "Pedro Presidente");
     // Last month's donation counts now, and so does its reversal: together nothing.
     assert.equal(data.money!.cashCentavos, 240000 + 5000 - 5000 + 10000 - 4500);
+    assert.equal(data.money!.bankCentavos, 250_000_000 - 1000);
 
     const [logged] = await t.db.select().from(auditLog).where(eq(auditLog.action, "opening_balance.corrected"));
     assert.ok(logged);

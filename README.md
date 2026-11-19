@@ -237,7 +237,10 @@ changing how money, permissions or the history log work.
     owes; a wrong balance is fixed with **Corregir** and a written reason,
     which keeps the old one, until the first month is closed; it needs no
     approval of its own, because the first month close shows it and already
-    takes a second person. See "Trying Saldo de la junta" below.
+    takes a second person. **Efectivo en caja** and **En el banco** take
+    up to L 999,999,999.99, since nobody knows how much the box or the
+    account will one day hold (owner, 19 November 2026); every other money
+    field still stops at L 99,999.99. See "Trying Saldo de la junta" below.
   - Next: the month close (Preparar cierre, Aprobar cierre), which starts
     from the opening balance.
 
@@ -594,6 +597,8 @@ statement and a receipt never share a number.
 1. On Inicio, tap **Saldo de la junta**. Before anything is entered it asks
    for **Mes en que empieza**, **Efectivo en caja** and **En el banco**.
    Type 0 where there is nothing. A month that has not come yet is refused.
+   Each amount takes up to nine digits before the point: type 2500000 and
+   it shows 2,500,000.
 2. **Guardar saldo inicial**. The screen shows **Dinero ahora**: the same
    two amounts, because nothing has come in since.
 3. Record a payment in cash (Cobrar), a donation by transfer (Otro ingreso)
