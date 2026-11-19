@@ -39,7 +39,16 @@ changing how money, permissions or the history log work.
   Sectores. Its "done when" test (the secretary types in 10 paper forms from
   a phone without help) has not been run yet. Owner decision of 4 November
   2026: phones carry a country code, chosen from a list of nine, with Honduras
-  (+504) first.
+  (+504) first. Owner decision of 19 November 2026: the **identity number and
+  the references are optional**. A family may not want to give its ID, and
+  whoever registers may not write easily; the president asks for them later
+  where the board needs them. Both can be added from the household file
+  (Corregir). With no ID there is nothing to check for a duplicate, so
+  "Agregar otra vivienda" from a person's file adds the house to that person
+  by who they are, not by their ID. An ID that is typed must still have 13
+  numbers, and one ID still belongs to one person (the database refuses it
+  twice). This changes the App Plan's Census table, which says both are
+  required.
 - **Phase 2 (Finances): started.** Its pieces, in build order, are ticked off
   under "What comes next" in the [app plan](docs/app-plan.md).
   - **Fees in Configuración: built.** The base monthly fee, the late fee
@@ -652,7 +661,11 @@ screen shows.
    normal flow; "Copiar una hoja de papel" is paper entry mode, which asks
    first for the date and number written on the paper form.
 4. Type the same identity number twice: the second time the app opens that
-   person instead, and offers "Agregar otra vivienda".
+   person instead, and offers "Agregar otra vivienda". Leave the identity
+   empty and tap **Siguiente**, and leave **Referencias** empty too: the
+   family is saved, and its file says "Identidad: No la dio" and
+   "Referencias: Sin referencias". **Corregir datos de la persona** adds
+   the ID later; on that file, **Agregar otra vivienda** works without one.
 5. On the phone step, the box beside the number holds the country: it starts
    on Honduras (+504), and tapping it opens the list. The length is checked for
    each country. "No tiene teléfono" and "Prefiere no darlo" register a family

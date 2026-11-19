@@ -50,11 +50,12 @@ const idNumber = z
 const gender = z.string().trim().min(1).max(40);
 const phoneMissing = z.enum(PHONE_MISSING_CODES, { message: "Elija por qué no hay teléfono." });
 const NO_PHONE_MESSAGE = "Escriba el teléfono, o elija «No tiene teléfono» o «Prefiere no darlo».";
+/** How to find the house. Optional (owner, 19 November 2026): left blank, it is kept as none. */
 const references = z
   .string()
   .trim()
-  .min(3, "Escriba cómo encontrar la vivienda.")
-  .max(500, "Las referencias son demasiado largas.");
+  .max(500, "Las referencias son demasiado largas.")
+  .transform((text) => text || null);
 const gps = z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) });
 const sectorId = z.number({ message: "Elija un sector." }).int().positive("Elija un sector.");
 const waterConnection = z.enum(WATER_CONNECTION_CODES, { message: "Elija el tipo de conexión de agua." });
@@ -83,7 +84,8 @@ const registerBody = z.object({
   /** Name and phone may be left out only when adding a house to a person already registered. */
   person: z.object({
     fullName: fullName.optional(),
-    idNumber,
+    /** Optional (owner, 19 November 2026): a family may not want to give it. */
+    idNumber: idNumber.optional(),
     phone: phoneSchema.optional(),
     /** Instead of a phone: the family has none, or prefers not to give it. */
     phoneMissing: phoneMissing.optional(),
@@ -91,9 +93,11 @@ const registerBody = z.object({
   }),
   /** "Agregar otra vivienda": the ID is already registered and this is another house of theirs. */
   addToExistingPerson: z.boolean().default(false),
+  /** "Agregar otra vivienda" from a person's file: that person, ID or not. */
+  existingPersonId: z.uuid().optional(),
   household: z.object({
     sectorId,
-    references,
+    references: references.optional(),
     gps: gps.optional(),
     waterConnection,
     relation,
@@ -110,7 +114,7 @@ const listQuery = z.object({
 const householdPatch = z
   .object({
     sectorId,
-    references,
+    references: references.nullable(),
     gps: gps.nullable(),
     waterConnection,
     relation,
@@ -269,8 +273,18 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
       }
 
       // One person, one row: an ID already registered opens that person's file instead.
-      const existing = tx.select().from(people).where(eq(people.idNumber, body.person.idNumber)).get();
-      if (existing && !body.addToExistingPerson) {
+      // With no ID there is nothing to compare, unless the house is added from the person's own file.
+      const { idNumber: givenId } = body.person;
+      let existing: typeof people.$inferSelect | undefined;
+      if (body.existingPersonId) {
+        existing = tx.select().from(people).where(eq(people.id, body.existingPersonId)).get();
+        if (!existing) {
+          throw PERSON_NOT_FOUND;
+        }
+      } else if (givenId) {
+        existing = tx.select().from(people).where(eq(people.idNumber, givenId)).get();
+      }
+      if (existing && !body.addToExistingPerson && !body.existingPersonId) {
         throw new HttpError(409, "person_exists", `Esta identidad ya está registrada a nombre de ${existing.fullName}.`, {
           person: { id: existing.id, fullName: existing.fullName, households: householdsOf(tx, existing.id) },
         });
@@ -287,7 +301,7 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
         person = {
           id: newId(),
           fullName: capitalizeName(body.person.fullName),
-          idNumber: body.person.idNumber,
+          idNumber: givenId ?? null,
           phone: body.person.phone ?? null,
           phoneMissing: body.person.phone ? null : body.person.phoneMissing!,
           gender: body.person.gender ?? null,
@@ -309,7 +323,7 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
         id: newId(),
         code,
         sectorId: sector.id,
-        references: body.household.references,
+        references: body.household.references ?? null,
         gpsLat: body.household.gps?.lat ?? null,
         gpsLng: body.household.gps?.lng ?? null,
         waterConnection: body.household.waterConnection,

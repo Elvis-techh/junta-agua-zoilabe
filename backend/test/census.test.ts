@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
 import { and, desc, eq } from "drizzle-orm";
 
+import { createDb } from "../src/db/client.js";
+import { MIGRATIONS_FOLDER, runMigrations } from "../src/db/migrations.js";
 import { auditLog, feeRates, householdFees, households, people, rolePermissions } from "../src/db/schema.js";
 import { verifyChain } from "../src/lib/audit.js";
 import { capitalizeName, householdCode, maskDigits } from "../src/lib/census.js";
@@ -206,6 +211,77 @@ describe("census", () => {
       t.db.update(people).set({ phoneMissing: null }).where(eq(people.id, personId)),
       /people_phone_or_reason/,
     );
+  });
+
+  it("registers a family without an ID number or references, and the ID can be added later (owner, 19 November 2026)", async () => {
+    const register = (person: object, references?: string) => {
+      const body = registration();
+      return call(secretary.cookie, "POST", "/api/census/households", {
+        ...body,
+        person,
+        household: { ...body.household, ...(references === undefined ? { references: undefined } : { references }) },
+      });
+    };
+
+    // Two families with no ID: neither is taken for the other.
+    const first = await register({ fullName: "marta sin identidad", phone: "98887777" });
+    assert.equal(first.statusCode, 201, first.body);
+    const second = await register({ fullName: "pablo sin identidad", phoneMissing: "declined" }, "   ");
+    assert.equal(second.statusCode, 201, second.body);
+
+    const file = await call(secretary.cookie, "GET", `/api/census/households/${first.json().household.id}`);
+    assert.equal(file.json().household.owner.idNumber, null);
+    assert.equal(file.json().household.references, null);
+    const [blank] = await t.db.select().from(households).where(eq(households.id, second.json().household.id));
+    assert.equal(blank?.references, null, "blank references are kept as none, not as spaces");
+
+    // The list and the search still work with nothing to search in.
+    const found = await call(secretary.cookie, "GET", `/api/census/households?q=${encodeURIComponent("marta")}`);
+    assert.deepEqual(found.json().households.map((row: { ownerName: string }) => row.ownerName), ["Marta Sin Identidad"]);
+
+    // A wrong ID is still refused: it is optional, not anything at all.
+    const wrong = await register({ fullName: "Mal Escrito", idNumber: "0801", phoneMissing: "no_phone" });
+    assert.equal(wrong.statusCode, 400);
+    assert.match(wrong.json().message, /13 números/);
+
+    // "Agregar otra vivienda" from the file of someone with no ID: by who they are, not by an ID.
+    const personId = file.json().household.owner.personId;
+    const another = await call(secretary.cookie, "POST", "/api/census/households", {
+      ...registration(),
+      person: {},
+      existingPersonId: personId,
+    });
+    assert.equal(another.statusCode, 201, another.body);
+    assert.equal(another.json().person.fullName, "Marta Sin Identidad");
+    const owners = await call(secretary.cookie, "GET", `/api/census/households/${another.json().household.id}`);
+    assert.equal(owners.json().household.owner.personId, personId);
+    const missing = await call(secretary.cookie, "POST", "/api/census/households", {
+      ...registration(),
+      person: {},
+      existingPersonId: randomUUID(),
+    });
+    assert.equal(missing.statusCode, 404);
+
+    // The ID can be added later from the file, and is then checked against everyone else's.
+    const idNumber = nextIdNumber();
+    const patch = (payload: object) => call(secretary.cookie, "PATCH", `/api/census/people/${personId}`, payload);
+    assert.equal((await patch({ idNumber })).statusCode, 200);
+    const [added] = await t.db.select().from(people).where(eq(people.id, personId));
+    assert.equal(added?.idNumber, idNumber);
+    const otherId = second.json().household.id;
+    const otherFile = await call(secretary.cookie, "GET", `/api/census/households/${otherId}`);
+    const taken = await call(secretary.cookie, "PATCH", `/api/census/people/${otherFile.json().household.owner.personId}`, { idNumber });
+    assert.equal(taken.statusCode, 409);
+
+    // References can be written later, and taken away again.
+    const editHouse = (payload: object) => call(secretary.cookie, "PATCH", `/api/census/households/${otherId}`, payload);
+    assert.equal((await editHouse({ references: "Detrás de la escuela" })).statusCode, 200);
+    assert.equal((await editHouse({ references: "" })).statusCode, 200);
+    const [cleared] = await t.db.select().from(households).where(eq(households.id, otherId));
+    assert.equal(cleared?.references, null);
+
+    // The database itself still refuses an ID that is not 13 digits.
+    await rejectsWithDbError(t.db.update(people).set({ idNumber: "12345" }).where(eq(people.id, personId)), /people_id_number_digits/);
   });
 
   it("stores the paper form's date and number beside the date typed in", async () => {
@@ -478,5 +554,55 @@ describe("census", () => {
 
     const [entry] = await t.db.select().from(auditLog).where(eq(auditLog.action, "sector.created"));
     assert.match(entry!.summary, /Ana Admin \(Administrador\) agregó el sector El Centro/);
+  });
+});
+
+describe("the migration that makes the ID number and references optional", () => {
+  it("keeps every family, house and owner as they were, guarded, and then takes one with neither", () => {
+    // A database as it stood before it: every migration until this one.
+    const folder = mkdtempSync(join(tmpdir(), "zoilabe-migrations-"));
+    cpSync(MIGRATIONS_FOLDER, folder, { recursive: true });
+    const journalPath = join(folder, "meta", "_journal.json");
+    const journal = JSON.parse(readFileSync(journalPath, "utf8")) as { entries: Array<{ tag: string }> };
+    const at = journal.entries.findIndex((entry) => entry.tag.endsWith("_optional_id_and_references"));
+    assert.ok(at > 0);
+    journal.entries = journal.entries.slice(0, at);
+    writeFileSync(journalPath, JSON.stringify(journal));
+    const { db, sqlite } = createDb(":memory:");
+    runMigrations(db, sqlite, folder);
+    rmSync(folder, { recursive: true, force: true });
+
+    sqlite.exec(`
+      INSERT INTO sectors (name) VALUES ('El Centro');
+      INSERT INTO people (id, full_name, id_number, phone_missing) VALUES ('p1', 'Juan Pérez', '0801199012345', 'no_phone');
+      INSERT INTO households (id, code, sector_id, "references", water_connection, status, submission_id)
+        VALUES ('h1', 'Z-0001', 1, 'Frente a la iglesia', 'connected', 'active', 's1');
+      INSERT INTO household_owners (id, household_id, person_id, relation, starts_on) VALUES ('o1', 'h1', 'p1', 'owner', '2026-11-01');
+    `);
+
+    runMigrations(db, sqlite);
+
+    assert.deepEqual(sqlite.prepare("SELECT id, full_name, id_number FROM people").all(), [
+      { id: "p1", full_name: "Juan Pérez", id_number: "0801199012345" },
+    ]);
+    assert.deepEqual(sqlite.prepare('SELECT id, code, "references" FROM households').all(), [
+      { id: "h1", code: "Z-0001", references: "Frente a la iglesia" },
+    ]);
+    assert.equal((sqlite.prepare("SELECT count(*) AS n FROM household_owners").get() as { n: number }).n, 1);
+    assert.deepEqual(sqlite.pragma("foreign_key_check"), []);
+    // Still guarded: nothing is deleted.
+    assert.throws(() => sqlite.exec("DELETE FROM people"), /nothing is deleted/);
+    assert.throws(() => sqlite.exec("DELETE FROM households"), /nothing is deleted/);
+
+    // Now two people may have no ID, but one ID still belongs to one person.
+    sqlite.exec(`
+      INSERT INTO people (id, full_name, phone_missing) VALUES ('p2', 'Marta', 'declined'), ('p3', 'Pablo', 'declined');
+      INSERT INTO households (id, code, sector_id, water_connection, status, submission_id)
+        VALUES ('h2', 'Z-0002', 1, 'connected', 'active', 's2');
+    `);
+    assert.throws(
+      () => sqlite.exec("INSERT INTO people (id, full_name, id_number, phone_missing) VALUES ('p4', 'Otro', '0801199012345', 'declined')"),
+      /UNIQUE/,
+    );
   });
 });
