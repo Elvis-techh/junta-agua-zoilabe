@@ -16,6 +16,7 @@ import { HistoryScreen } from "../screens/History.tsx";
 import { HomeScreen } from "../screens/Home.tsx";
 import { HouseholdScreen } from "../screens/Household.tsx";
 import { IncomeScreen } from "../screens/Income.tsx";
+import { ClosedMonthScreen, MonthCloseScreen } from "../screens/MonthClose.tsx";
 import { OpeningBalanceScreen } from "../screens/OpeningBalance.tsx";
 import type { RegisterPreset } from "../screens/Register.tsx";
 import { RegisterScreen } from "../screens/Register.tsx";
@@ -115,6 +116,12 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
     }
     if (route === "/finanzas/saldo" && can("finance:view")) {
       return <OpeningBalanceScreen canRecord={can("finance:record")} canCorrect={can("finance:reverse")} onOpen={go} />;
+    }
+    if (route === "/finanzas/cierre" && can("finance:view")) {
+      return <MonthCloseScreen abilities={{ meId: me.id, canPrepare: can("month:prepare"), canApprove: can("month:approve") }} onOpen={go} />;
+    }
+    if (route.startsWith("/finanzas/cierre/") && can("finance:view")) {
+      return <ClosedMonthScreen key={route} month={route.slice("/finanzas/cierre/".length)} onOpen={go} />;
     }
     // Otro ingreso: from Inicio it finds the house in the census (or none); from Cobrar or a house's file, by id.
     if (route === "/finanzas/ingreso" && can("finance:record") && can("finance:view") && can("census:view")) {

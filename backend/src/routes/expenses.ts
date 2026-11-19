@@ -293,8 +293,9 @@ export const expenseRoutes: FastifyPluginAsync<{ timeZone: string; receiptsPath:
             monthId: openMonthFor(
               tx,
               body.occurredOn,
-              (first) =>
-                `El mes de ${monthName(first)} ya está cerrado. Registre el gasto con la fecha de hoy y escriba en la nota de qué fecha es.`,
+              (first, status) =>
+                `El mes de ${monthName(first)} ${status === "prepared" ? "está esperando que aprueben su cierre" : "ya está cerrado"}. ` +
+                "Registre el gasto con la fecha de hoy y escriba en la nota de qué fecha es.",
             ),
             occurredOn: body.occurredOn,
             amountCentavos: body.amountCentavos,

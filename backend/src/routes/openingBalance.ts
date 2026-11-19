@@ -6,8 +6,8 @@
  *  - The treasurer enters the cash in the box and the money in the bank on
  *    the first day of a month: the month the app's money begins.
  *  - A wrong figure is corrected, never edited: a new entry that points to
- *    the one it replaces, with a written reason. Once any month is closed it
- *    is locked.
+ *    the one it replaces, with a written reason. Once a month's close is
+ *    prepared or done it is locked: every close counts from it.
  *  - No approval of its own: the first month close shows it, and that close
  *    already takes a second person.
  */
@@ -20,7 +20,7 @@ import { newId } from "../auth/session.js";
 import { inTransaction } from "../db/client.js";
 import { openingBalances } from "../db/schema.js";
 import { recordAudit } from "../lib/audit.js";
-import { firstClosedMonth, moneyNow, openingBalance, openingEntries } from "../lib/balance.js";
+import { firstLockedMonth, moneyNow, openingBalance, openingEntries } from "../lib/balance.js";
 import { formatLempiras } from "../lib/census.js";
 import { firstOfMonth, monthName } from "../lib/fees.js";
 import { HttpError, parse } from "../lib/http.js";
@@ -84,7 +84,7 @@ export const openingBalanceRoutes: FastifyPluginAsync<{ timeZone: string }> = as
     opening: openingBalance(app.db),
     entries: openingEntries(app.db),
     money: moneyNow(app.db),
-    closedMonth: firstClosedMonth(app.db),
+    lockedMonth: firstLockedMonth(app.db),
   }));
 
   app.post("/finance/opening-balance", record, async (request) => {
@@ -116,12 +116,14 @@ export const openingBalanceRoutes: FastifyPluginAsync<{ timeZone: string }> = as
     notLater(body.month);
 
     return inTransaction(app.db, (tx) => {
-      const closed = firstClosedMonth(tx);
-      if (closed) {
+      const locked = firstLockedMonth(tx);
+      if (locked) {
         throw new HttpError(
           409,
           "month_closed",
-          `El mes de ${monthName(closed)} ya está cerrado, así que el saldo inicial ya no se puede corregir.`,
+          locked.status === "closed"
+            ? `El mes de ${monthName(locked.month)} ya está cerrado, así que el saldo inicial ya no se puede corregir.`
+            : `El cierre de ${monthName(locked.month)} está preparado: para corregir el saldo inicial, primero lo tienen que devolver.`,
         );
       }
       const current = openingBalance(tx);

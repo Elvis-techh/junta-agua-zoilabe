@@ -241,14 +241,35 @@ changing how money, permissions or the history log work.
     close; entries dated before the opening month (typed in from the paper
     book) are already inside the balance and count only for what each house
     owes; a wrong balance is fixed with **Corregir** and a written reason,
-    which keeps the old one, until the first month is closed; it needs no
-    approval of its own, because the first month close shows it and already
+    which keeps the old one, until the first month's close is prepared; it
+    needs no approval of its own, because the first month close shows it and already
     takes a second person. **Efectivo en caja** and **En el banco** take
     up to L 999,999,999.99, since nobody knows how much the box or the
     account will one day hold (owner, 19 November 2026); every other money
     field still stops at L 99,999.99. See "Trying Saldo de la junta" below.
-  - Next: the month close (Preparar cierre, Aprobar cierre), which starts
-    from the opening balance.
+  - **Month close (Cierre del mes): built.** Owner decisions of 19
+    November 2026. The treasurer's **Preparar cierre** button (the
+    president's **Aprobar cierre**, **Cierre del mes** for everyone else)
+    opens the oldest month not yet closed, once it is over, starting with
+    the opening balance's month; months close in order, and a month with no
+    entries is closed too. It shows Caja and Banco side by side: at the
+    start of the month, what came in, what went out, and what should be
+    there ("Debe haber"), with what each category added up to under **Ver
+    de qué es**. Only the cash is counted: the treasurer types **Efectivo
+    contado en caja**; if it is not what the app expects, it asks **Por qué
+    no cuadra**, and the month shows a **Faltante** or **Sobrante de caja**.
+    From then on the cash counts from what was counted, in the next month's
+    figures and in Saldo de la junta; the bank is checked against its
+    statement by eye. Someone else then taps **Aprobar cierre** (the server
+    and the database refuse whoever prepared it), or **Devolver** with a
+    reason, and the month opens again with that reason shown. While a month
+    is prepared or closed, an entry dated in it is refused ("Registre el
+    pago con la fecha de hoy y escriba en la nota de qué fecha es"), and the
+    opening balance cannot be corrected; a reversal is dated the day it is
+    made, so an entry of a closed month can still be undone. Closed months
+    are listed below, each with its figures. Each step is in Historial,
+    under Finanzas. See "Trying Cierre del mes" below.
+  - Next: Phase 2's "done when" test, once the board says how to run it.
 
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
@@ -622,8 +643,46 @@ statement and a receipt never share a number.
    … (antes …)", with the reason.
 
 Looking needs "Ver finanzas"; entering needs "Registrar pagos y gastos";
-correcting needs "Corregir un registro de dinero". Once a month is closed
-(month close is not built yet), Corregir is gone and the server refuses it.
+correcting needs "Corregir un registro de dinero". Once a month's close is
+prepared (see "Trying Cierre del mes"), Corregir is gone and the server
+refuses it.
+
+### Trying Cierre del mes
+
+With the opening balance entered for a month at least two months ago (say
+August 2026, with L 2,500 in cash), and in that month a donation in cash
+(L 1,200) and an expense in cash (L 350), signed in as the treasurer:
+
+1. On Inicio, tap **Preparar cierre**. It opens on August 2026, marked
+   "Cierre abierto": Al empezar 2,500.00, Entró 1,200.00, Salió 350.00,
+   Debe haber 3,350.00 in the Caja column. **Ver de qué es** lists
+   "Entró: Donación …" and "Salió: Cloro …".
+2. Type 3300 in **Efectivo contado en caja**. It says "Faltante de caja:
+   L 50.00" and asks **Por qué no cuadra**. **Preparar cierre** without a
+   reason is refused; write one and tap it again. The month is now "Cierre
+   por aprobar", with rows **Contado** and **Faltante** in the figures.
+3. Try to record a payment dated in August: it is refused, "está esperando
+   que aprueben su cierre". Saldo de la junta no longer offers Corregir.
+4. **Aprobar cierre** is not offered to the treasurer ("Usted lo preparó: lo
+   debe aprobar otra persona"). Sign in as the president and tap **Aprobar
+   cierre** on Inicio: it shows the same figures, the reason, **Aprobar
+   cierre** and **Devolver**.
+5. Tap **Devolver**, write why: the month is open again, and the treasurer
+   sees "Lo devolvió …" with the reason. Prepare it again, and approve it as
+   the president: "Mes de agosto de 2026 cerrado." It is listed under
+   **Meses cerrados**; tap it to see its figures and who prepared and
+   approved it.
+6. The next month (September) opens with Al empezar 3,300.00 in Caja: the
+   cash counted, not the 3,350.00 the app expected. Saldo de la junta shows
+   the same.
+7. Undo August's donation (Anular, from Otro ingreso): it is allowed, dated
+   today, and comes off the money now; August's figures do not move.
+8. In **Historial**, under Finanzas: "… preparó el cierre de agosto de
+   2026: efectivo contado L 3,300.00, la aplicación esperaba L 3,350.00
+   (faltan L 50.00)", "… devolvió el cierre …" and "… aprobó el cierre …".
+
+Looking needs "Ver finanzas"; preparing needs "Preparar el cierre del mes";
+approving and sending back need "Aprobar el cierre del mes".
 
 ### Trying Quién debe
 

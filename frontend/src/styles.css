@@ -938,6 +938,35 @@ textarea:focus-visible {
   gap: 4px;
 }
 
+/* Cierre del mes: Caja and Banco side by side, the amounts lined up on the right. */
+.figures {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2px 10px;
+  font-size: 0.95rem;
+}
+
+.figures.with-other {
+  grid-template-columns: auto repeat(3, minmax(0, 1fr));
+}
+
+.figures .head,
+.figures .amount {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.figures .head,
+.figures .total {
+  font-weight: 700;
+}
+
+.figures .total {
+  border-top: 1px solid var(--line);
+  padding-top: 4px;
+}
+
 .clip {
   overflow: hidden;
   text-overflow: ellipsis;

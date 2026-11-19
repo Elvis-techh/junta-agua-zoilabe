@@ -13,7 +13,9 @@ export type Route =
   | "/finanzas/gasto"
   | "/finanzas/quien-debe"
   | "/finanzas/saldo"
+  | "/finanzas/cierre"
   | `/censo/vivienda/${string}`
+  | `/finanzas/cierre/${string}`
   | `/finanzas/cobrar/${string}`
   | `/finanzas/ingreso/${string}`
   | `/finanzas/estado/${string}`;
@@ -32,11 +34,15 @@ export function routeOf(path: string): Route {
     "/finanzas/gasto",
     "/finanzas/quien-debe",
     "/finanzas/saldo",
+    "/finanzas/cierre",
   ];
   if ((fixed as string[]).includes(path)) {
     return path as Route;
   }
   if (/^\/(censo\/vivienda|finanzas\/cobrar|finanzas\/ingreso|finanzas\/estado)\/[0-9a-f-]{36}$/.test(path)) {
+    return path as Route;
+  }
+  if (/^\/finanzas\/cierre\/\d{4}-(0[1-9]|1[0-2])-01$/.test(path)) {
     return path as Route;
   }
   return "/";
@@ -63,7 +69,10 @@ const B = {
   resumen: { label: "Resumen del mes", icon: "chart" },
   quienDebe: { label: "Quién debe", icon: "alert", route: "/finanzas/quien-debe", permission: "finance:view" },
   saldo: { label: "Saldo de la junta", icon: "chart", route: "/finanzas/saldo", permission: "finance:view" },
-  aprobar: { label: "Aprobar cierre", icon: "check" },
+  // One screen, three names: what each role goes there to do (owner, 19 November 2026).
+  cierre: { label: "Cierre del mes", icon: "check", route: "/finanzas/cierre", permission: "finance:view" },
+  preparar: { label: "Preparar cierre", icon: "check", route: "/finanzas/cierre", permission: "month:prepare" },
+  aprobar: { label: "Aprobar cierre", icon: "check", route: "/finanzas/cierre", permission: "month:approve" },
   reportes: { label: "Reportes", icon: "print" },
   historial: { label: "Historial", icon: "clock", route: "/historial", permission: "log:view" },
   usuarios: { label: "Usuarios", icon: "people", route: "/usuarios", permission: "users:manage" },
@@ -74,7 +83,7 @@ const B = {
 /** The home screen's large buttons for each role (App Plan, "Screens and navigation"). */
 export const HOME_BUTTONS: Record<string, HomeButton[]> = {
   secretario: [B.registrar, B.buscar, B.lista],
-  tesorero: [B.cobrar, B.gasto, B.resumen, B.quienDebe],
+  tesorero: [B.cobrar, B.gasto, B.resumen, B.quienDebe, B.preparar],
   presidente: [B.aprobar, B.resumen, B.historial, B.usuarios],
   vicepresidente: [B.aprobar, B.resumen, B.historial, B.usuarios],
   fiscal: [B.resumen, B.historial, B.reportes],

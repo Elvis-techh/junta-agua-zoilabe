@@ -11,7 +11,7 @@ describe("home buttons", () => {
     }
     assert.deepEqual(
       HOME_BUTTONS.tesorero?.map((b) => b.label),
-      ["Cobrar", "Gasto", "Resumen del mes", "Quién debe"],
+      ["Cobrar", "Gasto", "Resumen del mes", "Quién debe", "Preparar cierre"],
     );
   });
 
