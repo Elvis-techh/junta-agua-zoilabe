@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { HOME_BUTTONS, homeButtons, navigation, otherButtons, routeOf, tabOf } from "../src/home.ts";
+import { HOME_BUTTONS, homeButtons, homeSections, navigation, otherButtons, routeOf, tabOf } from "../src/home.ts";
 import { ROLES } from "../src/roles.ts";
 
 describe("home buttons", () => {
@@ -38,6 +38,35 @@ describe("home buttons", () => {
     for (const label of ["Usuarios", "Configuración", "Censo", "Resumen del mes"]) {
       assert.ok(!forAdmin.includes(label), label);
     }
+  });
+
+  it("puts Usuarios, Permisos and Configuración last on Inicio, for every role (owner, 19 November 2026)", () => {
+    const everything = ["census:view", "census:edit", "finance:view", "finance:record", "log:view", "users:manage", "settings:edit"];
+    const setup = ["Usuarios", "Permisos", "Configuración"];
+
+    // The administrator's usual buttons are all setup ones, so the other tasks come first.
+    const admin = homeSections("administrador", everything);
+    assert.deepEqual(admin.own, []);
+    assert.deepEqual(admin.setup.map((b) => b.label), setup);
+    assert.ok(admin.others.length > 0);
+    assert.equal(admin.others[0]?.label, "Registrar familia");
+
+    // The treasurer's own work stays on top, unchanged.
+    const treasurer = homeSections("tesorero", everything);
+    assert.deepEqual(treasurer.own.map((b) => b.label), ["Cobrar", "Gasto", "Resumen del mes", "Quién debe"]);
+    assert.deepEqual(treasurer.setup.map((b) => b.label), ["Usuarios", "Configuración"]);
+
+    for (const role of ROLES) {
+      const sections = homeSections(role.code, everything);
+      assert.ok(![...sections.own, ...sections.others].some((b) => setup.includes(b.label)), role.code);
+      // Nothing lost on the way: every button the role could open before is still there, once.
+      const before = [...homeButtons(role.code, everything), ...otherButtons(role.code, everything)].map((b) => b.label);
+      const after = [...sections.own, ...sections.others, ...sections.setup].map((b) => b.label);
+      assert.deepEqual([...after].sort(), [...before].sort(), role.code);
+    }
+
+    // Without the permission, no setup button and no empty section.
+    assert.deepEqual(homeSections("tesorero", ["finance:record"]).setup, []);
   });
 
   it("hides a button whose permission the role no longer has", () => {
