@@ -79,7 +79,8 @@ changing how money, permissions or the history log work.
     block: the entry saves either way. Who the registrar said it is not is
     kept in Historial with the registration. It needs signal, like the
     check by ID: with none, the entry is saved on the phone without it.
-    It does not know a name written surname first.
+    It does not know a name written surname first. The owner tried it on the
+    test copy on 19 November 2026 and found it good.
 - **Phase 2 (Finances): started.** Its pieces, in build order, are ticked off
   under "What comes next" in the [app plan](docs/app-plan.md).
   - **Fees in Configuración: built.** The base monthly fee, the late fee
@@ -191,9 +192,12 @@ changing how money, permissions or the history log work.
     Configuración's late fee for that month, and it is paid by a "Mora" entry
     for that month in Otro ingreso. The household's file shows it under **Lo
     que debe** ("Debe la mora de octubre de 2026: L 50.00."), and **Quién
-    debe** (the treasurer's home button, and Cobrar) lists the active houses
-    with water that owe, the most owed first, each month with its fee left and
-    its late fee. See "Trying Quién debe" below.
+    debe** (the treasurer's home button, and Cobrar) lists every house that
+    owes, the most owed first, each month with its fee left and its late fee.
+    Owner decision of 19 November 2026: a house that is inactive or "Sin
+    conexión" today is listed too, marked "Inactiva" or "Sin conexión", for
+    the months it owes from when it had service (until then only active
+    houses with water were listed). See "Trying Quién debe" below.
   - **Status history: built.** Owner decisions of 14 November 2026: each
     house keeps when it was active or inactive, and with or without water
     (**Estado y agua** on its file). **Desactivar**, **Reactivar** and a new
@@ -205,8 +209,9 @@ changing how money, permissions or the history log work.
     ended. So a house inactive since February owes nothing from then on, and
     still owes the months before. Houses registered before the history
     existed start active since they were registered, and those inactive now
-    are inactive since their last "desactivó" in Historial. See "Trying the
-    status history" below.
+    are inactive since their last "desactivó" in Historial. The owner tried
+    it on the test copy on 19 November 2026 and found it good. See "Trying
+    the status history" below.
   - **Expenses (Gasto): built.** The treasurer's **Gasto** button: what kind
     of expense (the categories of Module 2), who was paid, the amount and
     date, how it was paid, and a photo of the receipt or invoice, then "¿Está
@@ -654,9 +659,11 @@ typed in through Cobrar:
    the list. **Anular** it, and it comes back.
 6. In **Configuración** → **Plazo de pago**, set an earlier day: a month paid
    after that day now owes its late fee.
-7. Make a house inactive, or set its water to "Sin conexión": it leaves the
-   list. Its months from that date are not charged (see "Trying the status
-   history").
+7. Make a house that owes old months inactive, or set its water to "Sin
+   conexión", from the first day of this month: it stays on the list, marked
+   **Inactiva** or **Sin conexión**, with the months it owes from before.
+   Its months from that date are not charged (see "Trying the status
+   history"). A house that owes nothing is not listed, whatever its status.
 
 ### Trying the status history
 
@@ -674,7 +681,8 @@ months, and the month in Configuración → Mora set before them:
    active when its deadline ended.
 4. **Corregir datos de la vivienda**, change **Conexión de agua** to "Sin
    conexión": it asks since when. The months from that date drop out of **Lo
-   que debe** and **Quién debe**.
+   que debe** and **Quién debe** (where the house stays, marked, while it
+   owes older months).
 5. Each change is in **Historial** with its date ("desactivó la vivienda …
    desde el 1 de octubre de 2026"), and the file keeps every entry: nothing
    is changed or deleted.
