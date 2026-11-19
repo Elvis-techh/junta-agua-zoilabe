@@ -35,7 +35,8 @@ export interface BalanceData {
   opening: OpeningBalance | null;
   entries: OpeningEntry[];
   money: MoneyNow | null;
-  closedMonth: string | null;
+  /** The first month whose close is prepared or done: from then on the opening balance is not corrected. */
+  lockedMonth: { month: string; status: "prepared" | "closed" } | null;
 }
 
 export interface Figures {

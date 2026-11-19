@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 270, taken 2026-11-19.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 275, taken 2026-11-19.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -125,7 +125,7 @@ Every entry also carries a date, an optional note and the name of the person who
 
 1. The treasurer records entries during the month, each with the number of the paper receipt handed to the payer. A digital receipt with a "Compartir por WhatsApp" button is created only when someone asks for one.
 2. At month end a board member, usually the treasurer, taps "Preparar cierre". The app shows opening balance, income, expenses and closing balance, and asks for the cash actually counted. A month can be prepared once it is over, oldest first. A difference in the cash needs a written reason, shows as "Faltante de caja" or "Sobrante de caja", and the next month starts from the cash counted (decided 19 November).
-3. Another board member, usually the president, reviews the figures and any cash difference, then taps "Aprobar cierre", or "Devolver" with a reason so it can be fixed and prepared again.
+3. Another board member, usually the president, never the one who prepared it, reviews the figures and any cash difference, then taps "Aprobar cierre", or "Devolver" with a reason so it can be fixed and prepared again.
 4. The month locks. Nothing in it can be added or changed; a late item goes into the next month with a note.
 5. The fiscal reviews the closed month and a guest sees the summary if their invitation allows it.
 
@@ -430,6 +430,8 @@ Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fee
 - [x] The name check in Registrar familia: a warning about names like one already registered, which the registrar can override. The owner tried it on the test copy and found it good (PR #49, merged on 19 November 2026).
 - [x] Saldo de la junta takes cash and bank above L 99,999.99 (PR #51, merged on 19 November 2026).
 - [x] A way back at the top of every screen, "‹ Inicio" or the screen it came from, for those who do not know the phone's own back button (PR #52, merged on 19 November 2026).
+- [x] Every amount field takes up to L 999,999,999.99, on the phone and on the server (PR #53, merged on 19 November 2026).
+- [x] "Quién debe" lists every house that owes, marked "Inactiva" or "Sin conexión" when it has no service today (PR #54, merged on 19 November 2026).
 
 **What comes next**
 
@@ -440,8 +442,8 @@ The name check (PR #49), Saldo de la junta above L 99,999.99 (PR #51), a way bac
 **Where to pick up next (19 November 2026)**
 
 - **Done: expenses, "Gasto"**, merged in PR #41 on 15 November 2026 ("Trying Gasto" in the README). Decided by the owner on 15 November: the photo is asked for every time, and an expense with no paper is saved only with "No hay recibo" and a written reason, marked "Sin foto"; Gasto asks how it was paid, as Cobrar does; the invoice number is optional, and the same number from the same supplier is flagged, not blocked. Photos stay on the computer, beside the database file, and are not in the nightly backup yet.
-- **Open for the owner, not code:** the owner tried the status history and the name check on 19 November and found both good. To try on the test copy now: every amount up to L 999,999,999.99 (PR #53), Quién debe listing every house that owes (PR #54), and the month close (PR #55, "Trying Cierre del mes" in the README).
-- **Next:** once PRs #53 to #55 are merged, every Phase 2 piece is built; then Phase 2's "done when" test, when the board says how to run it. Before real expenses are entered on the droplet, receipt photos must go to the bucket or into the backup.
+- **Open for the owner, not code:** the owner tried the status history and the name check on 19 November and found both good. To try on the test copy now: every amount up to L 999,999,999.99 (PR #53), Quién debe listing every house that owes (PR #54, both merged on 19 November 2026), and the month close (PR #55, "Trying Cierre del mes" in the README).
+- **Next:** once PR #55 is merged, every Phase 2 piece is built; then Phase 2's "done when" test, when the board says how to run it. Before real expenses are entered on the droplet, receipt photos must go to the bucket or into the backup.
 - **Still open for the board:** how to run Phase 2's "done when" test, and the data-separation check on the droplet before the first deployment.
 - **How work goes:** one branch and one pull request per piece, tried on the test copy at prueba-agua.basculacentral.com before merging. The plan snapshot in the repository (docs/app-plan.md) is refreshed from this doc in each pull request.
 
@@ -467,7 +469,7 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - [x] Opening balance, entered once: cash and bank at the start of the month the app's money begins, with "Otro" on its own line (decided 17 November). The phase table does not name it, but Phase 2's test compares balances. Merged in PR #45 on 19 November 2026.
 - [x] Household statements: what a house paid from a month the treasurer chooses and what it owes today, as a picture with a document number, shared from the phone, and as text for the family's WhatsApp chat (decided 15 November). Merged in PR #42 on 15 November 2026.
 - [x] Digital receipts on request, with "Compartir por WhatsApp": a payment or other-income entry as a picture to send, sharing the document count (receipts cover other income too, decided 16 November). Merged in PR #43 on 17 November 2026.
-- [ ] "Quién debe" lists every house that owes, whatever its status today (decided 19 November). Built in PR #54.
+- [x] "Quién debe" lists every house that owes, whatever its status today (decided 19 November). Merged in PR #54 on 19 November 2026.
 - [ ] Month close: "Preparar cierre" with the cash counted, then "Aprobar cierre" or "Devolver" by another person (decided 19 November). Built in PR #55.
 
 **Decisions made on 23 October 2026**
@@ -600,7 +602,7 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - "Quién debe" lists every house that owes money, whatever its status today. A house that is inactive or without connection now still appears, marked as such, with the months it owes from when it was active with water. This replaces the 14 November rule that listed only active, connected houses.
 - A month can be prepared for closing ("Preparar cierre") once it is over, oldest first, starting with the opening balance's month. A month with no entries is closed too, so no month is skipped.
 - Only the cash is counted at month close. If it differs from the app's figure, a written reason is needed; the month shows the difference as "Faltante de caja" or "Sobrante de caja", and the next month starts from the cash counted. The bank is checked against its statement by eye.
-- Whoever approves ("Aprobar cierre") may instead tap "Devolver" with a written reason. The month opens again, to be fixed and prepared again. Entries dated in a month waiting for approval are refused, as in a closed one.
+- Anyone on the board may prepare a close, approve it ("Aprobar cierre") or send it back ("Devolver") with a written reason, the person who prepared it too. The one rule is that whoever prepared a month cannot also approve it. A month sent back opens again, to be fixed and prepared again. Entries dated in a month waiting for approval are refused, as in a closed one.
 
 **Still open**
 

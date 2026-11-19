@@ -18,7 +18,7 @@ import { isTouchScreen } from "../viewport.ts";
  * Saldo de la junta (owner, 17 November 2026): the money the board has now,
  * in the box and in the bank, counted from the opening balance. The
  * treasurer enters that balance once; a wrong one is corrected with a
- * reason until the first month is closed.
+ * reason until the first month's close is prepared.
  */
 export function OpeningBalanceScreen({ canRecord, canCorrect, onOpen }: { canRecord: boolean; canCorrect: boolean; onOpen: Go }) {
   const [data, setData] = useState<BalanceData | null>(null);
@@ -91,8 +91,12 @@ export function OpeningBalanceScreen({ canRecord, canCorrect, onOpen }: { canRec
                 Antes: {openingLine(entry)}.
               </div>
             ))}
-            {data.closedMonth ? (
-              <div className="muted">El mes de {monthLabel(data.closedMonth.slice(0, 7))} ya está cerrado: el saldo inicial ya no se corrige.</div>
+            {data.lockedMonth ? (
+              <div className="muted">
+                {data.lockedMonth.status === "closed"
+                  ? `El mes de ${monthLabel(data.lockedMonth.month.slice(0, 7))} ya está cerrado: el saldo inicial ya no se corrige.`
+                  : `El cierre de ${monthLabel(data.lockedMonth.month.slice(0, 7))} está preparado: el saldo inicial no se corrige mientras no lo devuelvan.`}
+              </div>
             ) : (
               canCorrect && (
                 <div className="row">

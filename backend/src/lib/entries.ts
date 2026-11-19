@@ -34,18 +34,23 @@ export function householdOf(tx: DbOrTx, id: string) {
   return row;
 }
 
-/** The month row an entry dated `occurredOn` belongs to, made when its month has none yet. */
+/**
+ * The month row an entry dated `occurredOn` belongs to, made when its month
+ * has none yet. A month whose close is prepared or done takes no entries
+ * (App Plan, Module 2: "a late item goes into the next month with a note").
+ */
 export function openMonthFor(
   tx: Tx,
   occurredOn: string,
-  closed = (first: string) =>
-    `El mes de ${monthName(first)} ya está cerrado. Registre el pago con la fecha de hoy y escriba en la nota de qué fecha es.`,
+  closed = (first: string, status: "prepared" | "closed") =>
+    `El mes de ${monthName(first)} ${status === "prepared" ? "está esperando que aprueben su cierre" : "ya está cerrado"}. ` +
+    "Registre el pago con la fecha de hoy y escriba en la nota de qué fecha es.",
 ): number {
   const first = firstOfMonth(occurredOn);
   const existing = tx.select().from(months).where(eq(months.month, first)).get();
   if (existing) {
     if (existing.status !== "open") {
-      throw new HttpError(409, "month_closed", closed(first));
+      throw new HttpError(409, "month_closed", closed(first, existing.status));
     }
     return existing.id;
   }

@@ -400,7 +400,16 @@ export const categories = sqliteTable(
   (table) => [uniqueIndex("categories_kind_name_unique").on(table.kind, table.name)],
 );
 
-/** One row per calendar month; `month` is its first day. */
+/**
+ * One row per calendar month; `month` is its first day.
+ *
+ * The month close (owner, 19 November 2026, src/lib/monthClose.ts): someone
+ * prepares it with the cash counted, which is kept beside the cash the app
+ * expected and, when they differ, why; someone else approves it ("closed")
+ * or sends it back ("open" again, with who and why in `returned_*`). The
+ * difference counted minus expected is the month's "Faltante" or "Sobrante
+ * de caja": from a closed month on, the cash counts from what was counted.
+ */
 export const months = sqliteTable(
   "months",
   {
@@ -408,10 +417,15 @@ export const months = sqliteTable(
     month: date("month").notNull(),
     status: text("status", { enum: ["open", "prepared", "closed"] }).notNull(),
     cashCountedCentavos: bigint("cash_counted_centavos"),
+    expectedCashCentavos: bigint("expected_cash_centavos"),
+    cashDifferenceReason: text("cash_difference_reason"),
     preparedBy: uuid("prepared_by").references(() => users.id),
     preparedAt: instant("prepared_at"),
     approvedBy: uuid("approved_by").references(() => users.id),
     approvedAt: instant("approved_at"),
+    returnedBy: uuid("returned_by").references(() => users.id),
+    returnedAt: instant("returned_at"),
+    returnedReason: text("returned_reason"),
     createdAt: createdAt(),
   },
   (table) => [

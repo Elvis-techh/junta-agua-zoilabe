@@ -36,7 +36,7 @@ describe("Saldo de la junta: the opening balance and the money now", () => {
       opening: { id: string; month: string; cashCentavos: number; bankCentavos: number } | null;
       entries: Array<{ id: string; replacesId: string | null; reason: string | null; createdBy: string }>;
       money: { cashCentavos: number; bankCentavos: number; otherCentavos: number; since: string } | null;
-      closedMonth: string | null;
+      lockedMonth: { month: string; status: "prepared" | "closed" } | null;
     };
   };
   const enter = (payload: object, cookie = treasurer.cookie) => call(cookie, "POST", "/api/finance/opening-balance", payload);
@@ -188,8 +188,8 @@ describe("Saldo de la junta: the opening balance and the money now", () => {
 
   it("is locked once a month is closed", async () => {
     await t.db.insert(months).values({ month: addMonths(thisMonth, -6), status: "closed" }).onConflictDoNothing();
-    const { opening, closedMonth } = await read();
-    assert.equal(closedMonth, addMonths(thisMonth, -6));
+    const { opening, lockedMonth } = await read();
+    assert.deepEqual(lockedMonth, { month: addMonths(thisMonth, -6), status: "closed" });
     const response = await correct(opening!.id, { month: thisMonth, cashCentavos: 1, bankCentavos: 1, reason: "Muy tarde" });
     assert.equal(response.statusCode, 409);
     assert.match(response.json().message, /ya está cerrado/);
