@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { ApiError, api } from "../api.ts";
 import type { HouseholdRow } from "../census.ts";
+import { COLLECT_KINDS, byOwnerName, collectTarget } from "../collect.ts";
 import { formatLempiras, newSubmissionId, parseLempiras } from "../census.ts";
 import { AmountInput } from "../components/AmountInput.tsx";
 import { DateField } from "../components/CalendarField.tsx";
@@ -14,64 +15,89 @@ import { PAYMENT_METHODS, choosable, monthName, monthStatus, owedFor, sharePayme
 import { isTouchScreen } from "../viewport.ts";
 import { HouseholdStatus } from "./Census.tsx";
 
-/** Cobrar, first screen: which house is paying, or other income (mora, reconexión, donación…). */
-export function CollectScreen({ onOpen, canRecordOther }: { onOpen: Go; canRecordOther: boolean }) {
+/**
+ * Cobrar, first screen: every house in the census, by name, to scroll or
+ * search; then "¿Qué está pagando?" for the one tapped (owner, 19 November
+ * 2026). Money from someone outside the census is "Otro ingreso" on Inicio.
+ */
+export function CollectScreen({ onOpen, canSeeOwed }: { onOpen: Go; canSeeOwed: boolean }) {
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<HouseholdRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [picked, setPicked] = useState<HouseholdRow | null>(null);
 
-  // Typing pauses for a moment before the search goes out, so each letter is not a request.
+  // The whole list at first; typing pauses for a moment before the search goes out, so each letter is not a request.
   useEffect(() => {
-    if (!q.trim()) {
-      setRows(null);
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      api<{ households: HouseholdRow[] }>("GET", `/census/households?${new URLSearchParams({ q: q.trim() })}`)
-        .then((data) => {
-          setRows(data.households);
-          setError(null);
-        })
-        .catch((err: Error) => setError(err.message));
-    }, 300);
+    const timer = window.setTimeout(
+      () => {
+        const query = q.trim() ? `?${new URLSearchParams({ q: q.trim() })}` : "";
+        api<{ households: HouseholdRow[] }>("GET", `/census/households${query}`)
+          .then((data) => {
+            setRows(byOwnerName(data.households));
+            setError(null);
+          })
+          .catch((err: Error) => setError(err.message));
+      },
+      q.trim() ? 300 : 0,
+    );
     return () => window.clearTimeout(timer);
   }, [q]);
 
   return (
     <main className="screen stack">
       <h1>Cobrar</h1>
+      {canSeeOwed && (
+        <button className="btn block" onClick={() => onOpen("/finanzas/quien-debe")}>
+          <Icon name="alert" /> Quién debe
+        </button>
+      )}
       <label>
-        ¿Qué vivienda paga?
+        ¿Quién paga? Búsquelo o baje en la lista
         <input
           type="search"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Nombre o código, por ejemplo 12"
+          placeholder="Nombre o código"
           autoFocus={!isTouchScreen()}
           enterKeyHint="search"
         />
       </label>
       {error && <p className="message error">{error}</p>}
-      {rows?.length === 0 && <p className="muted">No se encontró ninguna vivienda con eso.</p>}
+      {!rows && !error && <p className="muted">Cargando…</p>}
+      {rows?.length === 0 && (
+        <p className="muted">{q.trim() ? "No se encontró ninguna vivienda con eso." : "Todavía no hay viviendas en el censo."}</p>
+      )}
       {rows?.map((row) => (
-        <button key={row.id} className="card household-card" onClick={() => onOpen(`/finanzas/cobrar/${row.id}`)}>
+        <button key={row.id} className="card household-card" onClick={() => setPicked(row)}>
           <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-            <strong>{row.code}</strong>
+            <strong>{row.ownerName}</strong>
             <HouseholdStatus status={row.status} />
           </div>
-          <div>{row.ownerName}</div>
+          <div>{row.code}</div>
           <div className="muted">{row.sectorName}</div>
         </button>
       ))}
-      {canRecordOther && (
-        <button className="btn block" onClick={() => onOpen("/finanzas/ingreso")}>
-          <Icon name="receipt" /> Otro ingreso: mora, reconexión, conexión, donación
-        </button>
-      )}
-      {canRecordOther && (
-        <button className="btn block" onClick={() => onOpen("/finanzas/quien-debe")}>
-          <Icon name="alert" /> Quién debe
-        </button>
+      {picked && (
+        <Dialog title="¿Qué está pagando?" onClose={() => setPicked(null)}>
+          <p className="muted" style={{ margin: 0 }}>
+            Vivienda {picked.code} · {picked.ownerName}
+          </p>
+          {picked.status === "inactive" && <p className="message error">Esta vivienda está inactiva.</p>}
+          <div className="choice-grid">
+            {COLLECT_KINDS.map(({ kind, label }) => (
+              <button
+                key={kind}
+                className="btn choice"
+                onClick={() => {
+                  const target = collectTarget(kind, picked.id);
+                  onOpen(target.route, "preset" in target ? target.preset : undefined);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </Dialog>
       )}
     </main>
   );

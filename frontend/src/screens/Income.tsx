@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ApiError, api } from "../api.ts";
 import type { HouseholdFile, HouseholdRow } from "../census.ts";
+import type { IncomePreset } from "../collect.ts";
 import { formatLempiras, newSubmissionId, parseLempiras } from "../census.ts";
 import { AmountInput } from "../components/AmountInput.tsx";
 import { DateField, MonthField } from "../components/CalendarField.tsx";
@@ -9,8 +10,17 @@ import { Dialog } from "../components/Dialog.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { dayLabel } from "../calendar.ts";
 import { Icon } from "../icons.tsx";
-import type { IncomeEntry, IncomeSetup, IncomeType } from "../income.ts";
-import { INCOME_TYPES, amountProblem, configuredAmount, describeIncome, incomeTitle, needsHouse } from "../income.ts";
+import type { IncomeEntry, IncomeSetup, IncomeStep, IncomeType } from "../income.ts";
+import {
+  INCOME_TYPES,
+  amountProblem,
+  configuredAmount,
+  describeIncome,
+  incomeSteps,
+  incomeTitle,
+  needsHouse,
+  stepCount,
+} from "../income.ts";
 import type { PaymentMethod } from "../payments.ts";
 import { PAYMENT_METHODS } from "../payments.ts";
 import { formatDate } from "../time.ts";
@@ -28,23 +38,28 @@ interface House {
   ownerName: string;
 }
 
-type Step = "type" | "house" | "month" | "amount" | "receipt" | "payer" | "review" | "saved";
+type Step = IncomeStep | "saved";
 
 /**
  * Otro ingreso (App Plan, Module 2): a late fee (mora) and its month, a
  * reconnection, a connection fee, a donation or other income. One question
  * per screen, then "¿Está correcto?". Opened from a household's file, the
- * house is already chosen; opened from Cobrar, it asks which, and a
- * connection fee, a donation or other income may be from someone outside the
- * census. An entry needs signal, like a payment.
+ * house is already chosen; opened from Cobrar, the house and what is being
+ * paid are both chosen (`preset`), and "Atrás" goes back to Cobrar. Opened
+ * from Inicio, it asks which house, and a connection fee, a donation or
+ * other income may be from someone outside the census. An entry needs
+ * signal, like a payment.
  */
 export function IncomeScreen({
   householdId,
+  preset,
   canReverse,
   canHandOut,
   onOpen,
 }: {
   householdId?: string | undefined;
+  /** From Cobrar: what is being paid, already answered there. */
+  preset?: IncomePreset | undefined;
   canReverse: boolean;
   canHandOut: boolean;
   onOpen: Go;
@@ -53,8 +68,9 @@ export function IncomeScreen({
   const [fixedHouse, setFixedHouse] = useState<House | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [step, setStep] = useState<Step>("type");
-  const [type, setType] = useState<IncomeType | null>(null);
+  const [askType, setAskType] = useState(!preset);
+  const [step, setStep] = useState<Step>(!preset ? "type" : preset.incomeType === "late_fee" ? "month" : "amount");
+  const [type, setType] = useState<IncomeType | null>(preset?.incomeType ?? null);
   const [house, setHouse] = useState<House | null>(null);
   const [month, setMonth] = useState("");
   const [amountText, setAmountText] = useState("");
@@ -91,30 +107,38 @@ export function IncomeScreen({
     }
   }, [householdId]);
 
-  const leave = () => onOpen(householdId ? `/censo/vivienda/${householdId}` : "/finanzas/cobrar");
+  // Each time the amount screen opens, it starts from Configuración's amount, until the treasurer types another.
+  useEffect(() => {
+    if (step !== "amount" || !setup || !type || amountTouched) return;
+    const amount = configuredAmount(setup, type, month ? `${month}-01` : "", occurredOn);
+    if (amount) {
+      setAmountText(formatLempiras(amount).replace(/^L /, "").replace(/\.00$/, ""));
+    }
+    // Only on arriving at the screen: a date changed there does not overwrite what is typed.
+  }, [step, setup]);
+
+  // Back where it was opened from.
+  const [leaveTo, leaveLabel] = preset?.fromCollect
+    ? (["/finanzas/cobrar", "Cobrar"] as const)
+    : householdId
+      ? ([`/censo/vivienda/${householdId}`, "Vivienda"] as const)
+      : (["/", "Inicio"] as const);
+  const leave = () => onOpen(leaveTo);
 
   if (!setup || (householdId && !fixedHouse)) {
     return (
       <main className="screen stack">
         <button className="btn" style={{ justifySelf: "start" }} onClick={leave}>
-          <Icon name="back" /> {householdId ? "Vivienda" : "Cobrar"}
+          <Icon name="back" /> {leaveLabel}
         </button>
         <p className={loadError ? "message error" : "muted"}>{loadError ?? "Cargando…"}</p>
       </main>
     );
   }
 
-  // The screens this entry asks, in order: the house only when it is not chosen yet, the month only for a late fee.
-  const order: Step[] = [
-    "type",
-    ...(fixedHouse ? [] : (["house"] as Step[])),
-    ...(type === "late_fee" ? (["month"] as Step[]) : []),
-    "amount",
-    "receipt",
-    "payer",
-    "review",
-  ];
-  const position = order.indexOf(step);
+  const order = incomeSteps({ askType, houseChosen: Boolean(fixedHouse), type });
+  const position = order.indexOf(step as IncomeStep);
+  const counter = stepCount(order, step);
   const what = type ? describeIncome(type, month ? `${month}-01` : null) : "";
   const configured = type ? configuredAmount(setup, type, month ? `${month}-01` : "", occurredOn) : undefined;
   const amountCentavos = parseLempiras(amountText);
@@ -127,16 +151,7 @@ export function IncomeScreen({
   };
   const back = () => (position > 0 ? move(order[position - 1]!) : leave());
 
-  const toAmount = () => {
-    // Start from Configuración's amount, until the treasurer types another.
-    const amount = type ? configuredAmount(setup, type, month ? `${month}-01` : "", occurredOn) : undefined;
-    if (!amountTouched && amount) {
-      setAmountText(formatLempiras(amount).replace(/^L /, "").replace(/\.00$/, ""));
-    }
-    move("amount");
-  };
-  /** To the next screen; the amount screen starts from Configuración's amount. */
-  const next = () => (order[position + 1] === "amount" ? toAmount() : move(order[position + 1]!));
+  const next = () => move(order[position + 1]!);
 
   const save = async (confirmRepeatedReceipt = false) => {
     setBusy(true);
@@ -174,6 +189,7 @@ export function IncomeScreen({
   };
 
   const startAgain = () => {
+    setAskType(true);
     setType(null);
     setHouse(fixedHouse);
     setMonth("");
@@ -197,9 +213,9 @@ export function IncomeScreen({
         <button className="btn" onClick={back}>
           <Icon name="back" /> Atrás
         </button>
-        {position > 0 && step !== "review" && (
+        {counter && (
           <span className="muted">
-            Paso {position} de {order.length - 2}
+            Paso {counter.at} de {counter.of}
           </span>
         )}
       </div>
@@ -220,7 +236,7 @@ export function IncomeScreen({
       return (
         <main className="screen stack">
           <button className="btn" style={{ justifySelf: "start" }} onClick={leave}>
-            <Icon name="back" /> {householdId ? "Vivienda" : "Cobrar"}
+            <Icon name="back" /> {leaveLabel}
           </button>
           {fixedHouse && (
             <p className="muted" style={{ margin: 0 }}>
@@ -262,8 +278,7 @@ export function IncomeScreen({
               setHouse(row);
               setPayerName(row.ownerName);
               // Straight on: the house was the answer. The month screen, or the amount from Configuración.
-              if (order[position + 1] === "amount") toAmount();
-              else move(order[position + 1]!);
+              next();
             }}
           />
           {type && !needsHouse(type) && (
@@ -461,7 +476,7 @@ export function IncomeScreen({
           <button className="btn go block big" disabled={busy} onClick={() => void save()}>
             <Icon name="check" /> {busy ? "Guardando…" : "Sí, guardar"}
           </button>
-          <button className="btn block" onClick={() => move("type")}>
+          <button className="btn block" onClick={() => move(order[0]!)}>
             <Icon name="edit" /> Corregir
           </button>
           {repeated && (
@@ -492,7 +507,12 @@ export function IncomeScreen({
             Guardado. {incomeTitle(saved!.type, saved!.month)} de {formatLempiras(saved!.amountCentavos)} de {saved!.payerName}
             {saved!.householdCode ? `, vivienda ${saved!.householdCode}` : ""}, recibo nº {saved!.paperReceiptNumber}.
           </p>
-          <button className="btn primary block" onClick={startAgain}>
+          {preset?.fromCollect && (
+            <button className="btn primary block" onClick={() => onOpen("/finanzas/cobrar")}>
+              <Icon name="cash" /> Cobrar a otra vivienda
+            </button>
+          )}
+          <button className={`btn block ${preset?.fromCollect ? "" : "primary"}`} onClick={startAgain}>
             <Icon name="plus" /> Registrar otro ingreso
           </button>
           {saved!.householdId && (
