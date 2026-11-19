@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 242, taken 2026-11-17.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 256, taken 2026-11-19.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -69,11 +69,11 @@ It keeps every column of the Registros sheet template and adds the fields needed
 | Household code | Automatic | Format Z-0001, sequential, never reused |
 | Paper date and form number | Date, text | Paper entry only: the date written on the paper form and its number, if it has one |
 | Full name | Text | Required; capitalized automatically |
-| Identity (ID number) | 13 digits | Required; checked against existing people before saving |
+| Identity (ID number) | 13 digits | Optional (decided on 19 November): a family may not want to give it. When given, it must have 13 digits, belongs to one person, and is checked against existing people before saving |
 | Phone / WhatsApp | Country code and number | Required for the owner, unless the family has none or prefers not to give it; that reason is kept instead. The country starts on Honduras (+504), and the length is checked for each country |
 | Gender | Choice | List kept in Configuration |
 | Sector | Choice | Required; list kept in Configuration |
-| References | Text | Required; how to find the house |
+| References | Text | Optional (decided on 19 November); how to find the house |
 | GPS pin | Optional | Taken from the phone when the registrar stands at the house; can be added later |
 | Fee | Choice | Base price (the default) or a different amount; the base prices come from Configuration |
 | Different amount and reason | Number, text | Required when the fee is not the base price: the monthly amount and the reason in the board's words |
@@ -86,11 +86,11 @@ It keeps every column of the Registros sheet template and adds the fields needed
 **Registration flow, one question per screen**
 
 1. Full name.
-2. Identity number, with a numeric keypad.
+2. Identity number, with a numeric keypad. It can be left empty.
 3. Phone number.
 4. Gender.
 5. Sector.
-6. References, with an optional button to save the GPS pin.
+6. References, which can be left empty, with an optional button to save the GPS pin.
 7. Fee: the base price, or a different amount with the reason.
 8. Relation to the house and water connection.
 9. Review screen: "¿Está correcto?" with one large green button.
@@ -98,7 +98,7 @@ It keeps every column of the Registros sheet template and adds the fields needed
 
 **Rules**
 
-- **Duplicates.** If the ID already exists, the app opens that person's file instead of creating a new one. One person can own several households, so it offers "Agregar otra vivienda".
+- **Duplicates.** If the ID already exists, the app opens that person's file instead of creating a new one. One person can own several households, so it offers "Agregar otra vivienda". A family registered without an ID has nothing to check by ID, so the app compares the first name and last name with the families already registered, warns about similar ones, and lets the registrar save anyway (see the decisions of 19 November).
 - **Offline.** An entry is saved on the phone first and sent when signal returns. A visible counter shows how many entries are waiting.
 - **No deletion.** A record is made inactive with a reason: moved away, duplicate or entered by mistake.
 - **Ownership changes.** The old owner's period closes and the new owner starts on a stated date, so past payments stay with the person who made them.
@@ -106,6 +106,7 @@ It keeps every column of the Registros sheet template and adds the fields needed
 - **Paper entry mode.** The current census exists only on paper. In this mode the first screen asks for the date and number on the paper form, and both are stored beside the date typed in, so every record can be checked against its paper original. The paper forms are kept after entry.
 - **Fee choice.** The default is the base price. A different amount cannot be saved without a reason, and every such choice shows in the history log.
 - **No phone.** A family with no phone, or that prefers not to give it, is registered with "No tiene teléfono" or "Prefiere no darlo" instead of a number, and that reason is kept. The app then offers no WhatsApp message for that house: the household code is written down for the family, and receipts and statements are given on paper. A number can be added later from the household file.
+- **No ID number or references.** A family that does not want to give its ID, or a registrar who cannot get it or write the references, saves the entry without them. The president asks for them where the board really needs them, and either can be added later from the household file.
 - **Not collected in version 1.** Photos of ID cards, birth dates and anything the board cannot justify. A short consent line appears on the review screen.
 
 ## Module 2: Finances
@@ -279,7 +280,7 @@ Seventeen tables hold everything, and people are kept apart from households so o
 
 ## Screens and navigation
 
-The home screen shows first the large buttons for what the user's role usually does, then the other tasks below them, and every task runs one question per screen.
+The home screen shows first the large buttons for what the user's role usually does, then the other tasks below them, under "Otras tareas", and last, under "Administración", the setup screens: Usuarios, Permisos and Configuración (decided on 19 November), and every task runs one question per screen.
 
 | Tab | Contains | Visible to |
 |---|---|---|
@@ -382,7 +383,7 @@ Phases 1 to 3 are built and tested on the builder's computer before anything cha
 | 3. Close, reports and guests | Not started | Everything, including print layouts and guest invitations | A guest signing in from a municipal phone at the real address |
 | 4. Handover | Not started | A first draft of the runbook | The restore test, board-owned accounts, training and installing on every director's phone |
 
-**Done so far (as of 17 November 2026)**
+**Done so far (as of 19 November 2026)**
 
 Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fees can be set and removed in Configuración, including changes that start in a past month, monthly fee payments can be recorded, a payment recorded by mistake can be reversed, and each house shows what it owes once a month's payment deadline is over. Board members sign in with their phone number and a password.
 
@@ -418,18 +419,23 @@ Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fee
 - [x] Expenses, "Gasto": the treasurer records what was paid, to whom, the amount and date, and how it was paid, with a photo of the receipt or "No hay recibo" and a written reason. A wrong expense is undone with "Anular" (PR #41, merged on 15 November 2026).
 - [x] Household statements, "Estado de cuenta": from a household's file, what the house paid from a month the treasurer chooses and what it owes today, as a picture with a document number, shared through the phone's own Share button or as text for the family's WhatsApp chat (PR #42, merged on 15 November 2026).
 - [x] Digital receipts, "Recibo digital": a monthly fee payment or other income as a picture to send by WhatsApp, numbered in the same count as statements (PR #43, merged on 17 November 2026).
+- [x] The opening balance, "Saldo de la junta": entered once, as the cash in the box and the money in the bank at the start of the month the app's money begins, and shown with the board's money now. An entry paid by "Otro" has its own line. A wrong balance is corrected with a new entry and a reason until the first month is closed (PR #45, merged on 19 November 2026).
+- [x] Inicio puts Usuarios, Permisos and Configuración last, under "Administración", for every role (PR #46, merged on 19 November 2026).
+- [x] Cobrar opens on every family in the census, by name, to scroll or search. Tapping one asks "¿Qué está pagando?" (monthly fee, late fee, reconnection, connection, donation or other income) and then the details. "Otro ingreso" has its own button on Inicio for money from outside the census (PR #47, merged on 19 November 2026).
+- [x] The ID number and the references are optional in Registrar familia, and can be added later from the household file; "Agregar otra vivienda" from a person's file works without an ID (PR #48, merged on 19 November 2026).
+- [ ] The name check in Registrar familia: a warning about names like one already registered, which the registrar can override. Built in PR #49, waiting for the owner to try it on the test copy.
 
 **What comes next**
 
-Phase 2 is under way: the app sets fees, records monthly fee payments and other income, shows what each house owes with its late fees, and reverses a payment recorded by mistake. Expenses (category, supplier, amount and receipt photo) are built (PR #41, merged on 15 November 2026). Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
+Phase 2 is under way: the app sets fees, records monthly fee payments and other income, shows what each house owes with its late fees, and reverses a payment recorded by mistake. Expenses (category, supplier, amount and receipt photo) are built (PR #41, merged on 15 November 2026). The opening balance ("Saldo de la junta", PR #45) was merged on 19 November 2026. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
 
-Digital receipts ("Recibo digital", PR #43) were merged on 17 November 2026. Household statements ("Estado de cuenta", PR #42) were merged on 15 November 2026. Expenses ("Gasto", PR #41) were merged on 15 November 2026. The status history (PR #40) was merged on 15 November 2026, after PR #36 to #39 on 14 November 2026. The start month (PR #32) was closed without merging.
+Registrar familia without an ID or references (PR #48), Cobrar's list of families (PR #47), the Inicio order (PR #46) and the opening balance (PR #45) were merged on 19 November 2026. Digital receipts ("Recibo digital", PR #43) were merged on 17 November 2026. Household statements ("Estado de cuenta", PR #42) were merged on 15 November 2026. Expenses ("Gasto", PR #41) were merged on 15 November 2026. The status history (PR #40) was merged on 15 November 2026, after PR #36 to #39 on 14 November 2026. The start month (PR #32) was closed without merging.
 
-**Where to pick up next (17 November 2026)**
+**Where to pick up next (19 November 2026)**
 
 - **Done: expenses, "Gasto"**, merged in PR #41 on 15 November 2026 ("Trying Gasto" in the README). Decided by the owner on 15 November: the photo is asked for every time, and an expense with no paper is saved only with "No hay recibo" and a written reason, marked "Sin foto"; Gasto asks how it was paid, as Cobrar does; the invoice number is optional, and the same number from the same supplier is flagged, not blocked. Photos stay on the computer, beside the database file, and are not in the nightly backup yet.
 - **Open for the owner, not code:** try the status history on the test copy ("Trying the status history" in the README), and say whether Quién debe should also list a house that is inactive now but has old unpaid months. It lists only active houses with water today.
-- **Next:** the opening balance, decided on 17 November (see that day's decisions) and being built. Digital receipts ("Recibo digital", PR #43, merged on 17 November 2026) are the latest piece. Before real expenses are entered on the droplet, receipt photos must go to the bucket or into the backup.
+- **Next:** the owner tries the name check (PR #49, decided on 19 November) on the test copy, then the month close. The opening balance (PR #45, merged on 19 November 2026) is the latest finished piece. Before real expenses are entered on the droplet, receipt photos must go to the bucket or into the backup.
 - **Still open for the board:** how to run Phase 2's "done when" test, and the data-separation check on the droplet before the first deployment.
 - **How work goes:** one branch and one pull request per piece, tried on the test copy at prueba-agua.basculacentral.com before merging. The plan snapshot in the repository (docs/app-plan.md) is refreshed from this doc in each pull request.
 
@@ -452,7 +458,7 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - [x] Month-end late fees and the arrears list: active, connected households with unpaid months and the late fee owed for each. Merged in PR #38 on 14 November 2026.
 - [x] A status history for each house: a month is charged only if the house was active and had water on its deadline day (decided 14 November). Merged in PR #40 on 15 November 2026.
 - [x] Expenses: category, supplier, amount and receipt photo. Photos stay on the computer until the bucket is connected. With no paper, "No hay recibo" and a written reason; how it was paid; an optional invoice number (decided 15 November). Merged in PR #41 on 15 November 2026.
-- [ ] Opening balance, entered once: cash and bank at the start of the month the app's money begins, with "Otro" on its own line (decided 17 November). The phase table does not name it, but Phase 2's test compares balances. Being built.
+- [x] Opening balance, entered once: cash and bank at the start of the month the app's money begins, with "Otro" on its own line (decided 17 November). The phase table does not name it, but Phase 2's test compares balances. Merged in PR #45 on 19 November 2026.
 - [x] Household statements: what a house paid from a month the treasurer chooses and what it owes today, as a picture with a document number, shared from the phone, and as text for the family's WhatsApp chat (decided 15 November). Merged in PR #42 on 15 November 2026.
 - [x] Digital receipts on request, with "Compartir por WhatsApp": a payment or other-income entry as a picture to send, sharing the document count (receipts cover other income too, decided 16 November). Merged in PR #43 on 17 November 2026.
 
@@ -561,6 +567,7 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - The photo of an expense's receipt or invoice is asked for every time. An expense with no paper, such as a day's work paid by hand, is saved only with "No hay recibo" and a written reason. It shows as "Sin foto" so it can be reviewed.
 - Gasto asks how the expense was paid (Efectivo, Transferencia, Otro), as Cobrar and Otro ingreso do. A transfer needs its reference number.
 - The number on the supplier's invoice or receipt is optional. The same number from the same supplier is flagged, not blocked.
+
 - A household statement (estado de cuenta) is a picture the app draws, with the board's name, the date and time, who made it and a document number. The treasurer shares it through the phone's own Share button. A second button opens the family's WhatsApp chat with the same statement as text.
 - The treasurer chooses the month a statement's payments start from, January of the current year to begin with. What the house owes today is always shown in full.
 - A digital receipt is made for a monthly fee payment or for any other income (a late fee, a reconnection, a connection, a donation, other), on request. One running count numbers every document the app hands out, so statements and receipts share it. An expense has no resident receipt, and a payment that was undone has none.
@@ -572,6 +579,14 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - The opening balance is the money on hand at the start of a month the board chooses, when the app's money begins. Entries dated before that month count only for what each house owes and for statements, never in the money totals.
 - A wrong opening balance is corrected with a new entry that points to the old one and gives a written reason, until the first month is closed. After that it is locked.
 - No separate approval: the first month close shows the opening balance, and that close already needs a second person to approve it.
+
+**Decisions made on 19 November 2026**
+
+- Inicio shows the buttons for the user's role first, then "Otras tareas", and last "Administración": Usuarios, Permisos and Configuración. This is the same for every role, because those screens are seldom needed and the day's work should be quick to find.
+- Cobrar opens on every family in the census, listed by name, to scroll through or search. After tapping a family it asks what is being paid: Cuota mensual, Mora, Reconexión, Conexión, Donación or Otro ingreso. A monthly fee then asks for the months, the others for the month (a late fee) and the amount. "Quién debe" stays on Cobrar.
+- "Otro ingreso" is no longer on Cobrar. Money from someone outside the census (a donation, a connection fee before the family is registered) is recorded from its own button on Inicio, which also lists the latest entries so one can be undone with "Anular".
+- The ID number and the references are optional in Registrar familia. A family may not want to share its ID, and whoever registers may not type quickly or write well enough to be understood. The president, not the app, asks for them where the board needs them. An ID that is typed still needs 13 digits and belongs to one person, and it can be added later from the household file.
+- A family registered without an ID is checked by name instead: the app compares the first name and last name with the families already registered, warns about similar ones, and lets the registrar save anyway when they say it is a different family. It ignores accents, capital letters and one wrong letter in a long word. Two names are alike when the first names match and the last word of the shorter name is in the longer one, so "Juan Pérez" finds "Juan Carlos Pérez López" but not "Juan Martínez". It is built in PR #49 and waits for the owner to try it on the test copy.
 
 **Still open**
 
