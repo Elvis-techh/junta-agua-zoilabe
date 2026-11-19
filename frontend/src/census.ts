@@ -168,6 +168,8 @@ export interface Registration {
   addToExistingPerson: boolean;
   /** "Agregar otra vivienda" from a person's file: that person, ID or not. */
   existingPersonId?: string;
+  /** Registered people with a name like this one's whom the registrar said this family is not (kept in Historial). */
+  confirmedDifferentFrom?: string[];
   household: {
     sectorId: number;
     /** Optional, like the ID number. */
@@ -184,6 +186,14 @@ export interface HouseholdRef {
   code: string;
   status: "active" | "inactive";
   sectorName: string;
+  references?: string | null;
+}
+
+/** A person already registered whose name looks like the one being typed. */
+export interface SimilarPerson {
+  id: string;
+  fullName: string;
+  households: HouseholdRef[];
 }
 
 export interface HouseholdRow {

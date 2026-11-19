@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import type { Me } from "../api.ts";
 import { api } from "../api.ts";
-import type { CensusOptions, HouseholdRef, PhoneMissing, Registration, Relation, WaterConnection } from "../census.ts";
+import type { CensusOptions, HouseholdRef, PhoneMissing, Registration, Relation, SimilarPerson, WaterConnection } from "../census.ts";
 import {
   NO_ID_NUMBER,
   NO_REFERENCES,
@@ -40,6 +40,7 @@ type Step =
   | "mode"
   | "paper"
   | "name"
+  | "similar"
   | "id"
   | "duplicate"
   | "phone"
@@ -64,6 +65,9 @@ const ID_MESSAGE = "La identidad debe tener 13 números. Revise, o borre todo pa
  * The ID number and the references may be left blank (owner, 19 November
  * 2026): a family may not want to give its ID, and whoever registers may not
  * write easily. The president asks for them later where the board needs them.
+ * So that a family is not registered twice without an ID to tell it by, the
+ * name is compared with the census as soon as it is typed: look-alikes are
+ * shown, and the registrar says whether it is one of them or another family.
  */
 export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: RegisterPreset | null; onOpen: Go }) {
   const [options, setOptions] = useState<CensusOptions | null>(() => recall<CensusOptions>("options"));
@@ -96,6 +100,11 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
   /** Set when the ID is already registered: whose it is, and whether this is another house of theirs. */
   const [existing, setExisting] = useState<{ fullName: string; households: HouseholdRef[] } | null>(null);
   const [addToExisting, setAddToExisting] = useState(Boolean(preset?.existingPerson));
+  /** Set when this house is added to a person already registered, found by name or from their file. */
+  const [existingPersonId, setExistingPersonId] = useState<string | null>(preset?.existingPerson?.id ?? null);
+  /** Names that looked alike and the registrar said are other families, and the name they were checked for. */
+  const [similar, setSimilar] = useState<SimilarPerson[]>([]);
+  const [toldApart, setToldApart] = useState<{ name: string; ids: string[] }>({ name: "", ids: [] });
   const [result, setResult] = useState<{ queued?: QueuedEntry; sent?: SentEntry } | null>(null);
 
   useEffect(() => {
@@ -119,7 +128,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
 
   const move = (direction: 1 | -1) => {
     setError(null);
-    const at = order.indexOf(step === "duplicate" ? "id" : step);
+    const at = order.indexOf(step === "duplicate" || step === "similar" ? "id" : step);
     const next = order[at + direction];
     if (next) {
       setStep(next);
@@ -153,7 +162,39 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
 
   const sector = options.sectors.find((s) => s.id === sectorId) ?? null;
   const amountCentavos = parseLempiras(amountText);
-  const position = order.indexOf(step === "duplicate" ? "id" : step);
+  const position = order.indexOf(step === "duplicate" || step === "similar" ? "id" : step);
+
+  /**
+   * The name is compared with the census, if there is signal: without it the
+   * entry is saved anyway (a name like another is a warning, not a rule).
+   */
+  const checkName = async () => {
+    const name = fullName.trim();
+    if (name.length < 3) {
+      setError("Escriba el nombre completo.");
+      return;
+    }
+    // Already told apart from these, for this very name: not asked again on the way back.
+    if (toldApart.name === name) {
+      next();
+      return;
+    }
+    setBusy(true);
+    try {
+      const { people } = await api<{ people: SimilarPerson[] }>("GET", `/census/people/similar?${new URLSearchParams({ name })}`);
+      if (people.length > 0) {
+        setSimilar(people);
+        setStep("similar");
+        window.scrollTo(0, 0);
+        return;
+      }
+    } catch {
+      // No signal: the entry goes ahead and is saved on the phone.
+    } finally {
+      setBusy(false);
+    }
+    next();
+  };
 
   /** The duplicate check: asked when the ID is typed, if there is signal. With no ID, there is nothing to check. */
   const checkId = async () => {
@@ -204,7 +245,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
   const registration = (): Registration => ({
     submissionId,
     ...(mode === "paper" ? { paper: { date: paperDate, ...(paperFormNumber.trim() ? { formNumber: paperFormNumber.trim() } : {}) } } : {}),
-    person: preset?.existingPerson
+    person: existingPersonId
       ? {}
       : addToExisting
         ? { idNumber }
@@ -215,7 +256,8 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
             ...(gender ? { gender } : {}),
           },
     addToExistingPerson: addToExisting,
-    ...(preset?.existingPerson ? { existingPersonId: preset.existingPerson.id } : {}),
+    ...(existingPersonId ? { existingPersonId } : {}),
+    ...(toldApart.ids.length > 0 && !addToExisting ? { confirmedDifferentFrom: toldApart.ids } : {}),
     household: {
       sectorId: sectorId!,
       ...(references.trim() ? { references: references.trim() } : {}),
@@ -318,8 +360,48 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
           {head("Nombre completo")}
           <input value={fullName} onChange={(e) => setFullName(e.target.value)} autoFocus={!isTouchScreen()} autoCapitalize="words" autoComplete="off" />
           {errorLine}
-          <button className="btn go block" onClick={() => (fullName.trim().length < 3 ? setError("Escriba el nombre completo.") : next())}>
+          <button className="btn go block" disabled={busy} onClick={() => void checkName()}>
             Siguiente
+          </button>
+        </main>
+      );
+
+    case "similar":
+      return (
+        <main className="screen stack">
+          {head("Nombre parecido")}
+          <p>Ya hay familias con un nombre parecido a {capitalizeName(fullName)}. Si es una de ellas, tóquela para agregarle otra vivienda.</p>
+          {similar.map((person) => (
+            <button
+              key={person.id}
+              className="card household-card"
+              onClick={() => {
+                setAddToExisting(true);
+                setExistingPersonId(person.id);
+                setFullName(person.fullName);
+                setStep("sector");
+                window.scrollTo(0, 0);
+              }}
+            >
+              <strong>{person.fullName}</strong>
+              {person.households.map((h) => (
+                <div key={h.id} className="muted">
+                  Vivienda {h.code} · {h.sectorName}
+                  {h.status === "inactive" ? " (inactiva)" : ""}
+                  {h.references ? ` · ${h.references}` : ""}
+                </div>
+              ))}
+            </button>
+          ))}
+          <button
+            className="btn go block"
+            onClick={() => {
+              setToldApart({ name: fullName.trim(), ids: similar.map((person) => person.id) });
+              setStep("id");
+              window.scrollTo(0, 0);
+            }}
+          >
+            No, es otra familia
           </button>
         </main>
       );

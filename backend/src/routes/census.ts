@@ -7,7 +7,7 @@
  * ID numbers and phones leave the server masked unless the user holds
  * `census:view_sensitive`; hiding them on screen would not be enough.
  */
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { SQL, SQLWrapper } from "drizzle-orm";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { z } from "zod";
@@ -33,6 +33,7 @@ import {
 import { differentFeeStart, lastPaidMonth } from "../lib/fees.js";
 import { recordStatus, statusEntries } from "../lib/householdStatus.js";
 import { HttpError, parse } from "../lib/http.js";
+import { isSimilarName, nameWords } from "../lib/similarNames.js";
 import { maskPhone, phoneSchema, phoneSearchPatterns } from "../lib/phone.js";
 import { baseMonthlyFee, currentSetting } from "../lib/settings.js";
 import { businessToday, formatCalendarDate } from "../lib/time.js";
@@ -95,6 +96,8 @@ const registerBody = z.object({
   addToExistingPerson: z.boolean().default(false),
   /** "Agregar otra vivienda" from a person's file: that person, ID or not. */
   existingPersonId: z.uuid().optional(),
+  /** People with a name like this one's whom the registrar said this family is not: kept in the history log. */
+  confirmedDifferentFrom: z.array(z.uuid()).max(20).optional(),
   household: z.object({
     sectorId,
     references: references.optional(),
@@ -141,6 +144,9 @@ const reactivateBody = z.object({ note, since: isoDate.optional() });
 
 type Params = { Params: { id: string } };
 
+/** How many look-alikes the registrar is shown: more than that is a list to search, not to choose from. */
+const SIMILAR_LIMIT = 5;
+
 const NOT_FOUND = new HttpError(404, "not_found", "No se encontró esa vivienda.");
 const PERSON_NOT_FOUND = new HttpError(404, "not_found", "No se encontró esa persona.");
 
@@ -181,7 +187,13 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
   /** A person's households, newest code last: for the duplicate check and the file. */
   const householdsOf = (db: DbOrTx, personId: string) =>
     db
-      .select({ id: households.id, code: households.code, status: households.status, sectorName: sectors.name })
+      .select({
+        id: households.id,
+        code: households.code,
+        status: households.status,
+        sectorName: sectors.name,
+        references: households.references,
+      })
       .from(householdOwners)
       .innerJoin(households, eq(households.id, householdOwners.householdId))
       .innerJoin(sectors, eq(sectors.id, households.sectorId))
@@ -230,6 +242,26 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
       return { person: null };
     }
     return { person: { ...person, households: householdsOf(app.db, person.id) } };
+  });
+
+  /**
+   * Names like the one being typed, for the registrar to decide on (a family
+   * registered twice with no ID number would be two people). Only a name, a
+   * code and a sector go out: nothing masked.
+   */
+  app.get("/census/people/similar", edit, async (request) => {
+    const { name } = parse(z.object({ name: z.string().trim().max(120) }), request.query);
+    if (nameWords(name).length < 2) {
+      return { people: [] };
+    }
+    const found = app.db
+      .select({ id: people.id, fullName: people.fullName })
+      .from(people)
+      .all()
+      .filter((person) => isSimilarName(name, person.fullName))
+      .sort((a, b) => a.fullName.localeCompare(b.fullName, "es"))
+      .slice(0, SIMILAR_LIMIT);
+    return { people: found.map((person) => ({ ...person, households: householdsOf(app.db, person.id) })) };
   });
 
   app.post("/census/households", edit, async (request, reply) => {
@@ -372,6 +404,17 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
             gender: person.gender,
           },
           addedToExistingPerson: Boolean(existing),
+          // Names that looked alike, which the registrar said are other families.
+          ...(body.confirmedDifferentFrom?.length
+            ? {
+                confirmedDifferentFrom: tx
+                  .select({ fullName: people.fullName })
+                  .from(people)
+                  .where(inArray(people.id, body.confirmedDifferentFrom))
+                  .all()
+                  .map((other) => other.fullName),
+              }
+            : {}),
           sector: sector.name,
           references: household.references,
           gps: body.household.gps ?? null,
