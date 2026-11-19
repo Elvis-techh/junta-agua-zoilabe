@@ -77,7 +77,10 @@ changing how money, permissions or the history log work.
     what the role usually does (App Plan), then every other built screen
     under **Otras tareas**, so a president can open Cobrar and an
     administrator can register a family without going through a household's
-    file.
+    file. Owner decision of 19 November 2026: **Usuarios**, **Permisos** and
+    **Configuración** come last, under **Administración**, for every role,
+    because they are seldom needed; an administrator, whose own buttons are
+    all setup ones, sees the day's tasks first.
   - **Corrections (Anular pago): built.** A payment recorded by mistake is
     undone from the household's file with a reason: a reversal
     entry with the opposite amount that points to the original. See step 7
