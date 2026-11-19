@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 264, taken 2026-11-19.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 270, taken 2026-11-19.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -433,15 +433,15 @@ Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fee
 
 **What comes next**
 
-Phase 2 is under way: the app sets fees, records monthly fee payments and other income, shows what each house owes with its late fees, and reverses a payment recorded by mistake. Expenses (category, supplier, amount and receipt photo) are built (PR #41, merged on 15 November 2026). The opening balance ("Saldo de la junta", PR #45) was merged on 19 November 2026. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
+Phase 2 is under way: the app sets fees, records monthly fee payments and other income, shows what each house owes with its late fees, and reverses a payment recorded by mistake. Expenses (category, supplier, amount and receipt photo) are built (PR #41, merged on 15 November 2026). The opening balance ("Saldo de la junta", PR #45) was merged on 19 November 2026. The month close ("Preparar cierre", "Aprobar cierre" and "Devolver"), the last Phase 2 piece, is built in PR #55 and waits for the owner to try it on the test copy. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
 
-Registrar familia without an ID or references (PR #48), Cobrar's list of families (PR #47), the Inicio order (PR #46) and the opening balance (PR #45) were merged on 19 November 2026. Digital receipts ("Recibo digital", PR #43) were merged on 17 November 2026. Household statements ("Estado de cuenta", PR #42) were merged on 15 November 2026. Expenses ("Gasto", PR #41) were merged on 15 November 2026. The status history (PR #40) was merged on 15 November 2026, after PR #36 to #39 on 14 November 2026. The start month (PR #32) was closed without merging.
+The name check (PR #49), Saldo de la junta above L 99,999.99 (PR #51), a way back on every screen (PR #52), Registrar familia without an ID or references (PR #48), Cobrar's list of families (PR #47), the Inicio order (PR #46) and the opening balance (PR #45) were merged on 19 November 2026. Digital receipts ("Recibo digital", PR #43) were merged on 17 November 2026. Household statements ("Estado de cuenta", PR #42) were merged on 15 November 2026. Expenses ("Gasto", PR #41) were merged on 15 November 2026. The status history (PR #40) was merged on 15 November 2026, after PR #36 to #39 on 14 November 2026. The start month (PR #32) was closed without merging.
 
 **Where to pick up next (19 November 2026)**
 
 - **Done: expenses, "Gasto"**, merged in PR #41 on 15 November 2026 ("Trying Gasto" in the README). Decided by the owner on 15 November: the photo is asked for every time, and an expense with no paper is saved only with "No hay recibo" and a written reason, marked "Sin foto"; Gasto asks how it was paid, as Cobrar does; the invoice number is optional, and the same number from the same supplier is flagged, not blocked. Photos stay on the computer, beside the database file, and are not in the nightly backup yet.
-- **Open for the owner, not code:** try the status history on the test copy ("Trying the status history" in the README), and say whether Quién debe should also list a house that is inactive now but has old unpaid months. It lists only active houses with water today.
-- **Next:** the owner tries the name check (PR #49, decided on 19 November) on the test copy, then the month close. The opening balance (PR #45, merged on 19 November 2026) is the latest finished piece. Before real expenses are entered on the droplet, receipt photos must go to the bucket or into the backup.
+- **Open for the owner, not code:** the owner tried the status history and the name check on 19 November and found both good. To try on the test copy now: every amount up to L 999,999,999.99 (PR #53), Quién debe listing every house that owes (PR #54), and the month close (PR #55, "Trying Cierre del mes" in the README).
+- **Next:** once PRs #53 to #55 are merged, every Phase 2 piece is built; then Phase 2's "done when" test, when the board says how to run it. Before real expenses are entered on the droplet, receipt photos must go to the bucket or into the backup.
 - **Still open for the board:** how to run Phase 2's "done when" test, and the data-separation check on the droplet before the first deployment.
 - **How work goes:** one branch and one pull request per piece, tried on the test copy at prueba-agua.basculacentral.com before merging. The plan snapshot in the repository (docs/app-plan.md) is refreshed from this doc in each pull request.
 
@@ -467,8 +467,8 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - [x] Opening balance, entered once: cash and bank at the start of the month the app's money begins, with "Otro" on its own line (decided 17 November). The phase table does not name it, but Phase 2's test compares balances. Merged in PR #45 on 19 November 2026.
 - [x] Household statements: what a house paid from a month the treasurer chooses and what it owes today, as a picture with a document number, shared from the phone, and as text for the family's WhatsApp chat (decided 15 November). Merged in PR #42 on 15 November 2026.
 - [x] Digital receipts on request, with "Compartir por WhatsApp": a payment or other-income entry as a picture to send, sharing the document count (receipts cover other income too, decided 16 November). Merged in PR #43 on 17 November 2026.
-- [ ] "Quién debe" lists every house that owes, whatever its status today (decided 19 November).
-- [ ] Month close: "Preparar cierre" with the cash counted, then "Aprobar cierre" or "Devolver" by another person (decided 19 November).
+- [ ] "Quién debe" lists every house that owes, whatever its status today (decided 19 November). Built in PR #54.
+- [ ] Month close: "Preparar cierre" with the cash counted, then "Aprobar cierre" or "Devolver" by another person (decided 19 November). Built in PR #55.
 
 **Decisions made on 23 October 2026**
 
