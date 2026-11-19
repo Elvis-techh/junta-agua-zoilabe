@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 256, taken 2026-11-19.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 264, taken 2026-11-19.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -124,8 +124,8 @@ Every entry also carries a date, an optional note and the name of the person who
 **Monthly cycle**
 
 1. The treasurer records entries during the month, each with the number of the paper receipt handed to the payer. A digital receipt with a "Compartir por WhatsApp" button is created only when someone asks for one.
-2. At month end a board member, usually the treasurer, taps "Preparar cierre". The app shows opening balance, income, expenses and closing balance, and asks for the cash actually counted.
-3. Another board member, usually the president, reviews the figures and any cash difference, then taps "Aprobar cierre".
+2. At month end a board member, usually the treasurer, taps "Preparar cierre". The app shows opening balance, income, expenses and closing balance, and asks for the cash actually counted. A month can be prepared once it is over, oldest first. A difference in the cash needs a written reason, shows as "Faltante de caja" or "Sobrante de caja", and the next month starts from the cash counted (decided 19 November).
+3. Another board member, usually the president, reviews the figures and any cash difference, then taps "Aprobar cierre", or "Devolver" with a reason so it can be fixed and prepared again.
 4. The month locks. Nothing in it can be added or changed; a late item goes into the next month with a note.
 5. The fiscal reviews the closed month and a guest sees the summary if their invitation allows it.
 
@@ -137,7 +137,7 @@ Every entry also carries a date, an optional note and the name of the person who
 - **Month-end deadline and late fee (mora).** A month's fee is due by the last day of that month. The app works that date out from the calendar, so months ending on the 28th, 29th, 30th or 31st, and leap years, are all handled. Partial payments are accepted, but a month counts as paid only when the full fee has arrived by its last day. Each month not paid in full on time gets its own late fee.
 - **Late fee and reconnection fee amounts.** Both are set in Configuration with a start date and can change every year. When the treasurer records one, the amount is filled in from Configuration, and changing it needs a reason.
 - **Corrections.** A reversal entry points to the original and needs a written reason. Both stay visible.
-- **Arrears.** The app lists active, connected households with unpaid months and the late fee owed for each, calculated from the census, each house's fee and the last day of each month.
+- **Arrears.** The app lists every household that owes money, with its unpaid months and the late fee owed for each, calculated from the census, each house's fee, its status history and each month's deadline. A house that is inactive or without connection today is still listed, marked, when it owes from before (decided 19 November).
 - **Whole numbers.** Money is stored in whole centavos so totals never drift from rounding.
 - **Opening balance.** The treasurer enters it once at launch, as two figures: the cash in the box and the money in the bank, at the start of the month the app's money begins. Entries dated before that month count only for what each house owes, never in the money totals. A wrong figure is corrected by a new entry that points to the old one with a reason, until the first month is closed; the first close shows it, so a second person approves it there (decided 17 November). It appears in the history log like any other entry.
 - **Receipt photos.** Photos of expense receipts are kept in a private storage bucket and opened through short-lived links.
@@ -247,7 +247,7 @@ Every printout carries the board's logo, the date and time, the name of the pers
 
 ## Data model
 
-Seventeen tables hold everything, and people are kept apart from households so one person can own several houses.
+Twenty-one tables hold everything, and people are kept apart from households so one person can own several houses.
 
 | Table | Holds | Links to |
 |---|---|---|
@@ -258,14 +258,18 @@ Seventeen tables hold everything, and people are kept apart from households so o
 | guest_invitations | Guest name, email, password fingerprint, the permission codes it grants, expiry time, revoked date, last sign-in | users |
 | people | One row per person: full name, ID number (unique), phone, gender | none |
 | households | Code, references, GPS pin, water connection, status, paper date and form number, submission ID (unique), last verified date | sectors |
+| household_status_changes | A house's status and water connection over time, each from a date, never changed once written | households, users |
 | household_owners | Which person owns which household, with start and end dates | households, people |
 | household_fees | A different amount for a house: monthly amount, reason, start and end dates | households |
 | sectors | Sector names used in the census | none |
-| fee_rates | Base monthly fee, late fee and reconnection fee, each with a start date | none |
+| fee_rates | Base monthly fee, late fee, reconnection fee and connection fee, each with a start date | none |
 | transactions | Every income and expense: amount in centavos, paper receipt number, months covered, pointer to the entry it reverses | categories, households, months, users |
+| payment_months | How much of a monthly fee payment went to each month it covers | transactions, households |
 | categories | Income and expense categories | none |
 | receipt_files | Keys of receipt photos in the storage bucket | transactions |
-| months | Month, status (open, prepared, closed), who prepared and approved, cash counted | users |
+| months | Month, status (open, prepared, closed), who prepared and approved, the cash counted and the cash the app expected, the reason for a difference, and who sent it back and why | users |
+| opening_balances | The cash and bank figures the app's money starts from, with the month; a correction points to the entry it replaces | users |
+| documents | One numbered row per document handed out (statements, receipts): what it was made for, not its contents | users |
 | audit_log | The history log, each entry chained to the one before | users |
 | settings | Configuration values with their start dates | users |
 
@@ -423,7 +427,9 @@ Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fee
 - [x] Inicio puts Usuarios, Permisos and Configuración last, under "Administración", for every role (PR #46, merged on 19 November 2026).
 - [x] Cobrar opens on every family in the census, by name, to scroll or search. Tapping one asks "¿Qué está pagando?" (monthly fee, late fee, reconnection, connection, donation or other income) and then the details. "Otro ingreso" has its own button on Inicio for money from outside the census (PR #47, merged on 19 November 2026).
 - [x] The ID number and the references are optional in Registrar familia, and can be added later from the household file; "Agregar otra vivienda" from a person's file works without an ID (PR #48, merged on 19 November 2026).
-- [ ] The name check in Registrar familia: a warning about names like one already registered, which the registrar can override. Built in PR #49, waiting for the owner to try it on the test copy.
+- [x] The name check in Registrar familia: a warning about names like one already registered, which the registrar can override. The owner tried it on the test copy and found it good (PR #49, merged on 19 November 2026).
+- [x] Saldo de la junta takes cash and bank above L 99,999.99 (PR #51, merged on 19 November 2026).
+- [x] A way back at the top of every screen, "‹ Inicio" or the screen it came from, for those who do not know the phone's own back button (PR #52, merged on 19 November 2026).
 
 **What comes next**
 
@@ -461,6 +467,8 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - [x] Opening balance, entered once: cash and bank at the start of the month the app's money begins, with "Otro" on its own line (decided 17 November). The phase table does not name it, but Phase 2's test compares balances. Merged in PR #45 on 19 November 2026.
 - [x] Household statements: what a house paid from a month the treasurer chooses and what it owes today, as a picture with a document number, shared from the phone, and as text for the family's WhatsApp chat (decided 15 November). Merged in PR #42 on 15 November 2026.
 - [x] Digital receipts on request, with "Compartir por WhatsApp": a payment or other-income entry as a picture to send, sharing the document count (receipts cover other income too, decided 16 November). Merged in PR #43 on 17 November 2026.
+- [ ] "Quién debe" lists every house that owes, whatever its status today (decided 19 November).
+- [ ] Month close: "Preparar cierre" with the cash counted, then "Aprobar cierre" or "Devolver" by another person (decided 19 November).
 
 **Decisions made on 23 October 2026**
 
@@ -586,7 +594,13 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - Cobrar opens on every family in the census, listed by name, to scroll through or search. After tapping a family it asks what is being paid: Cuota mensual, Mora, Reconexión, Conexión, Donación or Otro ingreso. A monthly fee then asks for the months, the others for the month (a late fee) and the amount. "Quién debe" stays on Cobrar.
 - "Otro ingreso" is no longer on Cobrar. Money from someone outside the census (a donation, a connection fee before the family is registered) is recorded from its own button on Inicio, which also lists the latest entries so one can be undone with "Anular".
 - The ID number and the references are optional in Registrar familia. A family may not want to share its ID, and whoever registers may not type quickly or write well enough to be understood. The president, not the app, asks for them where the board needs them. An ID that is typed still needs 13 digits and belongs to one person, and it can be added later from the household file.
-- A family registered without an ID is checked by name instead: the app compares the first name and last name with the families already registered, warns about similar ones, and lets the registrar save anyway when they say it is a different family. It ignores accents, capital letters and one wrong letter in a long word. Two names are alike when the first names match and the last word of the shorter name is in the longer one, so "Juan Pérez" finds "Juan Carlos Pérez López" but not "Juan Martínez". It is built in PR #49 and waits for the owner to try it on the test copy.
+- A family registered without an ID is checked by name instead: the app compares the first name and last name with the families already registered, warns about similar ones, and lets the registrar save anyway when they say it is a different family. It ignores accents, capital letters and one wrong letter in a long word. Two names are alike when the first names match and the last word of the shorter name is in the longer one, so "Juan Pérez" finds "Juan Carlos Pérez López" but not "Juan Martínez". It was built in PR #49, merged on 19 November 2026, and the owner tried it on the test copy and found it good.
+- The owner tried the status history (PR #40) and the name check (PR #49) on the test copy and found both good.
+- Every amount field takes up to L 999,999,999.99: a payment, other income, an expense, a fee in Configuración, a family's different amount and the opening balance. Nobody knows how much the board's money will one day be. Built in PR #53.
+- "Quién debe" lists every house that owes money, whatever its status today. A house that is inactive or without connection now still appears, marked as such, with the months it owes from when it was active with water. This replaces the 14 November rule that listed only active, connected houses.
+- A month can be prepared for closing ("Preparar cierre") once it is over, oldest first, starting with the opening balance's month. A month with no entries is closed too, so no month is skipped.
+- Only the cash is counted at month close. If it differs from the app's figure, a written reason is needed; the month shows the difference as "Faltante de caja" or "Sobrante de caja", and the next month starts from the cash counted. The bank is checked against its statement by eye.
+- Whoever approves ("Aprobar cierre") may instead tap "Devolver" with a written reason. The month opens again, to be fixed and prepared again. Entries dated in a month waiting for approval are refused, as in a closed one.
 
 **Still open**
 

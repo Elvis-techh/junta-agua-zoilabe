@@ -7,7 +7,7 @@ import { homeButtons, routeOf } from "../src/home.ts";
 import type { HouseLateFees } from "../src/payments.ts";
 import { lateFeesLine } from "../src/payments.ts";
 import type { Arrears } from "../src/screens/Arrears.tsx";
-import { arrearsMonthLine, arrearsSummary } from "../src/screens/Arrears.tsx";
+import { arrearsMark, arrearsMonthLine, arrearsSummary } from "../src/screens/Arrears.tsx";
 
 const fees = (months: string[], none: HouseLateFees["none"] = null): HouseLateFees => ({
   from: "2026-01-01",
@@ -87,6 +87,14 @@ describe("Quién debe", () => {
     assert.equal(arrearsSummary(list(0, 0)), "Ninguna vivienda debe.");
     assert.equal(arrearsSummary(list(3, 10000)), "3 viviendas deben L 310.00: L 210.00 de cuotas y L 100.00 de mora.");
     assert.equal(arrearsSummary(list(1, 0)), "1 vivienda debe L 210.00 de cuotas.");
+  });
+
+  it("marks a house that owes but has no service today (owner, 19 November 2026)", () => {
+    assert.equal(arrearsMark({ status: "active", waterConnection: "connected" }), null);
+    assert.equal(arrearsMark({ status: "active", waterConnection: "shared" }), null);
+    assert.equal(arrearsMark({ status: "active", waterConnection: "not_connected" }), "Sin conexión");
+    assert.equal(arrearsMark({ status: "inactive", waterConnection: "connected" }), "Inactiva");
+    assert.equal(arrearsMark({ status: "inactive", waterConnection: "not_connected" }), "Inactiva, sin conexión");
   });
 
   it("has its own address, and the treasurer's home button opens it", () => {
