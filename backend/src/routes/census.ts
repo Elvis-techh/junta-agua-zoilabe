@@ -33,6 +33,7 @@ import {
 import { differentFeeStart, lastPaidMonth } from "../lib/fees.js";
 import { recordStatus, statusEntries } from "../lib/householdStatus.js";
 import { HttpError, parse } from "../lib/http.js";
+import { MAX_AMOUNT_CENTAVOS } from "../lib/money.js";
 import { isSimilarName, nameWords } from "../lib/similarNames.js";
 import { maskPhone, phoneSchema, phoneSearchPatterns } from "../lib/phone.js";
 import { baseMonthlyFee, currentSetting } from "../lib/settings.js";
@@ -72,7 +73,7 @@ const feeChoice = z.discriminatedUnion("kind", [
       .number({ message: "Escriba el monto mensual." })
       .int("El monto debe ser en lempiras y centavos.")
       .min(0, "El monto no puede ser negativo.")
-      .max(1_000_000, "El monto es demasiado alto. Revise e intente de nuevo."),
+      .max(MAX_AMOUNT_CENTAVOS, "El monto es demasiado alto. Revise e intente de nuevo."),
     reason: z.string().trim().min(3, "Escriba la razón del monto diferente.").max(500),
   }),
 ]);

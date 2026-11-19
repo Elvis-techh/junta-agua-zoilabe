@@ -39,13 +39,6 @@ export interface BalanceData {
   lockedMonth: { month: string; status: "prepared" | "closed" } | null;
 }
 
-/**
- * The lempira digits the cash and bank fields take: up to L 999,999,999.99.
- * Nobody knows how much the box or the account will one day hold (owner,
- * 19 November 2026); backend/src/routes/openingBalance.ts takes the same.
- */
-export const BALANCE_WHOLE_DIGITS = 9;
-
 export interface Figures {
   month: string;
   cash: string;
@@ -64,11 +57,11 @@ export function readFigures(
   if (month > thisMonth) {
     return { problem: "El saldo inicial no puede empezar en un mes que todavía no llega." };
   }
-  const cashCentavos = parseLempiras(figures.cash, BALANCE_WHOLE_DIGITS);
+  const cashCentavos = parseLempiras(figures.cash);
   if (cashCentavos === null) {
     return { problem: "Escriba el efectivo que hay en caja, o 0 si no hay." };
   }
-  const bankCentavos = parseLempiras(figures.bank, BALANCE_WHOLE_DIGITS);
+  const bankCentavos = parseLempiras(figures.bank);
   if (bankCentavos === null) {
     return { problem: "Escriba el dinero que hay en el banco, o 0 si no hay." };
   }

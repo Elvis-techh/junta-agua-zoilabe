@@ -27,8 +27,12 @@ export function capitalizeName(value: string): string {
     .join(" ");
 }
 
-/** The lempira digits an amount field takes unless told otherwise: up to L 99,999.99. */
-export const AMOUNT_WHOLE_DIGITS = 5;
+/**
+ * The lempira digits every amount field takes: up to L 999,999,999.99.
+ * Nobody knows how much a payment, an expense or the board's money will one
+ * day be (owner, 19 November 2026); backend/src/lib/money.ts takes the same.
+ */
+export const AMOUNT_WHOLE_DIGITS = 9;
 
 /**
  * What someone types as an amount in lempiras, in whole centavos:
@@ -36,16 +40,15 @@ export const AMOUNT_WHOLE_DIGITS = 5;
  * before exactly three digits separates thousands; a comma before the last one
  * or two digits is a decimal point. Null when it is not an amount.
  * Parsed as text, never through a float, so 0.1 + 0.2 never appears.
- * `wholeDigits` is the most lempira digits it takes: five (L 99,999.99) for a
- * fee, a payment or an expense, more for what the board holds (Saldo de la junta).
+ * Up to AMOUNT_WHOLE_DIGITS lempira digits.
  */
-export function parseLempiras(text: string, wholeDigits = AMOUNT_WHOLE_DIGITS): number | null {
+export function parseLempiras(text: string): number | null {
   const cleaned = text
     .trim()
     .replace(/^L\.?\s*/i, "")
     .replace(/,(\d{1,2})$/, ".$1")
     .replace(/,(?=\d{3}(?:\.|,|$))/g, "");
-  const match = new RegExp(`^(\\d{1,${wholeDigits}})(?:\\.(\\d{1,2}))?$`).exec(cleaned);
+  const match = new RegExp(`^(\\d{1,${AMOUNT_WHOLE_DIGITS}})(?:\\.(\\d{1,2}))?$`).exec(cleaned);
   if (!match) {
     return null;
   }
@@ -54,14 +57,14 @@ export function parseLempiras(text: string, wholeDigits = AMOUNT_WHOLE_DIGITS): 
 
 /**
  * What an amount field shows while it is typed: "1250.5" → "1,250.5".
- * Only digits and one decimal point are kept, with up to `wholeDigits` whole
- * digits (the most `parseLempiras` and the server accept) and two decimals.
+ * Only digits and one decimal point are kept, with up to AMOUNT_WHOLE_DIGITS
+ * whole digits (the most `parseLempiras` and the server accept) and two decimals.
  * Commas typed by hand are dropped, since the field puts its own.
  */
-export function formatAmountTyping(typed: string, wholeDigits = AMOUNT_WHOLE_DIGITS): string {
+export function formatAmountTyping(typed: string): string {
   const kept = typed.replace(/[^\d.]/g, "");
   const point = kept.indexOf(".");
-  const whole = (point === -1 ? kept : kept.slice(0, point)).replace(/^0+(?=\d)/, "").slice(0, wholeDigits);
+  const whole = (point === -1 ? kept : kept.slice(0, point)).replace(/^0+(?=\d)/, "").slice(0, AMOUNT_WHOLE_DIGITS);
   const grouped = whole.replace(/\B(?=(\d{3})+$)/g, ",");
   if (point === -1) {
     return grouped;

@@ -377,6 +377,22 @@ describe("census", () => {
     assert.equal(noReason.statusCode, 400);
     assert.match(noReason.json().message, /razón/);
 
+    // A different amount takes up to L 999,999,999.99, like every amount field.
+    const tooMuch = await call(
+      secretary.cookie,
+      "POST",
+      "/api/census/households",
+      registration({ fee: { kind: "different", monthlyAmountCentavos: 100_000_000_000, reason: "Negocio grande" } }),
+    );
+    assert.equal(tooMuch.statusCode, 400);
+    const large = await call(
+      secretary.cookie,
+      "POST",
+      "/api/census/households",
+      registration({ fee: { kind: "different", monthlyAmountCentavos: 99_999_999_999, reason: "Negocio grande" } }),
+    );
+    assert.equal(large.statusCode, 201, large.body);
+
     const ok = await call(
       secretary.cookie,
       "POST",

@@ -304,8 +304,29 @@ describe("Cierre del mes: preparing, approving and sending back a month's close"
     const empty = (await list()).next!;
     assert.equal(empty.row.month, m3);
     assert.deepEqual(empty.figures.incomeLines, []);
-    assert.equal((await prepare(m3, { cashCountedCentavos: 110000, expectedCashCentavos: 110000 })).statusCode, 200);
-    assert.equal((await approve(m3)).statusCode, 200);
+  });
+
+  it("is prepared, sent back and approved by anyone on the board, but never prepared and approved by the same person (owner, 19 November 2026)", async () => {
+    // Neither the treasurer nor the president: the fiscal and the second board member.
+    const fiscal = await signedInUser(t, "fiscal", "Fabio Fiscal");
+    const member = await signedInUser(t, "segundo_vocal", "Vera Vocal");
+    const counted = { cashCountedCentavos: 110000, expectedCashCentavos: 110000 };
+
+    assert.equal((await prepare(m3, counted, fiscal.cookie)).statusCode, 200);
+    // Whoever prepared it may send it back, to put right their own mistake before anyone approves it.
+    const ownReturn = await sendBack(m3, "Me equivoqué al contar", fiscal.cookie);
+    assert.equal(ownReturn.statusCode, 200, ownReturn.body);
+    assert.equal((ownReturn.json() as Detail).row.returnedBy, "Fabio Fiscal");
+
+    assert.equal((await prepare(m3, counted, fiscal.cookie)).statusCode, 200);
+    const own = await approve(m3, fiscal.cookie);
+    assert.equal(own.statusCode, 409);
+    assert.match(own.json().message, /lo debe aprobar otra persona/);
+    const approved = await approve(m3, member.cookie);
+    assert.equal(approved.statusCode, 200, approved.body);
+    const { row } = approved.json() as Detail;
+    assert.equal(row.preparedBy, "Fabio Fiscal");
+    assert.equal(row.approvedBy, "Vera Vocal");
     assert.equal((await list()).next, null);
   });
 

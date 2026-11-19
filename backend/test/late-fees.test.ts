@@ -228,10 +228,14 @@ describe("Month-end late fees and Quién debe", () => {
     assert.equal(cut.statusCode, 200, cut.body);
     assert.deepEqual(await owedOf(disconnected.id), { months: [], lateFees: [] });
 
-    // Quién debe lists only the houses active with water today.
-    const ids = (await call(treasurer.cookie, "GET", "/api/finance/arrears")).json().households.map((h: { id: string }) => h.id);
-    assert.ok(!ids.includes(inactive.id));
-    assert.ok(!ids.includes(disconnected.id));
+    // Quién debe lists every house that owes, whatever its status today (owner, 19 November 2026):
+    // the inactive house still owes m(2), and says it is inactive; the one without water owes nothing.
+    const listed = (await call(treasurer.cookie, "GET", "/api/finance/arrears")).json().households;
+    const inactiveRow = listed.find((h: { id: string }) => h.id === inactive.id);
+    assert.ok(inactiveRow, "an inactive house that owes is listed");
+    assert.equal(inactiveRow.status, "inactive");
+    assert.deepEqual(inactiveRow.months.map((month: { month: string }) => month.month), [m(2)]);
+    assert.ok(!listed.some((h: { id: string }) => h.id === disconnected.id));
 
     // Active again since the 20th of m(1), entered later: m(1) had service when its deadline ended, so it is owed again.
     const back = await call(president.cookie, "POST", `/api/census/households/${inactive.id}/reactivate`, { since: dayOf(m(1), 20) });

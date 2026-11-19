@@ -39,6 +39,16 @@ changing how money, permissions or the history log work.
   Usuarios, Historial and Configuración, as Vivienda, Gasto, Otro ingreso,
   Estado de cuenta and a payment already had ("‹ Censo", "‹ Cobrar"…). The
   phone's own back still works too; not everyone knows it is there.
+- **Every amount takes up to L 999,999,999.99** (owner, 19 November 2026),
+  since nobody knows how much a payment, an expense or the board's money
+  will one day be: Cobrar, Otro ingreso, Gasto, the fees in Configuración, a
+  family's different amount in Registrar familia, and Saldo de la junta.
+  Each field takes nine digits before the point and two after, on the phone
+  and on the server (`MAX_AMOUNT_CENTAVOS` in `backend/src/lib/money.ts`,
+  `AMOUNT_WHOLE_DIGITS` in `frontend/src/census.ts`; a test fails if the two
+  differ). Until then most fields stopped at L 99,999.99, and a different
+  amount at L 10,000.00. An amount longer than 9,999,999.99 is drawn a
+  little smaller, so it still fits beside the field next to it.
 - **Phase 1 (Census): merged.** Registrar familia (one question per screen,
   with the fee question), paper entry mode, duplicate check, search and
   list, household file, offline queue, inactive status, and Configuración →
@@ -69,7 +79,8 @@ changing how money, permissions or the history log work.
     block: the entry saves either way. Who the registrar said it is not is
     kept in Historial with the registration. It needs signal, like the
     check by ID: with none, the entry is saved on the phone without it.
-    It does not know a name written surname first.
+    It does not know a name written surname first. The owner tried it on the
+    test copy on 19 November 2026 and found it good.
 - **Phase 2 (Finances): started.** Its pieces, in build order, are ticked off
   under "What comes next" in the [app plan](docs/app-plan.md).
   - **Fees in Configuración: built.** The base monthly fee, the late fee
@@ -181,9 +192,12 @@ changing how money, permissions or the history log work.
     Configuración's late fee for that month, and it is paid by a "Mora" entry
     for that month in Otro ingreso. The household's file shows it under **Lo
     que debe** ("Debe la mora de octubre de 2026: L 50.00."), and **Quién
-    debe** (the treasurer's home button, and Cobrar) lists the active houses
-    with water that owe, the most owed first, each month with its fee left and
-    its late fee. See "Trying Quién debe" below.
+    debe** (the treasurer's home button, and Cobrar) lists every house that
+    owes, the most owed first, each month with its fee left and its late fee.
+    Owner decision of 19 November 2026: a house that is inactive or "Sin
+    conexión" today is listed too, marked "Inactiva" or "Sin conexión", for
+    the months it owes from when it had service (until then only active
+    houses with water were listed). See "Trying Quién debe" below.
   - **Status history: built.** Owner decisions of 14 November 2026: each
     house keeps when it was active or inactive, and with or without water
     (**Estado y agua** on its file). **Desactivar**, **Reactivar** and a new
@@ -195,8 +209,9 @@ changing how money, permissions or the history log work.
     ended. So a house inactive since February owes nothing from then on, and
     still owes the months before. Houses registered before the history
     existed start active since they were registered, and those inactive now
-    are inactive since their last "desactivó" in Historial. See "Trying the
-    status history" below.
+    are inactive since their last "desactivó" in Historial. The owner tried
+    it on the test copy on 19 November 2026 and found it good. See "Trying
+    the status history" below.
   - **Expenses (Gasto): built.** The treasurer's **Gasto** button: what kind
     of expense (the categories of Module 2), who was paid, the amount and
     date, how it was paid, and a photo of the receipt or invoice, then "¿Está
@@ -242,33 +257,33 @@ changing how money, permissions or the history log work.
     book) are already inside the balance and count only for what each house
     owes; a wrong balance is fixed with **Corregir** and a written reason,
     which keeps the old one, until the first month's close is prepared; it
-    needs no approval of its own, because the first month close shows it and already
-    takes a second person. **Efectivo en caja** and **En el banco** take
-    up to L 999,999,999.99, since nobody knows how much the box or the
-    account will one day hold (owner, 19 November 2026); every other money
-    field still stops at L 99,999.99. See "Trying Saldo de la junta" below.
+    needs no approval of its own, because the first month close shows it and
+    already takes a second person. See "Trying Saldo de la junta" below.
   - **Month close (Cierre del mes): built.** Owner decisions of 19
-    November 2026. The treasurer's **Preparar cierre** button (the
-    president's **Aprobar cierre**, **Cierre del mes** for everyone else)
-    opens the oldest month not yet closed, once it is over, starting with
-    the opening balance's month; months close in order, and a month with no
-    entries is closed too. It shows Caja and Banco side by side: at the
-    start of the month, what came in, what went out, and what should be
-    there ("Debe haber"), with what each category added up to under **Ver
-    de qué es**. Only the cash is counted: the treasurer types **Efectivo
-    contado en caja**; if it is not what the app expects, it asks **Por qué
-    no cuadra**, and the month shows a **Faltante** or **Sobrante de caja**.
-    From then on the cash counts from what was counted, in the next month's
-    figures and in Saldo de la junta; the bank is checked against its
-    statement by eye. Someone else then taps **Aprobar cierre** (the server
-    and the database refuse whoever prepared it), or **Devolver** with a
-    reason, and the month opens again with that reason shown. While a month
-    is prepared or closed, an entry dated in it is refused ("Registre el
-    pago con la fecha de hoy y escriba en la nota de qué fecha es"), and the
-    opening balance cannot be corrected; a reversal is dated the day it is
-    made, so an entry of a closed month can still be undone. Closed months
-    are listed below, each with its figures. Each step is in Historial,
-    under Finanzas. See "Trying Cierre del mes" below.
+    November 2026. Anyone on the board may prepare a close, approve it or
+    send it back; the one rule is that whoever prepared a month cannot also
+    approve it (the server and the database both refuse it). The same screen
+    opens from the treasurer's **Preparar cierre**, the president's and
+    vice-president's **Aprobar cierre**, and **Cierre del mes** under "Otras
+    tareas" for everyone else. It shows the oldest month not yet closed,
+    once it is over, starting with the opening balance's month; months
+    close in order, and a month with no entries is closed too. Caja and
+    Banco are side by side: at the start of the month, what came in, what
+    went out, and what should be there ("Debe haber"), with what each
+    category added up to under **Ver de qué es**. Only the cash is counted:
+    whoever prepares it types **Efectivo contado en caja**; if it is not
+    what the app expects, it asks **Por qué no cuadra**, and the month shows
+    a **Faltante** or **Sobrante de caja**. From then on the cash counts
+    from what was counted, in the next month's figures and in Saldo de la
+    junta; the bank is checked against its statement by eye. Someone else
+    then taps **Aprobar cierre**, or anyone, the preparer too, taps
+    **Devolver** with a reason, and the month opens again with that reason
+    shown. While a month is prepared or closed, an entry dated in it is
+    refused ("Registre el pago con la fecha de hoy y escriba en la nota de
+    qué fecha es"), and the opening balance cannot be corrected; a reversal
+    is dated the day it is made, so an entry of a closed month can still be
+    undone. Closed months are listed below, each with its figures. Each step
+    is in Historial, under Finanzas. See "Trying Cierre del mes" below.
   - Next: Phase 2's "done when" test, once the board says how to run it.
 
   A different amount starts with the month after the house's last payment
@@ -624,8 +639,8 @@ statement and a receipt never share a number.
 1. On Inicio, tap **Saldo de la junta**. Before anything is entered it asks
    for **Mes en que empieza**, **Efectivo en caja** and **En el banco**.
    Type 0 where there is nothing. A month that has not come yet is refused.
-   Each amount takes up to nine digits before the point: type 2500000 and
-   it shows 2,500,000.
+   Each amount takes up to nine digits before the point, as every amount
+   field does: type 2500000 and it shows 2,500,000.
 2. **Guardar saldo inicial**. The screen shows **Dinero ahora**: the same
    two amounts, because nothing has come in since.
 3. Record a payment in cash (Cobrar), a donation by transfer (Otro ingreso)
@@ -706,9 +721,11 @@ typed in through Cobrar:
    the list. **Anular** it, and it comes back.
 6. In **Configuración** → **Plazo de pago**, set an earlier day: a month paid
    after that day now owes its late fee.
-7. Make a house inactive, or set its water to "Sin conexión": it leaves the
-   list. Its months from that date are not charged (see "Trying the status
-   history").
+7. Make a house that owes old months inactive, or set its water to "Sin
+   conexión", from the first day of this month: it stays on the list, marked
+   **Inactiva** or **Sin conexión**, with the months it owes from before.
+   Its months from that date are not charged (see "Trying the status
+   history"). A house that owes nothing is not listed, whatever its status.
 
 ### Trying the status history
 
@@ -726,7 +743,8 @@ months, and the month in Configuración → Mora set before them:
    active when its deadline ended.
 4. **Corregir datos de la vivienda**, change **Conexión de agua** to "Sin
    conexión": it asks since when. The months from that date drop out of **Lo
-   que debe** and **Quién debe**.
+   que debe** and **Quién debe** (where the house stays, marked, while it
+   owes older months).
 5. Each change is in **Historial** with its date ("desactivó la vivienda …
    desde el 1 de octubre de 2026"), and the file keeps every entry: nothing
    is changed or deleted.

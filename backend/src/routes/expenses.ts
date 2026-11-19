@@ -40,6 +40,7 @@ import { formatLempiras } from "../lib/census.js";
 import { openMonthFor } from "../lib/entries.js";
 import { monthName } from "../lib/fees.js";
 import { HttpError, parse } from "../lib/http.js";
+import { MAX_AMOUNT_CENTAVOS } from "../lib/money.js";
 import { PHOTO_CONTENT_TYPE, decodePhoto, discardUnusedPhoto, photoFile, savePhoto } from "../lib/receiptPhotos.js";
 import { businessToday, formatCalendarDate } from "../lib/time.js";
 
@@ -67,7 +68,7 @@ const expenseBody = z.object({
     .number({ message: "Escriba el monto que se pagó." })
     .int("Escriba el monto en lempiras, por ejemplo 250 o 250.50.")
     .min(1, "Escriba el monto que se pagó.")
-    .max(99_999_999, "El monto es demasiado alto."),
+    .max(MAX_AMOUNT_CENTAVOS, "El monto es demasiado alto."),
   occurredOn: day,
   paymentMethod: z.enum(["cash", "transfer", "other"], { message: "Elija cómo se pagó." }),
   bankReference: optionalText(60, "La referencia es demasiado larga."),

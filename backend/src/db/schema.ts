@@ -339,7 +339,7 @@ export const householdFees = sqliteTable(
     householdId: uuid("household_id")
       .notNull()
       .references(() => households.id),
-    monthlyAmountCentavos: integer("monthly_amount_centavos").notNull(),
+    monthlyAmountCentavos: bigint("monthly_amount_centavos").notNull(),
     reason: text("reason").notNull(),
     startsOn: date("starts_on").notNull(),
     endsOn: date("ends_on"),
@@ -369,7 +369,7 @@ export const feeRates = sqliteTable(
   {
     id: serial("id"),
     kind: text("kind", { enum: ["base_monthly", "late_fee", "reconnection", "connection"] }).notNull(),
-    amountCentavos: integer("amount_centavos").notNull(),
+    amountCentavos: bigint("amount_centavos").notNull(),
     startsOn: date("starts_on").notNull(),
     createdAt: createdAt(),
     createdBy: uuid("created_by").references(() => users.id),

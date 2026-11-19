@@ -7,6 +7,9 @@ import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
 import { monthName, shortMonth } from "../payments.ts";
 
+/** Under the summary: a house without service is still listed for what it owes from before. */
+const SERVICE_NOTE = "Una vivienda inactiva o sin conexión aparece por los meses en que tenía el servicio.";
+
 /** One month of a house on the list: what is left of its fee, and its late fee (0 when none). */
 export interface ArrearsMonth {
   month: string;
@@ -17,6 +20,9 @@ export interface ArrearsMonth {
 export interface ArrearsHouse {
   id: string;
   code: string;
+  /** Today's, as the census says: a house that owes is listed whatever it is now. */
+  status: "active" | "inactive";
+  waterConnection: "connected" | "not_connected" | "shared";
   ownerName: string;
   sectorName: string;
   months: ArrearsMonth[];
@@ -42,6 +48,13 @@ export function arrearsMonthLine(month: ArrearsMonth): string {
   return `${name}: ${formatLempiras(month.owedCentavos)} de cuota y ${formatLempiras(month.lateFeeCentavos)} de mora`;
 }
 
+/** "Inactiva", "Sin conexión" or both: why a house that owes no longer builds up debt. Null for one with service. */
+export function arrearsMark(house: Pick<ArrearsHouse, "status" | "waterConnection">): string | null {
+  const noWater = house.waterConnection === "not_connected";
+  if (house.status === "inactive") return noWater ? "Inactiva, sin conexión" : "Inactiva";
+  return noWater ? "Sin conexión" : null;
+}
+
 /** The line at the top: how many houses owe, and how much in all. */
 export function arrearsSummary(list: Arrears): string {
   const count = list.households.length;
@@ -53,10 +66,11 @@ export function arrearsSummary(list: Arrears): string {
 }
 
 /**
- * Quién debe (App Plan, Module 2, "Arrears"): the active, connected houses
- * that owe, the most owed first, each with its months and the late fee owed
- * for each. A tap opens the house's file, to collect from there. The server
- * works it all out (backend/src/routes/arrears.ts).
+ * Quién debe (App Plan, Module 2, "Arrears"): every house that owes, the
+ * most owed first, each with its months and the late fee owed for each. An
+ * inactive house, or one without water, is marked (owner, 19 November 2026).
+ * A tap opens the house's file, to collect from there. The server works it
+ * all out (backend/src/routes/arrears.ts).
  */
 export function ArrearsScreen({ onOpen }: { onOpen: Go }) {
   const [list, setList] = useState<Arrears | null>(null);
@@ -80,23 +94,31 @@ export function ArrearsScreen({ onOpen }: { onOpen: Go }) {
           </p>
           <p className="muted" style={{ margin: 0 }}>
             {list.lateFeesFrom
-              ? `La mora se cuenta sola desde ${monthName(list.lateFeesFrom)}. Solo viviendas activas y con agua.`
-              : "La mora todavía no se cuenta sola: falta poner desde qué mes en Configuración → Mora. Solo viviendas activas y con agua."}
+              ? `La mora se cuenta sola desde ${monthName(list.lateFeesFrom)}. ${SERVICE_NOTE}`
+              : `La mora todavía no se cuenta sola: falta poner desde qué mes en Configuración → Mora. ${SERVICE_NOTE}`}
           </p>
-          {list.households.map((house) => (
-            <button key={house.id} className="card household-card" onClick={() => onOpen(`/censo/vivienda/${house.id}`)}>
-              <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                <strong>{house.code}</strong>
-                <strong style={{ whiteSpace: "nowrap" }}>{formatLempiras(house.totalCentavos)}</strong>
-              </div>
-              <div>{house.ownerName}</div>
-              <div className="muted">{house.sectorName}</div>
-              {house.months.slice(0, 6).map((month) => (
-                <div key={month.month}>{arrearsMonthLine(month)}</div>
-              ))}
-              {house.months.length > 6 && <div className="muted">y {house.months.length - 6} meses más</div>}
-            </button>
-          ))}
+          {list.households.map((house) => {
+            const mark = arrearsMark(house);
+            return (
+              <button key={house.id} className="card household-card" onClick={() => onOpen(`/censo/vivienda/${house.id}`)}>
+                <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                  <strong>{house.code}</strong>
+                  <strong style={{ whiteSpace: "nowrap" }}>{formatLempiras(house.totalCentavos)}</strong>
+                </div>
+                {mark && (
+                  <span className="status warn" style={{ justifySelf: "start" }}>
+                    <Icon name="alert" size={18} /> {mark}
+                  </span>
+                )}
+                <div>{house.ownerName}</div>
+                <div className="muted">{house.sectorName}</div>
+                {house.months.slice(0, 6).map((month) => (
+                  <div key={month.month}>{arrearsMonthLine(month)}</div>
+                ))}
+                {house.months.length > 6 && <div className="muted">y {house.months.length - 6} meses más</div>}
+              </button>
+            );
+          })}
           {list.households.length > 0 && (
             <button className="btn block" onClick={() => onOpen("/finanzas/cobrar")}>
               <Icon name="cash" /> Cobrar

@@ -24,6 +24,7 @@ import { formatLempiras } from "../lib/census.js";
 import { recordAudit } from "../lib/audit.js";
 import { firstOfMonth, monthAfter, monthName, paidMonthsAt } from "../lib/fees.js";
 import { HttpError, parse } from "../lib/http.js";
+import { MAX_AMOUNT_CENTAVOS } from "../lib/money.js";
 import type { FeeKind } from "../lib/settings.js";
 import { FEE_KINDS, feeOn } from "../lib/settings.js";
 import { businessToday } from "../lib/time.js";
@@ -41,7 +42,7 @@ const amountCentavos = z
   .number({ message: "Escriba el monto en lempiras." })
   .int("Escriba el monto en lempiras, por ejemplo 70 o 70.50.")
   .min(0, "El monto no puede ser negativo.")
-  .max(9_999_999, "El monto es demasiado alto.");
+  .max(MAX_AMOUNT_CENTAVOS, "El monto es demasiado alto.");
 
 const createBody = z.object({
   kind: z.enum(FEE_KINDS, { message: "Elija qué cuota cambia." }),

@@ -42,6 +42,7 @@ import { formatLempiras } from "../lib/census.js";
 import { earlierReceipt, householdOf, incomeCategoryId, openMonthFor, repeatedReceiptColumn } from "../lib/entries.js";
 import { firstOfMonth, monthName } from "../lib/fees.js";
 import { HttpError, parse } from "../lib/http.js";
+import { MAX_AMOUNT_CENTAVOS } from "../lib/money.js";
 import { feeOn } from "../lib/settings.js";
 import { businessToday, formatCalendarDate } from "../lib/time.js";
 
@@ -87,7 +88,7 @@ const incomeBody = z.object({
     .number({ message: "Escriba el monto que se pagó." })
     .int("Escriba el monto en lempiras, por ejemplo 50 o 50.50.")
     .min(1, "Escriba el monto que se pagó.")
-    .max(99_999_999, "El monto es demasiado alto."),
+    .max(MAX_AMOUNT_CENTAVOS, "El monto es demasiado alto."),
   occurredOn: day,
   paymentMethod: z.enum(["cash", "transfer", "other"], { message: "Elija cómo se pagó." }),
   bankReference: optionalText(60, "La referencia es demasiado larga."),

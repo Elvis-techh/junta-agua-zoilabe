@@ -1,6 +1,6 @@
 /**
- * Quién debe: the arrears list (App Plan, Module 2, "Arrears"): the active,
- * connected households with unpaid months, and the late fee owed for each.
+ * Quién debe: the arrears list (App Plan, Module 2, "Arrears"): every
+ * household that owes money, and the late fee owed for each of its months.
  *
  * Each house shows, month by month, what the month still owes (not paid in
  * full, from when the house owes, once its deadline is over: src/lib/
@@ -8,10 +8,13 @@
  * full after its deadline can still owe its late fee, so it appears with
  * nothing left of the fee. Nothing is written: it is worked out each time.
  *
- * "Connected" is a house with water, connected or shared: one marked "Sin
- * conexión" is not listed, nor is an inactive one (owner, 14 November 2026).
+ * Every house that owes is listed, whatever its status today (owner, 19
+ * November 2026, replacing the rule of 14 November that listed only active
+ * houses with water): an inactive house, or one "Sin conexión", still owes
+ * the months it had service, by its status history. Each row says the
+ * house's status and water today, so the screen can mark it.
  */
-import { and, asc, eq, isNull, ne } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import type { FastifyPluginAsync } from "fastify";
 
 import { householdOwners, households, people, sectors } from "../db/schema.js";
@@ -35,6 +38,8 @@ export const arrearsRoutes: FastifyPluginAsync<{ timeZone: string }> = async (ap
       .select({
         id: households.id,
         code: households.code,
+        status: households.status,
+        waterConnection: households.waterConnection,
         ownerName: people.fullName,
         sectorName: sectors.name,
       })
@@ -42,7 +47,6 @@ export const arrearsRoutes: FastifyPluginAsync<{ timeZone: string }> = async (ap
       .innerJoin(householdOwners, and(eq(householdOwners.householdId, households.id), isNull(householdOwners.endsOn)))
       .innerJoin(people, eq(people.id, householdOwners.personId))
       .innerJoin(sectors, eq(sectors.id, households.sectorId))
-      .where(and(eq(households.status, "active"), ne(households.waterConnection, "not_connected")))
       .orderBy(asc(households.code))
       .all();
 
