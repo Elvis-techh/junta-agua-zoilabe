@@ -1,5 +1,5 @@
 > Snapshot of the Claude Docs doc **"Zoilabe Water Board System: App Plan"**
-> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 222, taken 2026-11-16.
+> (https://claude.ai/artifact/NU7ygpQf7xeaRihKjqFsvf), revision 242, taken 2026-11-17.
 > The doc is the source of truth; update this copy when the doc changes.
 
 # Zoilabe Water Board System: App Plan
@@ -138,7 +138,7 @@ Every entry also carries a date, an optional note and the name of the person who
 - **Corrections.** A reversal entry points to the original and needs a written reason. Both stay visible.
 - **Arrears.** The app lists active, connected households with unpaid months and the late fee owed for each, calculated from the census, each house's fee and the last day of each month.
 - **Whole numbers.** Money is stored in whole centavos so totals never drift from rounding.
-- **Opening balance.** The treasurer enters it once at launch. It appears in the history log like any other entry.
+- **Opening balance.** The treasurer enters it once at launch, as two figures: the cash in the box and the money in the bank, at the start of the month the app's money begins. Entries dated before that month count only for what each house owes, never in the money totals. A wrong figure is corrected by a new entry that points to the old one with a reason, until the first month is closed; the first close shows it, so a second person approves it there (decided 17 November). It appears in the history log like any other entry.
 - **Receipt photos.** Photos of expense receipts are kept in a private storage bucket and opened through short-lived links.
 
 ## Module 3: Users and access
@@ -382,7 +382,7 @@ Phases 1 to 3 are built and tested on the builder's computer before anything cha
 | 3. Close, reports and guests | Not started | Everything, including print layouts and guest invitations | A guest signing in from a municipal phone at the real address |
 | 4. Handover | Not started | A first draft of the runbook | The restore test, board-owned accounts, training and installing on every director's phone |
 
-**Done so far (as of 13 November 2026, evening)**
+**Done so far (as of 17 November 2026)**
 
 Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fees can be set and removed in Configuración, including changes that start in a past month, monthly fee payments can be recorded, a payment recorded by mistake can be reversed, and each house shows what it owes once a month's payment deadline is over. Board members sign in with their phone number and a password.
 
@@ -394,20 +394,20 @@ Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fee
 - [x] A house's different amount and its reason are entered at registration, and start with the month after its last payment (PRs #3 and #4).
 - [x] Board rules for Phase 2 are written down: the decisions of 25 and 29 October and of 2 and 3 November below.
 - [x] Fees can be set in Configuración, and the census shows the base price's amount (PR #15, merged on 3 November 2026).
-- [x] Cuotas is clearer: each saved amount has its own box, "Cambiar monto" became "Cambiar detalles", and a test proves a later fee takes over when its month arrives (PR #17, merged on 3 November 2026).
-- [x] The screen behind an open panel stays still, on a computer and on a phone (PR #18, merged on 3 November 2026).
-- [x] Money amounts show thousands commas while they are typed. ID numbers, phones, PINs and paper form numbers stay plain (PR #19, merged on 3 November 2026).
-- [x] On a computer, month and date fields open the app's own calendar, in Spanish. A phone keeps its own picker (PR #20, merged on 3 November 2026).
-- [x] Nothing stays hidden on a phone: on a form's last field the button that goes on stays above the keyboard, and "Hay más abajo" says when something is further down (PR #21, merged on 3 November 2026).
+- [x] Cuotas is clearer: each saved amount has its own box, "Cambiar monto" became "Cambiar detalles", and a test proves a later fee takes over when its month arrives (PR #17, merged on 4 November 2026).
+- [x] The screen behind an open panel stays still, on a computer and on a phone (PR #18, merged on 4 November 2026).
+- [x] Money amounts show thousands commas while they are typed. ID numbers, phones, PINs and paper form numbers stay plain (PR #19, merged on 4 November 2026).
+- [x] On a computer, month and date fields open the app's own calendar, in Spanish. A phone keeps its own picker (PR #20, merged on 4 November 2026).
+- [x] Nothing stays hidden on a phone: on a form's last field the button that goes on stays above the keyboard, and "Hay más abajo" says when something is further down (PR #21, merged on 4 November 2026).
 - [x] Every certificate on the droplet now reloads nginx when it renews, so no site keeps serving an old one (set up on 4 November 2026). Its first real use is Báscula Central's renewal, around 25 November.
-- [x] On a phone, the keyboard stays down until a field is tapped (PR #22, merged on 6 November 2026).
-- [x] Every phone number carries its country code, chosen from a list of nine with Honduras first (PR #23, merged on 6 November 2026).
+- [x] On a phone, the keyboard stays down until a field is tapped (PR #22, merged on 5 November 2026).
+- [x] Every phone number carries its country code, chosen from a list of nine with Honduras first (PR #23, merged on 5 November 2026).
 - [x] Monthly fee payments, "Cobrar": the treasurer records a house's payment for the months on the paper receipt, shared oldest month first, with the receipt's number (PR #24, merged on 6 November 2026).
 - [x] Removing a fee amount, "Quitar": until a payment covers its month, with a written reason and the PIN (PR #25, merged on 6 November 2026).
 - [x] Every role holds every permission; a month close still takes two different people, and the database refuses an approval by whoever prepared the month (PR #26, merged on 6 November 2026).
 - [x] Corrections, "Anular pago": a whole payment is reversed from the household's file with a reason and the PIN, dated the day it is made; the original stays, marked "Anulado", and can be recorded again with its details filled in (PR #27, merged on 7 November 2026).
 - [x] Signing in with phone number and password, replacing the invitation link and the PIN (PR #28, merged on 9 November 2026).
-- [x] The history log keeps changes, not visits: signing in and wrong passwords leave no entry, and new entries no longer save the phone's description (PR #29, merged on 9 November 2026).
+- [x] The history log keeps changes, not visits: signing in and wrong passwords leave no entry, and new entries no longer save the phone's description (PR #29, merged on 12 November 2026).
 - [x] Past fee changes in Configuración: a fee can take a change that starts in a past month, so the fees of the years in the paper book can be entered, unless a payment of that fee falls in the months it would cover. Corregir and Quitar now look only at payments in an amount's own months (PR #30, merged on 13 November 2026).
 - [x] What each house owes: a household's file shows "Debe el mes de …" or "Debe los meses de …", counted from its first entered payment (or its registration month, if earlier), once a month's payment deadline and grace days are over. Configuración → Plazo de pago sets the day of the month and the grace days. Cobrar lists older owed months first, under "Debe de antes" (PR #33, merged on 13 November 2026). The owner tried it on the test copy.
 - [x] Other income, "Otro ingreso": a late fee (with the month it covers), a reconnection, a connection fee, a donation or other income, each with who paid, the amount, the date, how it was paid and the paper receipt's number. A late fee is recorded under "Mora" and a reconnection under "Reconexión", so Configuración's checks see them. A wrong entry is undone with "Anular" (PR #36, merged on 14 November 2026).
@@ -415,18 +415,21 @@ Phases 0 and 1 are merged and the test copy is running. Phase 2 has started: fee
 - [x] Month-end late fees and "Quién debe": the app adds a late fee by itself only from a month set in Configuración → Mora. Only active houses with water build them up. They are worked out each time from the payments and never written down. The household's file shows them under "Lo que debe", and "Quién debe" lists who owes, the most owed first (PR #38, merged on 14 November 2026).
 - [x] The same home screen for every role: Inicio shows the role's usual buttons first, then every other built screen under "Otras tareas" (PR #39, merged on 14 November 2026).
 - [x] A status history for each house: a month is owed, and owes a late fee, only if on the day its deadline and grace days end the house was active and had water. Desactivar, Reactivar and a change of water ask "¿Desde cuándo?", and the household's file shows each entry under "Estado y agua" (PR #40, merged on 15 November 2026).
+- [x] Expenses, "Gasto": the treasurer records what was paid, to whom, the amount and date, and how it was paid, with a photo of the receipt or "No hay recibo" and a written reason. A wrong expense is undone with "Anular" (PR #41, merged on 15 November 2026).
+- [x] Household statements, "Estado de cuenta": from a household's file, what the house paid from a month the treasurer chooses and what it owes today, as a picture with a document number, shared through the phone's own Share button or as text for the family's WhatsApp chat (PR #42, merged on 15 November 2026).
+- [x] Digital receipts, "Recibo digital": a monthly fee payment or other income as a picture to send by WhatsApp, numbered in the same count as statements (PR #43, merged on 17 November 2026).
 
 **What comes next**
 
 Phase 2 is under way: the app sets fees, records monthly fee payments and other income, shows what each house owes with its late fees, and reverses a payment recorded by mistake. Expenses (category, supplier, amount and receipt photo) are built (PR #41, merged on 15 November 2026). Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test.
 
-One pull request is waiting: digital receipts ("Recibo digital"). Household statements ("Estado de cuenta", PR #42) were merged on 16 November 2026. Expenses ("Gasto", PR #41) were merged on 15 November 2026. The status history (PR #40) was merged on 15 November 2026, after PR #36 to #39 on 14 November 2026. The start month (PR #32) was closed without merging.
+Digital receipts ("Recibo digital", PR #43) were merged on 17 November 2026. Household statements ("Estado de cuenta", PR #42) were merged on 15 November 2026. Expenses ("Gasto", PR #41) were merged on 15 November 2026. The status history (PR #40) was merged on 15 November 2026, after PR #36 to #39 on 14 November 2026. The start month (PR #32) was closed without merging.
 
-**Where to pick up next (16 November 2026, evening)**
+**Where to pick up next (17 November 2026)**
 
 - **Done: expenses, "Gasto"**, merged in PR #41 on 15 November 2026 ("Trying Gasto" in the README). Decided by the owner on 15 November: the photo is asked for every time, and an expense with no paper is saved only with "No hay recibo" and a written reason, marked "Sin foto"; Gasto asks how it was paid, as Cobrar does; the invoice number is optional, and the same number from the same supplier is flagged, not blocked. Photos stay on the computer, beside the database file, and are not in the nightly backup yet.
 - **Open for the owner, not code:** try the status history on the test copy ("Trying the status history" in the README), and say whether Quién debe should also list a house that is inactive now but has old unpaid months. It lists only active houses with water today.
-- **Next: the opening balance.** Digital receipts ("Recibo digital") are in a pull request to try on the test copy ("Trying el recibo digital" in the README). The board decides how the opening balance is counted before it is built. Before real expenses are entered on the droplet, receipt photos must go to the bucket or into the backup.
+- **Next:** the opening balance, decided on 17 November (see that day's decisions) and being built. Digital receipts ("Recibo digital", PR #43, merged on 17 November 2026) are the latest piece. Before real expenses are entered on the droplet, receipt photos must go to the bucket or into the backup.
 - **Still open for the board:** how to run Phase 2's "done when" test, and the data-separation check on the droplet before the first deployment.
 - **How work goes:** one branch and one pull request per piece, tried on the test copy at prueba-agua.basculacentral.com before merging. The plan snapshot in the repository (docs/app-plan.md) is refreshed from this doc in each pull request.
 
@@ -449,9 +452,9 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - [x] Month-end late fees and the arrears list: active, connected households with unpaid months and the late fee owed for each. Merged in PR #38 on 14 November 2026.
 - [x] A status history for each house: a month is charged only if the house was active and had water on its deadline day (decided 14 November). Merged in PR #40 on 15 November 2026.
 - [x] Expenses: category, supplier, amount and receipt photo. Photos stay on the computer until the bucket is connected. With no paper, "No hay recibo" and a written reason; how it was paid; an optional invoice number (decided 15 November). Merged in PR #41 on 15 November 2026.
-- [ ] Opening balance, entered once. The phase table does not name it, but Phase 2's test compares balances.
-- [x] Household statements: what a house paid from a month the treasurer chooses and what it owes today, as a picture with a document number, shared from the phone, and as text for the family's WhatsApp chat (decided 15 November). Merged in PR #42 on 16 November 2026.
-- [ ] Digital receipts on request, with "Compartir por WhatsApp": a payment or other-income entry as a picture to send, sharing the document count (receipts cover other income too, decided 16 November). In a pull request, to be tried on the test copy.
+- [ ] Opening balance, entered once: cash and bank at the start of the month the app's money begins, with "Otro" on its own line (decided 17 November). The phase table does not name it, but Phase 2's test compares balances. Being built.
+- [x] Household statements: what a house paid from a month the treasurer chooses and what it owes today, as a picture with a document number, shared from the phone, and as text for the family's WhatsApp chat (decided 15 November). Merged in PR #42 on 15 November 2026.
+- [x] Digital receipts on request, with "Compartir por WhatsApp": a payment or other-income entry as a picture to send, sharing the document count (receipts cover other income too, decided 16 November). Merged in PR #43 on 17 November 2026.
 
 **Decisions made on 23 October 2026**
 
@@ -560,7 +563,15 @@ Phase 2 pieces in suggested build order. Each is one pull request, tried on the 
 - The number on the supplier's invoice or receipt is optional. The same number from the same supplier is flagged, not blocked.
 - A household statement (estado de cuenta) is a picture the app draws, with the board's name, the date and time, who made it and a document number. The treasurer shares it through the phone's own Share button. A second button opens the family's WhatsApp chat with the same statement as text.
 - The treasurer chooses the month a statement's payments start from, January of the current year to begin with. What the house owes today is always shown in full.
-- A digital receipt is made for a monthly fee payment or for any other income (a late fee, a reconnection, a connection, a donation, other), on request. One running count numbers every document the app hands out (statements and receipts share it). An expense has no resident receipt, and a payment that was undone has none.
+- A digital receipt is made for a monthly fee payment or for any other income (a late fee, a reconnection, a connection, a donation, other), on request. One running count numbers every document the app hands out, so statements and receipts share it. An expense has no resident receipt, and a payment that was undone has none.
+
+**Decisions made on 17 November 2026**
+
+- The digital receipt of PR #43 is enough for the first version.
+- The opening balance is two figures: the cash in the box (caja) and the money in the bank (banco). Month close compares the cash counted with the cash figure only; the bank is checked against its statement. An entry paid by "Otro" counts on its own line, "Otro", shown only when there is one, so it is never mixed into the cash that is counted.
+- The opening balance is the money on hand at the start of a month the board chooses, when the app's money begins. Entries dated before that month count only for what each house owes and for statements, never in the money totals.
+- A wrong opening balance is corrected with a new entry that points to the old one and gives a written reason, until the first month is closed. After that it is locked.
+- No separate approval: the first month close shows the opening balance, and that close already needs a second person to approve it.
 
 **Still open**
 

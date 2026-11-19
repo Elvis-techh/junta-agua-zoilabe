@@ -12,6 +12,7 @@ export type Route =
   | "/finanzas/ingreso"
   | "/finanzas/gasto"
   | "/finanzas/quien-debe"
+  | "/finanzas/saldo"
   | `/censo/vivienda/${string}`
   | `/finanzas/cobrar/${string}`
   | `/finanzas/ingreso/${string}`
@@ -30,6 +31,7 @@ export function routeOf(path: string): Route {
     "/finanzas/ingreso",
     "/finanzas/gasto",
     "/finanzas/quien-debe",
+    "/finanzas/saldo",
   ];
   if ((fixed as string[]).includes(path)) {
     return path as Route;
@@ -60,6 +62,7 @@ const B = {
   ingreso: { label: "Otro ingreso", icon: "plus", route: "/finanzas/ingreso", permission: "finance:record" },
   resumen: { label: "Resumen del mes", icon: "chart" },
   quienDebe: { label: "Quién debe", icon: "alert", route: "/finanzas/quien-debe", permission: "finance:view" },
+  saldo: { label: "Saldo de la junta", icon: "chart", route: "/finanzas/saldo", permission: "finance:view" },
   aprobar: { label: "Aprobar cierre", icon: "check" },
   reportes: { label: "Reportes", icon: "print" },
   historial: { label: "Historial", icon: "clock", route: "/historial", permission: "log:view" },
@@ -103,6 +106,36 @@ export function otherButtons(roleCode: string, permissions: readonly string[]): 
     shown.add(button.route);
     return true;
   });
+}
+
+/**
+ * The board's setup screens. On Inicio they come last, under
+ * "Administración", for every role: they are opened now and then, and the
+ * day's work goes first (owner, 19 November 2026).
+ */
+const SETUP: readonly HomeButton[] = [B.usuarios, B.permisos, B.configuracion];
+
+export interface HomeSections {
+  /** The role's own buttons, less the setup ones. */
+  own: HomeButton[];
+  /** "Otras tareas": every other built screen this user may open. */
+  others: HomeButton[];
+  /** "Administración", last: Usuarios, Permisos, Configuración. */
+  setup: HomeButton[];
+}
+
+/**
+ * Inicio in its order: the role's usual work, every other task, then the
+ * setup screens at the bottom. An administrator, whose usual buttons are
+ * all setup ones, therefore sees the other tasks first.
+ */
+export function homeSections(roleCode: string, permissions: readonly string[]): HomeSections {
+  const isSetup = (button: HomeButton) => SETUP.includes(button);
+  const own = homeButtons(roleCode, permissions);
+  const others = otherButtons(roleCode, permissions);
+  // A setup button the role holds shows even before its screen is built ("Próximamente").
+  const setup = SETUP.filter((button) => own.includes(button) || others.includes(button));
+  return { own: own.filter((b) => !isSetup(b)), others: others.filter((b) => !isSetup(b)), setup };
 }
 
 export interface Tab {

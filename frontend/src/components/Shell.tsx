@@ -16,6 +16,7 @@ import { HistoryScreen } from "../screens/History.tsx";
 import { HomeScreen } from "../screens/Home.tsx";
 import { HouseholdScreen } from "../screens/Household.tsx";
 import { IncomeScreen } from "../screens/Income.tsx";
+import { OpeningBalanceScreen } from "../screens/OpeningBalance.tsx";
 import type { RegisterPreset } from "../screens/Register.tsx";
 import { RegisterScreen } from "../screens/Register.tsx";
 import { SettingsScreen } from "../screens/Settings.tsx";
@@ -111,6 +112,9 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
     }
     if (route === "/finanzas/quien-debe" && can("finance:view")) {
       return <ArrearsScreen onOpen={go} />;
+    }
+    if (route === "/finanzas/saldo" && can("finance:view")) {
+      return <OpeningBalanceScreen canRecord={can("finance:record")} canCorrect={can("finance:reverse")} />;
     }
     // Otro ingreso: from Inicio it finds the house in the census (or none); from Cobrar or a house's file, by id.
     if (route === "/finanzas/ingreso" && can("finance:record") && can("finance:view") && can("census:view")) {

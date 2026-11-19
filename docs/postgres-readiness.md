@@ -80,7 +80,7 @@ c6aa10c:<path>`), the last `main` before the switch.
 | 2 | One write at a time | `inTransaction` (30 call sites): synchronous IMMEDIATE, nothing else runs inside it | async transactions run side by side: the locks in the list below come back | M, and the riskiest |
 | 3 | Nothing deleted, history unchanged | triggers (`src/db/guards.ts`), `recursive_triggers` on | two logins and their grants (history: `backend/src/db/roles.ts`). Triggers can stay as a second layer | M |
 | 4 | Accent-blind search | `search_text()`, a JavaScript function on the connection | history: `translate(lower(x), 'áéíóúüñ', 'aeiouun')`, or the `unaccent` extension | S |
-| 5 | Raw SQL | 17 fragments, list below | translations below | S |
+| 5 | Raw SQL | 18 fragments, list below | translations below | S |
 | 6 | Schema | `sqliteTable` with helpers named after PostgreSQL types (`uuid`, `date`, `boolean`, `bigint`, `serial`, `json`, `instant`) | `pgTable` and the real types (history: `backend/src/db/schema.ts`). `instant` becomes `timestamp(…, { withTimezone: true })` | S |
 | 7 | Migrations | the API applies them at start | a new PostgreSQL baseline migration in a fresh folder, applied by the admin login (the app login cannot create tables) | S |
 | 8 | Backups and restore | `VACUUM INTO`, then encrypt (`src/lib/snapshot.ts`) | `pg_dump -Fc`, then the same encryption; restore with `pg_restore` (history: `backend/src/lib/pgTools.ts`, `docs/restore.md`) | M |
@@ -113,6 +113,7 @@ history version had:
 | Estado de cuenta (`POST /finance/households/:id/statement`, `src/routes/statements.ts`) | the statement is read and its document row written in one transaction; side by side, a payment recorded in between would make the totals kept in `documents.details` differ from the statement sent. The document number itself is safe: it is the table's own counter | the same advisory lock `7_311_004` as Cobrar, or a `REPEATABLE READ` transaction |
 | Recibo digital (`POST /finance/receipts/:id`, `src/routes/receipts.ts`) | the receipt is read and its document row written in one transaction; the number is the `documents` counter, safe by itself. As with a statement, a payment reversed in between would leave the totals in `documents.details` out of step with what was sent | the same advisory lock `7_311_004` as Cobrar, or a `REPEATABLE READ` transaction |
 | Plazo de pago and Mora (`POST /settings/deadline`, `POST /settings/late-fees`, `src/routes/deadline.ts`) | two saves at once both read the same value before, so both log it as the one they replaced, or one is skipped as "no change" while the other changes it | advisory lock on the setting's key (one per key, e.g. `7_311_005`) |
+| Saldo de la junta (`POST /finance/opening-balance` and `/finance/opening-balance/:id/correct`, `src/routes/openingBalance.ts`) | two first entries both pass the "already entered?" check, or two corrections of the same entry both pass "is it the one in force?" (the unique index on `coalesce(replaces_id, '')` still refuses the second, but with a database error instead of the sentence); a month is closed between the "no month closed yet" check and a correction | advisory lock on the opening balance (e.g. `7_311_006`), and the month close takes the same lock |
 | Every permission for every role, once (`grantEveryPermissionOnce`, `src/db/seeding.ts`) | runs from the seed, before the API starts, so nothing races it today; run beside a live API, a Permisos edit between its read and its write would be overwritten, or two seeds would both log the grant | none while it runs from the seed; otherwise `LOCK TABLE role_permissions` |
 
 **New code that relies on one write at a time adds its row here**: Phase 2's
@@ -134,6 +135,7 @@ the tests may not notice.
 | `GLOB '+*'`, `NOT GLOB '*[^0-9]*'` (phone and ID checks) | `~ '^\+[0-9]{8,15}$'`, `~ '^[0-9]{13}$'` |
 | `IS NOT 'transfer'` (transfer needs a bank reference) | `IS DISTINCT FROM 'transfer'` |
 | `substr(month, 9, 2) = '01'` (months start on day 1) | `extract(day from month) = 1` |
+| `coalesce(replaces_id, '')` in a unique index (`opening_balances_one_chain`: one first entry, each corrected once) | the same expression index |
 | `search_text(col)` (census search) | row 4 |
 | `LIKE … ESCAPE '\'` | same. PostgreSQL's `LIKE` cares about upper/lower case and SQLite's does not (for A to Z), so both sides stay lowercased as today |
 | `sqlite_master`, `PRAGMA`, `VACUUM INTO` (`guards.ts`, `migrations.ts`, `snapshot.ts`) | go away with rows 3, 7 and 8 |
