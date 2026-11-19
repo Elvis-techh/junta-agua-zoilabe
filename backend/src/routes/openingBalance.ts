@@ -26,12 +26,18 @@ import { firstOfMonth, monthName } from "../lib/fees.js";
 import { HttpError, parse } from "../lib/http.js";
 import { businessToday } from "../lib/time.js";
 
+/**
+ * Up to L 999,999,999.99: nobody knows how much the box or the account will
+ * one day hold (owner, 19 November 2026). Matches frontend/src/balance.ts.
+ */
+const MAX_BALANCE_CENTAVOS = 99_999_999_999;
+
 const amount = (what: string) =>
   z
     .number({ message: `Escriba ${what}, o 0 si no hay.` })
     .int("Escriba el monto en lempiras, por ejemplo 2500 o 2500.50.")
     .min(0, "El monto no puede ser negativo.")
-    .max(99_999_999, "El monto es demasiado alto.");
+    .max(MAX_BALANCE_CENTAVOS, "El monto es demasiado alto.");
 
 const balanceBody = z.object({
   month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-01$/, "Elija el mes en que empieza el dinero de la aplicación."),

@@ -6,15 +6,17 @@ import { amountCaret, formatAmountTyping, significantChars } from "../census.ts"
 type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "inputMode" | "type"> & {
   value: string;
   onChange: (value: string) => void;
+  /** The most lempira digits it takes; five (L 99,999.99) unless told. */
+  wholeDigits?: number;
 };
 
 /**
  * An amount in lempiras, with its thousands commas added while it is typed:
  * 1250.5 shows as 1,250.5. `value` is the text as shown; `parseLempiras` reads
  * it. Adding a comma moves the text, so the cursor is put back after the same
- * digit it was after.
+ * digit it was after. Read it with `parseLempiras` and the same `wholeDigits`.
  */
-export function AmountInput({ value, onChange, ...rest }: Props) {
+export function AmountInput({ value, onChange, wholeDigits, ...rest }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const caret = useRef<number | null>(null);
 
@@ -35,7 +37,7 @@ export function AmountInput({ value, onChange, ...rest }: Props) {
       onChange={(event) => {
         const typed = event.target.value;
         const before = significantChars(typed.slice(0, event.target.selectionStart ?? typed.length));
-        const shown = formatAmountTyping(typed);
+        const shown = formatAmountTyping(typed, wholeDigits);
         caret.current = amountCaret(shown, before);
         onChange(shown);
       }}
