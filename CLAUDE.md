@@ -124,6 +124,10 @@ the file. Tests make their own database in memory.
 Someone who has only used WhatsApp will not scroll to look for an answer, or
 close the keyboard to look for a button. When a screen is built or changed:
 
+- **Every screen opens with its way back**, top left, named after where it
+  goes: `BackButton` ("‹ Inicio"), or for a screen opened from another one,
+  its name ("‹ Cobrar"). A step of a form has "‹ Atrás" instead, and its
+  first step the way out. Nobody should need the phone's own back button.
 - **The button that goes on** is `.btn.go` or `.btn.primary`, directly inside the
   `.screen`, `.dialog` or `.card` (or in a `.row` there), so `src/viewport.ts`
   and `styles.css` can keep it above the keyboard on a form's last field.

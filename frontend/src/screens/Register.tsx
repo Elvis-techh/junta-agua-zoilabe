@@ -17,6 +17,7 @@ import {
   whatsappLink,
 } from "../census.ts";
 import { AmountInput } from "../components/AmountInput.tsx";
+import { BackButton } from "../components/BackButton.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { DateField } from "../components/CalendarField.tsx";
 import { PhoneField } from "../components/PhoneField.tsx";
@@ -143,6 +144,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
   if (!options) {
     return (
       <main className="screen stack">
+        <BackButton onClick={() => onOpen("/")} />
         <h1>Registrar familia</h1>
         <p className={optionsError ? "message error" : "muted"}>
           {optionsError ? "Abra esta pantalla una vez con señal, para que el teléfono guarde la lista de sectores." : "Cargando…"}
@@ -154,6 +156,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
   if (options.sectors.length === 0) {
     return (
       <main className="screen stack">
+        <BackButton onClick={() => onOpen("/")} />
         <h1>Registrar familia</h1>
         <p className="message error">Todavía no hay sectores. Pida al administrador que los agregue en Configuración.</p>
       </main>
@@ -320,6 +323,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
     case "mode":
       return (
         <main className="screen stack">
+          <BackButton onClick={() => onOpen("/")} />
           <h1>{addToExisting ? `Otra vivienda de ${fullName}` : "Registrar familia"}</h1>
           <p>¿De dónde vienen los datos?</p>
           <button className="btn primary block choice" onClick={() => { setMode("house"); setStep(addToExisting ? "sector" : "name"); }}>

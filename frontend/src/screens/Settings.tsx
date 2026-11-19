@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "../api.ts";
+import { BackButton } from "../components/BackButton.tsx";
+import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
 import { isTouchScreen } from "../viewport.ts";
 import { DeadlineSection, LateFeesSection } from "./SettingsDeadline.tsx";
@@ -18,7 +20,7 @@ interface Sector {
  * and the list a household's sector is chosen from (Sectores). Categories
  * and the village profile come later in the finance phase.
  */
-export function SettingsScreen() {
+export function SettingsScreen({ onOpen }: { onOpen: Go }) {
   const [sectors, setSectors] = useState<Sector[] | null>(null);
   const [name, setName] = useState("");
   const [renaming, setRenaming] = useState<{ id: number; name: string } | null>(null);
@@ -49,6 +51,7 @@ export function SettingsScreen() {
 
   return (
     <main className="screen stack">
+      <BackButton onClick={() => onOpen("/")} />
       <h1>Configuración</h1>
       <FeesSection />
       <DeadlineSection />

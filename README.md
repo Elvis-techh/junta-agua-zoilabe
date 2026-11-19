@@ -33,6 +33,12 @@ changing how money, permissions or the history log work.
   each account's "Último ingreso", replaced each time), and new entries no
   longer save the phone's description. Entries already saved stay as they
   are: the history log is never changed.
+- **A way back on every screen** (owner, 19 November 2026). Every screen
+  opens with a button at the top left named after where it goes: "‹ Inicio"
+  on Censo, Registrar familia, Cobrar, Quién debe, Saldo de la junta,
+  Usuarios, Historial and Configuración, as Vivienda, Gasto, Otro ingreso,
+  Estado de cuenta and a payment already had ("‹ Censo", "‹ Cobrar"…). The
+  phone's own back still works too; not everyone knows it is there.
 - **Phase 1 (Census): merged.** Registrar familia (one question per screen,
   with the fee question), paper entry mode, duplicate check, search and
   list, household file, offline queue, inactive status, and Configuración →

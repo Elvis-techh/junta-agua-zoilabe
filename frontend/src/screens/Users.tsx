@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { Me, StaffUser } from "../api.ts";
 import { api } from "../api.ts";
+import { BackButton } from "../components/BackButton.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import { PasswordField } from "../components/PasswordField.tsx";
 import { PhoneField } from "../components/PhoneField.tsx";
+import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
 import { passwordProblem, suggestPassword } from "../password.ts";
 import { EMPTY_PHONE, formatPhone, phoneProblem, wholePhone } from "../phone.ts";
@@ -30,7 +32,7 @@ function StatusBadge({ user }: { user: StaffUser }) {
   }
 }
 
-export function UsersScreen({ me }: { me: Me }) {
+export function UsersScreen({ me, onOpen }: { me: Me; onOpen: Go }) {
   const [users, setUsers] = useState<StaffUser[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -53,6 +55,7 @@ export function UsersScreen({ me }: { me: Me }) {
 
   return (
     <main className="screen stack">
+      <BackButton onClick={() => onOpen("/")} />
       <h1>Usuarios</h1>
       <button className="btn primary block" onClick={() => setCreating(true)}>
         <Icon name="plus" /> Nueva cuenta

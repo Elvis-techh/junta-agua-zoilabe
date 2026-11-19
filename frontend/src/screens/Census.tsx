@@ -4,6 +4,7 @@ import type { Me } from "../api.ts";
 import { api } from "../api.ts";
 import type { CensusOptions, HouseholdRow } from "../census.ts";
 import { WATER_CONNECTIONS } from "../census.ts";
+import { BackButton } from "../components/BackButton.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
 import { censusQueue, recall, sendRegistration } from "../queue.ts";
@@ -52,6 +53,7 @@ export function CensusScreen({ me, onOpen, autoFocus }: { me: Me; onOpen: Go; au
 
   return (
     <main className="screen wide stack">
+      <BackButton onClick={() => onOpen("/")} />
       <h1>Censo</h1>
 
       <PendingEntries me={me} onOpen={onOpen} />

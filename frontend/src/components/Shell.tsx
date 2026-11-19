@@ -114,7 +114,7 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
       return <ArrearsScreen onOpen={go} />;
     }
     if (route === "/finanzas/saldo" && can("finance:view")) {
-      return <OpeningBalanceScreen canRecord={can("finance:record")} canCorrect={can("finance:reverse")} />;
+      return <OpeningBalanceScreen canRecord={can("finance:record")} canCorrect={can("finance:reverse")} onOpen={go} />;
     }
     // Otro ingreso: from Inicio it finds the house in the census (or none); from Cobrar or a house's file, by id.
     if (route === "/finanzas/ingreso" && can("finance:record") && can("finance:view") && can("census:view")) {
@@ -140,13 +140,13 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
       return <ExpenseScreen key={route} canReverse={can("finance:reverse")} onOpen={go} />;
     }
     if (route === "/usuarios" && can("users:manage")) {
-      return <UsersScreen me={me} />;
+      return <UsersScreen me={me} onOpen={go} />;
     }
     if (route === "/historial" && can("log:view")) {
-      return <HistoryScreen />;
+      return <HistoryScreen onOpen={go} />;
     }
     if (route === "/configuracion" && can("settings:edit")) {
-      return <SettingsScreen />;
+      return <SettingsScreen onOpen={go} />;
     }
     return <HomeScreen me={me} onOpen={go} />;
   };
