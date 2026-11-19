@@ -47,8 +47,23 @@ changing how money, permissions or the history log work.
   "Agregar otra vivienda" from a person's file adds the house to that person
   by who they are, not by their ID. An ID that is typed must still have 13
   numbers, and one ID still belongs to one person (the database refuses it
-  twice). This changes the App Plan's Census table, which says both are
-  required.
+  twice). The App Plan's Census table now says both are optional.
+  - **Name check: built.** Owner decision of 19 November 2026, because an ID
+    is no longer always there to tell two families apart. In Registrar
+    familia, once the name is typed, the app compares it with every person
+    already registered, whether they have an ID or not. It ignores accents,
+    capital letters, "de" and "la", and one wrong letter in a long word
+    ("Maria Rodrigues" finds "María Rodríguez"); two names are alike when
+    the first names match and the last word of the shorter name is in the
+    longer one, so "Juan Pérez" finds "Juan Carlos Pérez López" but not
+    "Juan Martínez", and brothers "Carlos Pérez Díaz" and "Luis Pérez Díaz"
+    are not mixed up. It lists up to five (name, house code, sector and
+    references) and the registrar either taps one ("Agregar otra vivienda" to
+    that person) or taps **No, es otra familia**. It is a warning, never a
+    block: the entry saves either way. Who the registrar said it is not is
+    kept in Historial with the registration. It needs signal, like the
+    check by ID: with none, the entry is saved on the phone without it.
+    It does not know a name written surname first.
 - **Phase 2 (Finances): started.** Its pieces, in build order, are ticked off
   under "What comes next" in the [app plan](docs/app-plan.md).
   - **Fees in Configuración: built.** The base monthly fee, the late fee
@@ -666,6 +681,12 @@ screen shows.
    family is saved, and its file says "Identidad: No la dio" and
    "Referencias: Sin referencias". **Corregir datos de la persona** adds
    the ID later; on that file, **Agregar otra vivienda** works without one.
+   **Name check:** register "Maria Rodriguez" (no ID) and then try "maria
+   rodrigues": **Nombre parecido** lists her with her house and references.
+   Tap her to add another house to her, or **No, es otra familia** to go on;
+   going back and on with the same name does not ask again. "Maria Gómez"
+   finds nobody. Both choices save. In **Historial**, the registration
+   keeps the names told apart ("confirmedDifferentFrom").
 5. On the phone step, the box beside the number holds the country: it starts
    on Honduras (+504), and tapping it opens the list. The length is checked for
    each country. "No tiene teléfono" and "Prefiere no darlo" register a family

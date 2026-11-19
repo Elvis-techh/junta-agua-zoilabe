@@ -284,6 +284,67 @@ describe("census", () => {
     await rejectsWithDbError(t.db.update(people).set({ idNumber: "12345" }).where(eq(people.id, personId)), /people_id_number_digits/);
   });
 
+  it("warns about names like the one typed, and logs when the registrar says it is another family", async () => {
+    const first = await call(secretary.cookie, "POST", "/api/census/households", {
+      ...registration(),
+      person: { fullName: "luisa fernanda mendoza", phoneMissing: "declined" },
+    });
+    assert.equal(first.statusCode, 201, first.body);
+    const withId = await call(secretary.cookie, "POST", "/api/census/households", {
+      ...registration(),
+      person: { fullName: "Luisa Mendoza Cruz", idNumber: nextIdNumber(), phone: "99887766" },
+    });
+    assert.equal(withId.statusCode, 201, withId.body);
+
+    const similar = (name: string, cookie = secretary.cookie) =>
+      call(cookie, "GET", `/api/census/people/similar?name=${encodeURIComponent(name)}`);
+
+    // Accents, capitals and a typo do not hide a family; everyone alike is listed, with where they live.
+    const found = await similar("LUISA MENDOSA");
+    assert.equal(found.statusCode, 200);
+    const names = found.json().people.map((person: { fullName: string }) => person.fullName);
+    assert.deepEqual(names, ["Luisa Fernanda Mendoza", "Luisa Mendoza Cruz"]);
+    assert.equal(found.json().people[0].households.length, 1);
+    assert.equal(found.json().people[0].households[0].sectorName, "El Centro");
+
+    // Nothing private goes out with it, and a different family or one word finds nobody.
+    assert.ok(!/idNumber|phone|identidad/i.test(found.body), found.body);
+    assert.deepEqual((await similar("Luisa Pérez")).json().people, []);
+    assert.deepEqual((await similar("Luisa")).json().people, []);
+    assert.deepEqual((await similar("")).json().people, []);
+
+    // Only whoever may register asks.
+    assert.equal((await similar("Luisa Mendoza", vocal.cookie)).statusCode, 403);
+
+    // The registrar said this is another family: the entry saves, and the history log keeps whom it was told apart from.
+    const otherPerson = found.json().people[0].id as string;
+    const registered = await call(secretary.cookie, "POST", "/api/census/households", {
+      ...registration(),
+      person: { fullName: "Luisa Mendoza Rivas", phoneMissing: "no_phone" },
+      confirmedDifferentFrom: [otherPerson, randomUUID()],
+    });
+    assert.equal(registered.statusCode, 201, registered.body);
+    const [entry] = await t.db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.action, "household.registered"), eq(auditLog.entityId, registered.json().household.id)));
+    assert.deepEqual((entry?.after as { confirmedDifferentFrom?: string[] }).confirmedDifferentFrom, ["Luisa Fernanda Mendoza"]);
+
+    // It is a warning, not a rule: the same name registered with nothing confirmed also saves.
+    const again = await call(secretary.cookie, "POST", "/api/census/households", {
+      ...registration(),
+      person: { fullName: "Luisa Mendoza Rivas", phoneMissing: "no_phone" },
+    });
+    assert.equal(again.statusCode, 201, again.body);
+
+    // An entry from a phone that was told apart from someone must name real ids only.
+    const bad = await call(secretary.cookie, "POST", "/api/census/households", {
+      ...registration(),
+      confirmedDifferentFrom: ["no-es-un-id"],
+    });
+    assert.equal(bad.statusCode, 400);
+  });
+
   it("stores the paper form's date and number beside the date typed in", async () => {
     const response = await call(
       secretary.cookie,
