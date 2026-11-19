@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { LogEntry } from "../api.ts";
 import { api } from "../api.ts";
+import { BackButton } from "../components/BackButton.tsx";
 import { DateField } from "../components/CalendarField.tsx";
 import { Dialog } from "../components/Dialog.tsx";
+import type { Go } from "../components/Shell.tsx";
 import { formatDateTime } from "../time.ts";
 
 const AREAS = [
@@ -28,7 +30,7 @@ interface Detail {
  * Historial: every entry as a plain sentence, newest first —
  * "12 de marzo, 3:40 p. m.: Ana (Tesorera) registró un pago…".
  */
-export function HistoryScreen() {
+export function HistoryScreen({ onOpen }: { onOpen: Go }) {
   const [area, setArea] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -75,6 +77,7 @@ export function HistoryScreen() {
 
   return (
     <main className="screen wide stack">
+      <BackButton onClick={() => onOpen("/")} />
       <h1>Historial</h1>
       <div className="row">
         <label style={{ flex: "1 1 160px" }}>

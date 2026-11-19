@@ -5,6 +5,7 @@ import type { HouseholdRow } from "../census.ts";
 import { COLLECT_KINDS, byOwnerName, collectTarget } from "../collect.ts";
 import { formatLempiras, newSubmissionId, parseLempiras } from "../census.ts";
 import { AmountInput } from "../components/AmountInput.tsx";
+import { BackButton } from "../components/BackButton.tsx";
 import { DateField } from "../components/CalendarField.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import type { Go } from "../components/Shell.tsx";
@@ -45,6 +46,7 @@ export function CollectScreen({ onOpen, canSeeOwed }: { onOpen: Go; canSeeOwed: 
 
   return (
     <main className="screen stack">
+      <BackButton onClick={() => onOpen("/")} />
       <h1>Cobrar</h1>
       {canSeeOwed && (
         <button className="btn block" onClick={() => onOpen("/finanzas/quien-debe")}>

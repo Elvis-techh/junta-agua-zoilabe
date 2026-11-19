@@ -5,8 +5,10 @@ import type { BalanceData, Figures, OpeningBalance } from "../balance.ts";
 import { amountText, moneyLines, openingLine, readFigures } from "../balance.ts";
 import { monthLabel } from "../calendar.ts";
 import { AmountInput } from "../components/AmountInput.tsx";
+import { BackButton } from "../components/BackButton.tsx";
 import { MonthField } from "../components/CalendarField.tsx";
 import { Dialog } from "../components/Dialog.tsx";
+import type { Go } from "../components/Shell.tsx";
 import { formatLempiras } from "../census.ts";
 import { Icon } from "../icons.tsx";
 import { formatDate } from "../time.ts";
@@ -18,7 +20,7 @@ import { isTouchScreen } from "../viewport.ts";
  * treasurer enters that balance once; a wrong one is corrected with a
  * reason until the first month is closed.
  */
-export function OpeningBalanceScreen({ canRecord, canCorrect }: { canRecord: boolean; canCorrect: boolean }) {
+export function OpeningBalanceScreen({ canRecord, canCorrect, onOpen }: { canRecord: boolean; canCorrect: boolean; onOpen: Go }) {
   const [data, setData] = useState<BalanceData | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [correcting, setCorrecting] = useState<OpeningBalance | null>(null);
@@ -47,6 +49,7 @@ export function OpeningBalanceScreen({ canRecord, canCorrect }: { canRecord: boo
 
   return (
     <main className="screen stack">
+      <BackButton onClick={() => onOpen("/")} />
       <h1>Saldo de la junta</h1>
       {message && <p className={`message ${message.kind}`}>{message.text}</p>}
       {!data && !message && <p className="muted">Cargando…</p>}

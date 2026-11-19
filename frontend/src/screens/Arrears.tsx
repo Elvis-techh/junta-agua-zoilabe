@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { api } from "../api.ts";
 import { formatLempiras } from "../census.ts";
+import { BackButton } from "../components/BackButton.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
 import { monthName, shortMonth } from "../payments.ts";
@@ -69,6 +70,7 @@ export function ArrearsScreen({ onOpen }: { onOpen: Go }) {
 
   return (
     <main className="screen stack">
+      <BackButton onClick={() => onOpen("/")} />
       <h1>Quién debe</h1>
       {!list && <p className={error ? "message error" : "muted"}>{error ?? "Cargando…"}</p>}
       {list && (
