@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "44142e1d-57cd-42d1-ac60-03afdf170e40",
+  "id": "0c9771f4-eb8d-4641-a9ac-074cb14ffb83",
   "prevId": "f95c6ddb-60d1-458a-bab1-56c42602c378",
   "tables": {
     "access_tokens": {
@@ -1113,7 +1113,7 @@
           "name": "references",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "gps_lat": {
@@ -1366,6 +1366,121 @@
         }
       }
     },
+    "opening_balances": {
+      "name": "opening_balances",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "month": {
+          "name": "month",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "cash_centavos": {
+          "name": "cash_centavos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "bank_centavos": {
+          "name": "bank_centavos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "replaces_id": {
+          "name": "replaces_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "opening_balances_one_chain": {
+          "name": "opening_balances_one_chain",
+          "columns": [
+            "coalesce(\"replaces_id\", '')"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "opening_balances_replaces_id_opening_balances_id_fk": {
+          "name": "opening_balances_replaces_id_opening_balances_id_fk",
+          "tableFrom": "opening_balances",
+          "tableTo": "opening_balances",
+          "columnsFrom": [
+            "replaces_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "opening_balances_created_by_users_id_fk": {
+          "name": "opening_balances_created_by_users_id_fk",
+          "tableFrom": "opening_balances",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "opening_balances_first_day": {
+          "name": "opening_balances_first_day",
+          "value": "substr(\"opening_balances\".\"month\", 9, 2) = '01'"
+        },
+        "opening_balances_not_negative": {
+          "name": "opening_balances_not_negative",
+          "value": "\"opening_balances\".\"cash_centavos\" >= 0 AND \"opening_balances\".\"bank_centavos\" >= 0"
+        },
+        "opening_balances_correction_reason": {
+          "name": "opening_balances_correction_reason",
+          "value": "(\"opening_balances\".\"replaces_id\" IS NULL) = (\"opening_balances\".\"reason\" IS NULL)"
+        }
+      }
+    },
     "payment_months": {
       "name": "payment_months",
       "columns": {
@@ -1523,7 +1638,7 @@
           "name": "id_number",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "phone": {
@@ -1592,7 +1707,7 @@
       "checkConstraints": {
         "people_id_number_digits": {
           "name": "people_id_number_digits",
-          "value": "\"people\".\"id_number\" IS NULL OR (length(\"people\".\"id_number\") = 13 AND \"people\".\"id_number\" NOT GLOB '*[^0-9]*')"
+          "value": "(length(\"people\".\"id_number\") = 13 AND \"people\".\"id_number\" NOT GLOB '*[^0-9]*')"
         },
         "people_phone_digits": {
           "name": "people_phone_digits",
@@ -2301,6 +2416,14 @@
     "columns": {}
   },
   "internal": {
-    "indexes": {}
+    "indexes": {
+      "opening_balances_one_chain": {
+        "columns": {
+          "coalesce(\"replaces_id\", '')": {
+            "isExpression": true
+          }
+        }
+      }
+    }
   }
 }
