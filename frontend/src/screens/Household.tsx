@@ -5,6 +5,8 @@ import { api } from "../api.ts";
 import type { CensusOptions, HouseholdFile, InactiveReason, PhoneMissing, Relation, WaterConnection } from "../census.ts";
 import {
   INACTIVE_REASONS,
+  NO_ID_NUMBER,
+  NO_REFERENCES,
   PHONE_MISSING,
   RELATIONS,
   WATER_CONNECTIONS,
@@ -92,7 +94,7 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
 
       <section className="card stack" style={{ gap: 6 }}>
         <strong style={{ fontSize: "1.2rem" }}>{owner.fullName}</strong>
-        <div>Identidad: {formatIdNumber(owner.idNumber)}</div>
+        <div>Identidad: {owner.idNumber ? formatIdNumber(owner.idNumber) : NO_ID_NUMBER}</div>
         <div>Teléfono: {owner.phone ? formatPhone(owner.phone) : owner.phoneMissing ? PHONE_MISSING[owner.phoneMissing] : "—"}</div>
         {owner.gender && <div>Género: {owner.gender}</div>}
         <div>
@@ -107,7 +109,7 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
 
       <section className="card stack" style={{ gap: 6 }}>
         <div>Sector: {file.sector.name}</div>
-        <div>Referencias: {file.references}</div>
+        <div>Referencias: {file.references ?? NO_REFERENCES}</div>
         <div>Agua: {WATER_CONNECTIONS[file.waterConnection]}</div>
         <div>
           Cuota:{" "}
@@ -210,7 +212,7 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
           onClick={() =>
             onOpen("/censo/registrar", {
               startedAt: new Date().toISOString(),
-              existingPerson: { idNumber: owner.idNumber, fullName: owner.fullName },
+              existingPerson: { id: owner.personId, fullName: owner.fullName },
             })
           }
         >
@@ -532,7 +534,7 @@ function useCensusOptions(): CensusOptions | null {
 function EditHousehold({ file, onClose, onSaved }: { file: HouseholdFile; onClose: () => void; onSaved: (text: string) => Promise<void> }) {
   const options = useCensusOptions();
   const [sectorId, setSectorId] = useState(file.sector.id);
-  const [references, setReferences] = useState(file.references);
+  const [references, setReferences] = useState(file.references ?? "");
   const [waterConnection, setWaterConnection] = useState<WaterConnection>(file.waterConnection);
   // A new connection goes into the status history from this date (owner, 14 November 2026).
   const [connectionSince, setConnectionSince] = useState(todayInHonduras);
@@ -598,7 +600,7 @@ function EditHousehold({ file, onClose, onSaved }: { file: HouseholdFile; onClos
         </select>
       </label>
       <label>
-        Referencias
+        Referencias (si hay)
         <textarea value={references} onChange={(e) => setReferences(e.target.value)} rows={3} />
       </label>
       <label>
@@ -673,7 +675,7 @@ function EditPerson({
   const options = useCensusOptions();
   const { owner } = file;
   const [fullName, setFullName] = useState(owner.fullName);
-  const [idNumber, setIdNumber] = useState(owner.idNumber);
+  const [idNumber, setIdNumber] = useState(owner.idNumber ?? "");
   const [phone, setPhone] = useState(() => phoneEntry(owner.phone));
   const [phoneMode, setPhoneMode] = useState<"number" | PhoneMissing>(owner.phoneMissing ?? "number");
   const [gender, setGender] = useState(owner.gender ?? "");
@@ -689,7 +691,10 @@ function EditPerson({
         fullName,
         gender: gender || null,
         // ID number and phone are sent only by someone allowed to see them.
-        ...(canEditSensitive ? { idNumber, ...(phoneMode === "number" ? { phone: wholePhone(phone) } : { phoneMissing: phoneMode }) } : {}),
+        // An ID left blank is not sent: it can be added or corrected here, not taken away.
+        ...(canEditSensitive
+          ? { ...(idNumber ? { idNumber } : {}), ...(phoneMode === "number" ? { phone: wholePhone(phone) } : { phoneMissing: phoneMode }) }
+          : {}),
         ...(reason.trim() ? { reason: reason.trim() } : {}),
       });
       await onSaved("Datos de la persona guardados.");
@@ -710,7 +715,7 @@ function EditPerson({
       {canEditSensitive && (
         <>
           <label>
-            Número de identidad
+            Número de identidad (si la dio)
             <input value={idNumber} onChange={(e) => setIdNumber(e.target.value.replace(/\D/g, "").slice(0, 13))} inputMode="numeric" />
           </label>
           <label>

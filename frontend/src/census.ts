@@ -140,6 +140,10 @@ export function formatIdNumber(value: string): string {
   return /^\d{13}$/.test(value) ? `${value.slice(0, 4)}-${value.slice(4, 8)}-${value.slice(8)}` : value;
 }
 
+/** What the screens say for an ID number or references nobody gave. */
+export const NO_ID_NUMBER = "No la dio";
+export const NO_REFERENCES = "Sin referencias";
+
 /** The message "Compartir por WhatsApp" prepares for the family. */
 export function whatsappLink(phone: string | null, fullName: string, code: string): string {
   const text = `Hola ${fullName}. Su vivienda quedó registrada en el censo de la Junta de Agua de Zoilabe con el código ${code}. Guarde este mensaje.`;
@@ -159,11 +163,15 @@ export interface CensusOptions {
 export interface Registration {
   submissionId: string;
   paper?: { date: string; formNumber?: string };
-  person: { fullName?: string; idNumber: string; phone?: string; phoneMissing?: PhoneMissing; gender?: string };
+  /** The ID number is optional (owner, 19 November 2026): a family may not want to give it. */
+  person: { fullName?: string; idNumber?: string; phone?: string; phoneMissing?: PhoneMissing; gender?: string };
   addToExistingPerson: boolean;
+  /** "Agregar otra vivienda" from a person's file: that person, ID or not. */
+  existingPersonId?: string;
   household: {
     sectorId: number;
-    references: string;
+    /** Optional, like the ID number. */
+    references?: string;
     gps?: { lat: number; lng: number };
     waterConnection: WaterConnection;
     relation: Relation;
@@ -184,7 +192,7 @@ export interface HouseholdRow {
   status: "active" | "inactive";
   ownerName: string;
   sectorName: string;
-  references: string;
+  references: string | null;
   waterConnection: WaterConnection;
   paperFormNumber: string | null;
 }
@@ -195,7 +203,7 @@ export interface HouseholdFile {
   status: "active" | "inactive";
   inactiveReason: InactiveReason | null;
   sector: { id: number; name: string };
-  references: string;
+  references: string | null;
   gps: { lat: number; lng: number } | null;
   waterConnection: WaterConnection;
   paperDate: string | null;
@@ -206,7 +214,8 @@ export interface HouseholdFile {
   owner: {
     personId: string;
     fullName: string;
-    idNumber: string;
+    /** Null when the family did not give it. */
+    idNumber: string | null;
     phone: string | null;
     phoneMissing: PhoneMissing | null;
     gender: string | null;

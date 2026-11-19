@@ -116,7 +116,7 @@ export function CensusScreen({ me, onOpen, autoFocus }: { me: Me; onOpen: Go; au
               {row.sectorName} · Agua: {WATER_CONNECTIONS[row.waterConnection]}
               {row.paperFormNumber ? ` · Hoja nº ${row.paperFormNumber}` : ""}
             </div>
-            <div className="muted clip">{row.references}</div>
+            {row.references && <div className="muted clip">{row.references}</div>}
           </button>
         ))}
       </div>

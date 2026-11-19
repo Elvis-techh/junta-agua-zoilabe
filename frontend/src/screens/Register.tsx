@@ -4,6 +4,8 @@ import type { Me } from "../api.ts";
 import { api } from "../api.ts";
 import type { CensusOptions, HouseholdRef, PhoneMissing, Registration, Relation, WaterConnection } from "../census.ts";
 import {
+  NO_ID_NUMBER,
+  NO_REFERENCES,
   PHONE_MISSING,
   RELATIONS,
   WATER_CONNECTIONS,
@@ -30,7 +32,8 @@ export interface RegisterPreset {
   /** Unique per start, so the screen begins clean. */
   startedAt: string;
   paper?: boolean;
-  existingPerson?: { idNumber: string; fullName: string };
+  /** "Agregar otra vivienda" from a person's file: who they are, with or without an ID number. */
+  existingPerson?: { id: string; fullName: string };
 }
 
 type Step =
@@ -48,7 +51,7 @@ type Step =
   | "review"
   | "saved";
 
-const ID_MESSAGE = "La identidad debe tener 13 números. Revise e intente de nuevo.";
+const ID_MESSAGE = "La identidad debe tener 13 números. Revise, o borre todo para seguir sin ella.";
 
 /**
  * Registrar familia (App Plan, Module 1): one question per screen, a review
@@ -57,6 +60,10 @@ const ID_MESSAGE = "La identidad debe tener 13 números. Revise e intente de nue
  * Paper entry mode asks first for the date and number on the paper form.
  * The entry is saved on the phone before it is sent, so no signal never
  * loses one.
+ *
+ * The ID number and the references may be left blank (owner, 19 November
+ * 2026): a family may not want to give its ID, and whoever registers may not
+ * write easily. The president asks for them later where the board needs them.
  */
 export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: RegisterPreset | null; onOpen: Go }) {
   const [options, setOptions] = useState<CensusOptions | null>(() => recall<CensusOptions>("options"));
@@ -71,7 +78,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
   const [paperDate, setPaperDate] = useState("");
   const [paperFormNumber, setPaperFormNumber] = useState("");
   const [fullName, setFullName] = useState(preset?.existingPerson?.fullName ?? "");
-  const [idNumber, setIdNumber] = useState(preset?.existingPerson?.idNumber ?? "");
+  const [idNumber, setIdNumber] = useState("");
   const [phone, setPhone] = useState(EMPTY_PHONE);
   /** Instead of a number: the family has no phone, or prefers not to give it. */
   const [phoneMissing, setPhoneMissing] = useState<PhoneMissing | null>(null);
@@ -148,8 +155,12 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
   const amountCentavos = parseLempiras(amountText);
   const position = order.indexOf(step === "duplicate" ? "id" : step);
 
-  /** The duplicate check: asked when the ID is typed, if there is signal. */
+  /** The duplicate check: asked when the ID is typed, if there is signal. With no ID, there is nothing to check. */
   const checkId = async () => {
+    if (idNumber === "") {
+      next();
+      return;
+    }
     if (!/^\d{13}$/.test(idNumber)) {
       setError(ID_MESSAGE);
       return;
@@ -193,18 +204,21 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
   const registration = (): Registration => ({
     submissionId,
     ...(mode === "paper" ? { paper: { date: paperDate, ...(paperFormNumber.trim() ? { formNumber: paperFormNumber.trim() } : {}) } } : {}),
-    person: addToExisting
-      ? { idNumber }
-      : {
-          fullName: fullName.trim(),
-          idNumber,
-          ...(phoneMissing ? { phoneMissing } : { phone: wholePhone(phone) }),
-          ...(gender ? { gender } : {}),
-        },
+    person: preset?.existingPerson
+      ? {}
+      : addToExisting
+        ? { idNumber }
+        : {
+            fullName: fullName.trim(),
+            ...(idNumber ? { idNumber } : {}),
+            ...(phoneMissing ? { phoneMissing } : { phone: wholePhone(phone) }),
+            ...(gender ? { gender } : {}),
+          },
     addToExistingPerson: addToExisting,
+    ...(preset?.existingPerson ? { existingPersonId: preset.existingPerson.id } : {}),
     household: {
       sectorId: sectorId!,
-      references: references.trim(),
+      ...(references.trim() ? { references: references.trim() } : {}),
       ...(gps ? { gps: { lat: gps.lat, lng: gps.lng } } : {}),
       waterConnection: waterConnection!,
       relation: relation!,
@@ -323,7 +337,11 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
             autoFocus={!isTouchScreen()}
             autoComplete="off"
           />
-          <p className="muted">{idNumber.length} de 13 números{idNumber.length === 13 ? ` · ${formatIdNumber(idNumber)}` : ""}</p>
+          <p className="muted">
+            {idNumber
+              ? `${idNumber.length} de 13 números${idNumber.length === 13 ? ` · ${formatIdNumber(idNumber)}` : ""}`
+              : "Si la familia no la quiere dar, déjelo vacío y toque Siguiente."}
+          </p>
           {errorLine}
           <button className="btn go block" disabled={busy} onClick={() => void checkId()}>
             Siguiente
@@ -457,7 +475,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
         <main className="screen stack">
           {head("Referencias")}
           <label>
-            ¿Cómo se encuentra la vivienda?
+            ¿Cómo se encuentra la vivienda? (si no sabe, déjelo vacío)
             <textarea
               value={references}
               onChange={(e) => setReferences(e.target.value)}
@@ -482,7 +500,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
             ))}
           {gpsMessage && <p className="muted">{gpsMessage}</p>}
           {errorLine}
-          <button className="btn go block" onClick={() => (references.trim().length < 3 ? setError("Escriba cómo encontrar la vivienda.") : next())}>
+          <button className="btn go block" onClick={next}>
             Siguiente
           </button>
         </main>
@@ -594,7 +612,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
               </div>
             )}
             <strong style={{ fontSize: "1.2rem" }}>{addToExisting ? fullName : capitalizeName(fullName)}</strong>
-            <div>Identidad: {formatIdNumber(idNumber)}</div>
+            {(idNumber || !addToExisting) && <div>Identidad: {idNumber ? formatIdNumber(idNumber) : NO_ID_NUMBER}</div>}
             {addToExisting ? (
               <div className="muted">Otra vivienda de una persona ya registrada</div>
             ) : (
@@ -604,7 +622,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
               </>
             )}
             <div>Sector: {sector?.name}</div>
-            <div>Referencias: {references.trim()}</div>
+            <div>Referencias: {references.trim() || NO_REFERENCES}</div>
             {gps && <div>Ubicación GPS guardada</div>}
             <div>
               Cuota:{" "}

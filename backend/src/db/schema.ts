@@ -215,8 +215,12 @@ export const people = sqliteTable(
   {
     id: uuid("id").primaryKey(),
     fullName: text("full_name").notNull(),
-    /** Honduran identity number, 13 digits. */
-    idNumber: text("id_number").notNull(),
+    /**
+     * Honduran identity number, 13 digits; null when the family did not give
+     * it (owner, 19 November 2026). Many people may have none; one number
+     * belongs to one person.
+     */
+    idNumber: text("id_number"),
     /** With its country code: "+50499998888". */
     phone: text("phone"),
     /** Why there is no phone: the family has none, or prefers not to give it. */
@@ -227,7 +231,7 @@ export const people = sqliteTable(
   },
   (table) => [
     uniqueIndex("people_id_number_unique").on(table.idNumber),
-    check("people_id_number_digits", onlyDigits(table.idNumber, 13)),
+    check("people_id_number_digits", sql`${table.idNumber} IS NULL OR ${onlyDigits(table.idNumber, 13)}`),
     check("people_phone_digits", sql`${table.phone} IS NULL OR ${wholePhone(table.phone)}`),
     // A phone, or the reason there is none — never both, never neither.
     check("people_phone_or_reason", sql`(${table.phone} IS NULL) <> (${table.phoneMissing} IS NULL)`),
@@ -243,7 +247,8 @@ export const households = sqliteTable(
     sectorId: integer("sector_id")
       .notNull()
       .references(() => sectors.id),
-    references: text("references").notNull(),
+    /** How to find the house; null when nobody wrote it (owner, 19 November 2026). */
+    references: text("references"),
     gpsLat: real("gps_lat"),
     gpsLng: real("gps_lng"),
     waterConnection: text("water_connection", {
