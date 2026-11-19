@@ -558,6 +558,40 @@ export const documents = sqliteTable(
   (table) => [index("documents_household_idx").on(table.householdId)],
 );
 
+/**
+ * The opening balance (owner, 17 November 2026): the cash in the box and the
+ * money in the bank on the first day of `month`, the month the app's money
+ * begins. Entries dated before that month count only for what each house
+ * owes, never in the money totals (src/lib/balance.ts).
+ *
+ * Append-only. A wrong figure is corrected by a new row that points to the
+ * one it replaces and says why, until the first month is closed; the row
+ * nothing replaces is the one in force. The unique index keeps them one
+ * chain: a single first row, and each row replaced at most once.
+ */
+export const openingBalances = sqliteTable(
+  "opening_balances",
+  {
+    id: uuid("id").primaryKey(),
+    month: date("month").notNull(),
+    cashCentavos: bigint("cash_centavos").notNull(),
+    bankCentavos: bigint("bank_centavos").notNull(),
+    replacesId: uuid("replaces_id").references((): AnySQLiteColumn => openingBalances.id),
+    reason: text("reason"),
+    createdAt: createdAt(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id),
+  },
+  (table) => [
+    uniqueIndex("opening_balances_one_chain").on(sql`coalesce(${table.replacesId}, '')`),
+    check("opening_balances_first_day", sql`substr(${table.month}, 9, 2) = '01'`),
+    check("opening_balances_not_negative", sql`${table.cashCentavos} >= 0 AND ${table.bankCentavos} >= 0`),
+    // A correction always says why; the first entry has nothing to correct.
+    check("opening_balances_correction_reason", sql`(${table.replacesId} IS NULL) = (${table.reason} IS NULL)`),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // History log and configuration
 // ---------------------------------------------------------------------------
