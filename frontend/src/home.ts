@@ -14,8 +14,10 @@ export type Route =
   | "/finanzas/quien-debe"
   | "/finanzas/saldo"
   | "/finanzas/cierre"
+  | "/finanzas/resumen"
   | `/censo/vivienda/${string}`
   | `/finanzas/cierre/${string}`
+  | `/finanzas/resumen/${string}`
   | `/finanzas/cobrar/${string}`
   | `/finanzas/ingreso/${string}`
   | `/finanzas/estado/${string}`;
@@ -35,6 +37,7 @@ export function routeOf(path: string): Route {
     "/finanzas/quien-debe",
     "/finanzas/saldo",
     "/finanzas/cierre",
+    "/finanzas/resumen",
   ];
   if ((fixed as string[]).includes(path)) {
     return path as Route;
@@ -43,6 +46,10 @@ export function routeOf(path: string): Route {
     return path as Route;
   }
   if (/^\/finanzas\/cierre\/\d{4}-(0[1-9]|1[0-2])-01$/.test(path)) {
+    return path as Route;
+  }
+  // Resumen del mes: a month, and its parts (what came in, what was spent, the month's fee).
+  if (/^\/finanzas\/resumen\/\d{4}-(0[1-9]|1[0-2])-01(\/(entradas|gastos|cuota))?$/.test(path)) {
     return path as Route;
   }
   return "/";
@@ -66,7 +73,7 @@ const B = {
   gasto: { label: "Gasto", icon: "receipt", route: "/finanzas/gasto", permission: "finance:record" },
   // Money from someone outside the census, and the latest entries to undo (Anular); for a house, Cobrar asks (19 November 2026).
   ingreso: { label: "Otro ingreso", icon: "plus", route: "/finanzas/ingreso", permission: "finance:record" },
-  resumen: { label: "Resumen del mes", icon: "chart" },
+  resumen: { label: "Resumen del mes", icon: "chart", route: "/finanzas/resumen", permission: "finance:view" },
   quienDebe: { label: "Quién debe", icon: "alert", route: "/finanzas/quien-debe", permission: "finance:view" },
   saldo: { label: "Saldo de la junta", icon: "chart", route: "/finanzas/saldo", permission: "finance:view" },
   // One screen, three names: what each role goes there to do (owner, 19 November 2026).

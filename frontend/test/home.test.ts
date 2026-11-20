@@ -31,11 +31,11 @@ describe("home buttons", () => {
       assert.ok(expected.has(route as never), route);
     }
     const forAdmin = otherButtons("administrador", everything).map((b) => b.label);
-    for (const label of ["Registrar familia", "Buscar", "Lista", "Cobrar", "Gasto", "Historial"]) {
+    for (const label of ["Registrar familia", "Buscar", "Lista", "Cobrar", "Gasto", "Historial", "Resumen del mes"]) {
       assert.ok(forAdmin.includes(label), label);
     }
     // Already among the administrator's own buttons, so not again; and never a screen not built yet.
-    for (const label of ["Usuarios", "Configuración", "Censo", "Resumen del mes"]) {
+    for (const label of ["Usuarios", "Configuración", "Censo", "Reportes"]) {
       assert.ok(!forAdmin.includes(label), label);
     }
   });
@@ -95,5 +95,16 @@ describe("home buttons", () => {
     assert.equal(routeOf("/censo/vivienda/0b7e1a52-4c1e-4f7a-9a43-2f9d7e4c1b20"), "/censo/vivienda/0b7e1a52-4c1e-4f7a-9a43-2f9d7e4c1b20");
     assert.equal(routeOf("/censo/vivienda/../../usuarios"), "/");
     assert.equal(tabOf("/censo/registrar"), "/censo");
+  });
+
+  it("opens Resumen del mes for a month and each of its parts, and nothing else under it (owner, 19 November 2026)", () => {
+    assert.equal(homeButtons("fiscal", ["finance:view"])[0]?.route, "/finanzas/resumen");
+    assert.ok(!homeButtons("fiscal", []).some((b) => b.label === "Resumen del mes"));
+    for (const path of ["/finanzas/resumen", "/finanzas/resumen/2026-10-01", "/finanzas/resumen/2026-10-01/entradas", "/finanzas/resumen/2026-10-01/gastos", "/finanzas/resumen/2026-10-01/cuota"]) {
+      assert.equal(routeOf(path), path);
+    }
+    for (const path of ["/finanzas/resumen/2026-13-01", "/finanzas/resumen/2026-10-15", "/finanzas/resumen/2026-10-01/otra", "/finanzas/resumen/2026-10-01/cuota/x"]) {
+      assert.equal(routeOf(path), "/", path);
+    }
   });
 });
