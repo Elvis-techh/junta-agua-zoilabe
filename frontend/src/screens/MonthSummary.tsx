@@ -24,6 +24,7 @@ import {
   moneyLines,
   moneyTotal,
   monthWords,
+  onlyMonthLine,
   summaryMonths,
   summaryRoute,
   summaryStatus,
@@ -93,15 +94,11 @@ function Summary({ summary, back, onOpen }: { summary: MonthSummary; back: React
         <span className={`status ${status.tone}`}>{status.words}</span>
       </div>
       {/* The month's name is the way to another month: one row, so the fee still fits on the screen. */}
-      {months.length > 1 ? (
-        <button className="btn block month-button" onClick={() => setChoosing(true)}>
-          <Icon name="calendar" />
-          <span className="month-button-name">{monthTitle(summary.month)}</span>
-          <span className="month-button-change">Cambiar</span>
-        </button>
-      ) : (
-        <h1 style={{ margin: 0 }}>{monthTitle(summary.month)}</h1>
-      )}
+      <button className="btn block month-button" onClick={() => setChoosing(true)}>
+        <Icon name="calendar" />
+        <span className="month-button-name">{monthTitle(summary.month)}</span>
+        <span className="month-button-change">Cambiar</span>
+      </button>
 
       {/* "Entró" and "Salió" are the buttons that list them: the figure and its detail in one place. */}
       <div className="card stack" style={{ gap: 6 }}>
@@ -138,6 +135,7 @@ function Summary({ summary, back, onOpen }: { summary: MonthSummary; back: React
 
       {choosing && (
         <Dialog title="¿Qué mes?" onClose={() => setChoosing(false)}>
+          {months.length === 1 && <p style={{ margin: 0 }}>{onlyMonthLine(summary)}</p>}
           {months.map((month) => (
             <button
               key={month}

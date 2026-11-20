@@ -15,6 +15,7 @@ import {
   houseOwes,
   moneyLines,
   monthWords,
+  onlyMonthLine,
   placesLine,
   summaryMonths,
   summaryRoute,
@@ -127,6 +128,14 @@ describe("Resumen del mes", () => {
     assert.equal(monthWords("2025-12-01", "2026-01-01"), "diciembre de 2025");
     assert.equal(summaryRoute("2026-10-01"), "/finanzas/resumen/2026-10-01");
     assert.equal(summaryRoute("2026-10-01", "cuota"), "/finanzas/resumen/2026-10-01/cuota");
+  });
+
+  it("explains the month picker when this month is the only one", () => {
+    assert.equal(
+      onlyMonthLine({ openingMonth: "2026-11-01", thisMonth: "2026-11-01" }),
+      "Por ahora solo hay este mes: el saldo de la junta empezó en noviembre de 2026. Cuando empiece el próximo mes, lo podrá escoger aquí.",
+    );
+    assert.equal(onlyMonthLine(october), "");
   });
 
   it("puts a house that still owes the fee or its late fee among those who owe, and says how it stands", () => {

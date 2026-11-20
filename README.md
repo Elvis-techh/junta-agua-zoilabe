@@ -298,8 +298,9 @@ changing how money, permissions or the history log work.
     still owes, what came in and what the money was spent on. It opens from
     **Resumen del mes** on Inicio (the treasurer's, the president's, the
     fiscal's and the vocales' own button; under "Otras tareas" for the
-    rest) on the month in progress; tapping the month's name (**Cambiar**)
-    lists every month from the opening balance's. One phone screen shows
+    rest) on the month in progress; tapping the month's name (**Cambiar**,
+    always shown) lists every month from the opening balance's, or says
+    why there is only this one while the opening balance is in this month. One phone screen shows
     the month's money (at the start, **Entró**, **Salió**, at the end, or
     "Hay ahora" for the month in progress), its close's status, and its fee
     ("Pagaron todo: 5 de 10 casas", "Falta cobrar: L 495.00 con mora").
@@ -737,7 +738,8 @@ October some fee payments, a donation and two expenses:
 1. On Inicio, tap **Resumen del mes**. It opens on this month, marked "Mes
    en curso", with "Hay ahora" at the foot of the money, and the whole
    month fits on the screen without scrolling.
-2. Tap the month's name (**Cambiar**) and choose October. It is marked "Sin
+2. Tap the month's name (**Cambiar**) and choose October. (If the opening
+   balance is in this month there is no other month yet: the list says so.) It is marked "Sin
    cerrar" (or "Cierre por aprobar", or "Cerrado", as Cierre del mes says).
    The money matches Cierre del mes for October: at the start, what came
    in, what went out, at the end.

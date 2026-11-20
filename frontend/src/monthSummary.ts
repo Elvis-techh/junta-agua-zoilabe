@@ -273,6 +273,14 @@ export function summaryMonths(summary: Pick<MonthSummary, "openingMonth" | "this
   }
 }
 
+/** Said in the month picker when there is no other month yet: why the choice is only this one. */
+export function onlyMonthLine(summary: Pick<MonthSummary, "openingMonth" | "thisMonth">): string {
+  const opening = monthName(summary.openingMonth);
+  return summary.openingMonth === summary.thisMonth
+    ? `Por ahora solo hay este mes: el saldo de la junta empezó en ${opening}. Cuando empiece el próximo mes, lo podrá escoger aquí.`
+    : "";
+}
+
 /** The total of the box, the bank and "Otro": what the money card and the parts' headings show. */
 export function moneyTotal(money: Money): number {
   return total(money);
