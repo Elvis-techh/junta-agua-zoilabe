@@ -157,7 +157,9 @@ ends in `\n` alone (Git for Windows checks files out with `\r\n`).
 The **Test copy** workflow (`.github/workflows/test-copy.yml`) puts every
 pull request on the droplet's test copy (docs/test-copy.md), where the
 owner tries it from a phone, so each pull request's description says what
-to try there. Only made-up data goes on the test copy. The droplet runs the
+to try there. Only made-up data goes on the test copy. `npm run db:demo` (`backend/src/lib/demoData.ts`, docs/test-copy.md) fills an empty
+database with three months of it; when a feature adds something a screen shows,
+add it there too. The droplet runs the
 scripts in `deploy/test-copy/` as root, from `main` only, and never builds;
 keep it that way. The owner's steps for trying each change and starting each
 phase are in that page; work the same way.

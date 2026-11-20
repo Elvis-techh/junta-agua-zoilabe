@@ -861,6 +861,18 @@ service worker). To try that on the computer: `npm run build`, then
 `npm run db:reset` empties the local database (it refuses to run in
 production). Run `user:first-admin` again afterwards.
 
+### Made-up data to try things with
+
+After `npm run db:reset` and `user:first-admin`, `ALLOW_MADE_UP_DATA=yes npm run db:demo`
+fills the database with made-up data from three months ago until today:
+ten families (on time, late, in part, ahead, never, moved away), the fee and
+the deadline, donations, expenses with and without a photo, and two entries
+undone. Nothing is closed, so every month can still be changed. It acts as
+the administrator, goes in through the same rules as the screens, and
+refuses a database that already has any family or money, so it cannot spoil
+real data. The test copy takes it too:
+[docs/test-copy.md](docs/test-copy.md), "Made-up data on the test copy".
+
 ### The database
 
 One SQLite file, `backend/data/zoilabe.db` (set `DATABASE_PATH` in

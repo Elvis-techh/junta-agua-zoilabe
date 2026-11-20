@@ -272,6 +272,42 @@ cd /opt/zoilabe-test/source && sudo bash deploy/test-copy/install-build.sh
 
 Then step 6 again, for a new administrator.
 
+## Made-up data on the test copy
+
+To try a screen with something on it, there is a command that fills an
+**empty** test copy with made-up data, from three months ago until today:
+ten families (on time, late, in part, ahead, never, one that moved away),
+a fee of L 70.00 and a deadline of the 15th (made up, like the rest),
+donations, expenses with and without a photo, and two entries undone.
+Nothing is closed, so every month can still be prepared and closed.
+
+It refuses a database that already has any family or money, and it does
+nothing unless `ALLOW_MADE_UP_DATA=yes` is typed, so it cannot touch real
+data. That also means the test copy you have now, with its own opening
+balance, has to be started over first: the old file is moved aside, not
+deleted, and its accounts go with it.
+
+Paste all of it into the console. It ends with a new administrator's
+password, shown once (take a screenshot of it):
+
+```bash
+sudo systemctl stop zoilabe-test-api
+sudo mv /opt/zoilabe-test/data /opt/zoilabe-test/data.old-$(date +%Y%m%d-%H%M)
+sudo install -d -m 700 -o zoilabe-test -g zoilabe-test /opt/zoilabe-test/data
+cd /opt/zoilabe-test/source && sudo bash deploy/test-copy/install-build.sh
+cd /opt/zoilabe-test/app/backend
+sudo -u zoilabe-test /opt/node22/bin/node --env-file=/opt/zoilabe-test/env dist/scripts/first-admin.js --name "Administrador Prueba" --phone 99998888
+sudo systemctl stop zoilabe-test-api
+sudo -u zoilabe-test env ALLOW_MADE_UP_DATA=yes /opt/node22/bin/node --env-file=/opt/zoilabe-test/env dist/scripts/demo-data.js
+sudo systemctl start zoilabe-test-api
+```
+
+The last command's answer starts "Made-up data added" and counts what it
+made. The service is stopped while it runs so the two never write at once.
+Open the test copy and sign in with the number and password from the
+administrator step. The other accounts (secretary, treasurer) are made from
+**Usuarios**, as before.
+
 ## Turning it off
 
 ```bash
