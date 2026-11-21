@@ -55,6 +55,73 @@ export function routeOf(path: string): Route {
   return "/";
 }
 
+/**
+ * What a screen is called on a back button ("‹ Quién debe"), in the village's
+ * words. A house's file is a "Vivienda"; a month's parts are all "Resumen".
+ */
+export function labelOf(route: Route): string {
+  const names: Record<string, string> = {
+    "/": "Inicio",
+    "/usuarios": "Usuarios",
+    "/historial": "Historial",
+    "/censo": "Censo",
+    "/censo/buscar": "Buscar",
+    "/censo/registrar": "Registrar familia",
+    "/configuracion": "Configuración",
+    "/finanzas/cobrar": "Cobrar",
+    "/finanzas/ingreso": "Otro ingreso",
+    "/finanzas/gasto": "Gasto",
+    "/finanzas/quien-debe": "Quién debe",
+    "/finanzas/saldo": "Saldo de la junta",
+    "/finanzas/cierre": "Cierre del mes",
+    "/finanzas/resumen": "Resumen del mes",
+  };
+  const fixed = names[route];
+  if (fixed) {
+    return fixed;
+  }
+  if (route.startsWith("/censo/vivienda/")) {
+    return "Vivienda";
+  }
+  if (route.startsWith("/finanzas/cobrar/")) {
+    return "Cobrar";
+  }
+  if (route.startsWith("/finanzas/ingreso/")) {
+    return "Otro ingreso";
+  }
+  if (route.startsWith("/finanzas/estado/")) {
+    return "Estado de cuenta";
+  }
+  if (route.startsWith("/finanzas/cierre/")) {
+    return "Cierre del mes";
+  }
+  return "Resumen";
+}
+
+/**
+ * What the app writes into the browser's history entry when it opens a screen:
+ * the screen the person was on. "‹ Atrás" can then go back to it and name it
+ * (owner, 20 November 2026). An entry opened from outside the app, or a very
+ * old one, has none.
+ */
+export interface HistoryMark {
+  from: Route;
+}
+
+export function markFrom(route: Route): HistoryMark {
+  return { from: route };
+}
+
+/** The screen before this one, read from a history entry's state; null when there is none the app can trust. */
+export function previousOf(state: unknown): Route | null {
+  if (typeof state !== "object" || state === null || !("from" in state) || typeof state.from !== "string") {
+    return null;
+  }
+  // routeOf answers "/" for what it does not know, so an unknown address (or "/" itself, which is a real answer) is checked back.
+  const route = routeOf(state.from);
+  return route === state.from ? route : null;
+}
+
 export interface HomeButton {
   label: string;
   icon: IconName;

@@ -4,6 +4,7 @@ import { ApiError, api } from "../api.ts";
 import type { HouseholdFile, HouseholdRow } from "../census.ts";
 import type { IncomePreset } from "../collect.ts";
 import { formatLempiras, newSubmissionId, parseLempiras } from "../census.ts";
+import { BackButton } from "../components/BackButton.tsx";
 import { AmountInput } from "../components/AmountInput.tsx";
 import { DateField, MonthField } from "../components/CalendarField.tsx";
 import { Dialog } from "../components/Dialog.tsx";
@@ -128,9 +129,7 @@ export function IncomeScreen({
   if (!setup || (householdId && !fixedHouse)) {
     return (
       <main className="screen stack">
-        <button className="btn" style={{ justifySelf: "start" }} onClick={leave}>
-          <Icon name="back" /> {leaveLabel}
-        </button>
+        <BackButton label={leaveLabel} onClick={leave} />
         <p className={loadError ? "message error" : "muted"}>{loadError ?? "Cargando…"}</p>
       </main>
     );
@@ -235,9 +234,7 @@ export function IncomeScreen({
     case "type":
       return (
         <main className="screen stack">
-          <button className="btn" style={{ justifySelf: "start" }} onClick={leave}>
-            <Icon name="back" /> {leaveLabel}
-          </button>
+          <BackButton label={leaveLabel} onClick={leave} />
           {fixedHouse && (
             <p className="muted" style={{ margin: 0 }}>
               Vivienda {fixedHouse.code} · {fixedHouse.ownerName}
