@@ -39,6 +39,14 @@ changing how money, permissions or the history log work.
   Usuarios, Historial and Configuración, as Vivienda, Gasto, Otro ingreso,
   Estado de cuenta and a payment already had ("‹ Censo", "‹ Cobrar"…). The
   phone's own back still works too; not everyone knows it is there.
+  **It goes back to the screen the person was on, and is named after it**
+  (owner, 20 November 2026): a house opened from Quién debe comes back to
+  "‹ Quién debe", not to Censo, a page that person never visited. Each
+  history entry remembers the screen it was opened from (`markFrom`,
+  `previousOf` and `labelOf` in `frontend/src/home.ts`; `BackButton` reads
+  it). Only a screen opened from outside the app, or a page reloaded on its
+  first entry, has no previous screen, and keeps the button above ("‹ Inicio",
+  "‹ Censo").
 - **Every amount takes up to L 999,999,999.99** (owner, 19 November 2026),
   since nobody knows how much a payment, an expense or the board's money
   will one day be: Cobrar, Otro ingreso, Gasto, the fees in Configuración, a
@@ -779,7 +787,8 @@ typed in through Cobrar:
    left and its late fee ("Octubre 2026: L 70.00 de cuota y L 50.00 de
    mora"). Months before June 2025 have no late fee. A month paid in full
    after its deadline shows "solo la mora". The most owed house is first;
-   tap one to open its file.
+   tap one to open its file. Its button at the top left says
+   **‹ Quién debe** and brings you back to the list (not to Censo).
 4. On the file, **Lo que debe** says "Debe la mora de …".
 5. In **Otro ingreso**, record the **Mora** of one of those months: it leaves
    the list. **Anular** it, and it comes back.

@@ -5,7 +5,7 @@ import { api } from "../api.ts";
 import type { IncomePreset } from "../collect.ts";
 import type { SummaryPart } from "../monthSummary.ts";
 import type { Route } from "../home.ts";
-import { navigation, routeOf, tabOf } from "../home.ts";
+import { labelOf, markFrom, navigation, previousOf, routeOf, tabOf } from "../home.ts";
 import { Icon } from "../icons.tsx";
 import { censusQueue, remember, sendRegistration } from "../queue.ts";
 import { ArrearsScreen } from "../screens/Arrears.tsx";
@@ -25,6 +25,7 @@ import { RegisterScreen } from "../screens/Register.tsx";
 import { SettingsScreen } from "../screens/Settings.tsx";
 import { StatementScreen } from "../screens/Statement.tsx";
 import { UsersScreen } from "../screens/Users.tsx";
+import { PreviousScreen } from "./BackButton.tsx";
 import { Dialog } from "./Dialog.tsx";
 import { MoreBelow } from "./MoreBelow.tsx";
 
@@ -75,7 +76,8 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
     setPreset(nextPreset ?? null);
     setMoreOpen(false);
     if (next !== route) {
-      window.history.pushState(null, "", next);
+      // The entry remembers the screen it was opened from, for "‹" on the next one.
+      window.history.pushState(markFrom(route), "", next);
     }
     setRoute(next);
     // After the screen changes: a dialog closing puts the old position back first.
@@ -91,6 +93,9 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
   const can = (permission: string) => me.permissions.includes(permission);
   const { bar, more } = navigation(me.permissions);
   const current = tabOf(route);
+  // Read while drawing: go() writes the history entry before the route changes, and a popstate has already moved to its entry.
+  const from = previousOf(window.history.state);
+  const previous = from ? { label: labelOf(from), back: () => window.history.back() } : null;
 
   const screen = () => {
     if ((route === "/censo" || route === "/censo/buscar") && can("census:view")) {
@@ -188,7 +193,7 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
         </div>
       )}
 
-      {screen()}
+      <PreviousScreen.Provider value={previous}>{screen()}</PreviousScreen.Provider>
 
       <MoreBelow />
 

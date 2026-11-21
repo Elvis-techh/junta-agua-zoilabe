@@ -124,9 +124,13 @@ the file. Tests make their own database in memory.
 Someone who has only used WhatsApp will not scroll to look for an answer, or
 close the keyboard to look for a button. When a screen is built or changed:
 
-- **Every screen opens with its way back**, top left, named after where it
-  goes: `BackButton` ("‹ Inicio"), or for a screen opened from another one,
-  its name ("‹ Cobrar"). A step of a form has "‹ Atrás" instead, and its
+- **Every screen opens with its way back**, top left, always `BackButton`
+  (never a hand-made button). It goes to **the screen the person came from**
+  and is named after it ("‹ Quién debe"), because the Shell writes the screen
+  being left into each history entry (`markFrom`, `previousOf`, `labelOf` in
+  `src/home.ts`); the `label` and `onClick` a screen gives are only for when
+  it was opened with nothing before it (a reload, a link). A new screen needs
+  a name in `labelOf`. A step of a form has "‹ Atrás" instead, and its
   first step the way out. Nobody should need the phone's own back button.
 - **The button that goes on** is `.btn.go` or `.btn.primary`, directly inside the
   `.screen`, `.dialog` or `.card` (or in a `.row` there), so `src/viewport.ts`
