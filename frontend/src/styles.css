@@ -967,6 +967,70 @@ textarea:focus-visible {
   padding-top: 4px;
 }
 
+/* Resumen del mes: a label on the left, its amount on the right, on one line while it fits. */
+.money-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.money-line .amount {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.money-line.total {
+  font-weight: 700;
+  border-top: 1px solid var(--line);
+  padding-top: 4px;
+}
+
+/* "Entró" and "Salió" on the month's money: a line that is also the button listing it. */
+.btn.money-button {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 10px;
+  font-weight: 500;
+}
+
+.money-button .money-button-label {
+  flex: 1;
+  text-align: left;
+  font-weight: 600;
+}
+
+/* Resumen del mes: the month's name, as large as a title, is the button that changes it. */
+.btn.month-button {
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: 1.1rem;
+}
+
+.month-button .month-button-change {
+  font-size: 0.85rem;
+}
+
+.month-button .month-button-name {
+  flex: 1;
+  text-align: left;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* The line at the foot of a card that is a button, saying where it goes. */
+.card-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--primary);
+  font-weight: 600;
+}
+
 .clip {
   overflow: hidden;
   text-overflow: ellipsis;

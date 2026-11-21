@@ -3,6 +3,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type { Me } from "../api.ts";
 import { api } from "../api.ts";
 import type { IncomePreset } from "../collect.ts";
+import type { SummaryPart } from "../monthSummary.ts";
 import type { Route } from "../home.ts";
 import { navigation, routeOf, tabOf } from "../home.ts";
 import { Icon } from "../icons.tsx";
@@ -17,6 +18,7 @@ import { HomeScreen } from "../screens/Home.tsx";
 import { HouseholdScreen } from "../screens/Household.tsx";
 import { IncomeScreen } from "../screens/Income.tsx";
 import { ClosedMonthScreen, MonthCloseScreen } from "../screens/MonthClose.tsx";
+import { MonthSummaryScreen } from "../screens/MonthSummary.tsx";
 import { OpeningBalanceScreen } from "../screens/OpeningBalance.tsx";
 import type { RegisterPreset } from "../screens/Register.tsx";
 import { RegisterScreen } from "../screens/Register.tsx";
@@ -122,6 +124,11 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
     }
     if (route.startsWith("/finanzas/cierre/") && can("finance:view")) {
       return <ClosedMonthScreen key={route} month={route.slice("/finanzas/cierre/".length)} onOpen={go} />;
+    }
+    // Resumen del mes: the month in progress, a month ("/finanzas/resumen/2026-10-01"), or one of its parts.
+    if ((route === "/finanzas/resumen" || route.startsWith("/finanzas/resumen/")) && can("finance:view")) {
+      const [month = null, part = null] = route.split("/").slice(3);
+      return <MonthSummaryScreen key={route} month={month} part={part as SummaryPart | null} onOpen={go} />;
     }
     // Otro ingreso: from Inicio it finds the house in the census (or none); from Cobrar or a house's file, by id.
     if (route === "/finanzas/ingreso" && can("finance:record") && can("finance:view") && can("census:view")) {

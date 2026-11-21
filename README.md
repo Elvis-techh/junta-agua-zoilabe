@@ -81,8 +81,9 @@ changing how money, permissions or the history log work.
     check by ID: with none, the entry is saved on the phone without it.
     It does not know a name written surname first. The owner tried it on the
     test copy on 19 November 2026 and found it good.
-- **Phase 2 (Finances): started.** Its pieces, in build order, are ticked off
-  under "What comes next" in the [app plan](docs/app-plan.md).
+- **Phase 2 (Finances): built**; its "done when" test waits for the board to
+  say how to run it. Its pieces, in build order, are ticked off under "What
+  comes next" in the [app plan](docs/app-plan.md).
   - **Fees in Configuración: built.** The base monthly fee, the late fee
     (mora), the reconnection fee and the connection fee (added by the owner
     on 14 November 2026), each from the month it starts. The
@@ -289,6 +290,33 @@ changing how money, permissions or the history log work.
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
   so its amount starts with the month it is registered in.
+- **Phase 3 (Close, reports and guests): started.** The month close above is
+  its first piece; the rest are listed under "Phase 3 pieces" in the
+  [app plan](docs/app-plan.md).
+  - **Resumen del mes: built.** Asked for by the owner on 19 November 2026,
+    so the board can check, month by month, who was charged, who paid, who
+    still owes, what came in and what the money was spent on. It opens from
+    **Resumen del mes** on Inicio (the treasurer's, the president's, the
+    fiscal's and the vocales' own button; under "Otras tareas" for the
+    rest) on the month in progress; tapping the month's name (**Cambiar**,
+    always shown) lists every month from the opening balance's, or says
+    why there is only this one while the opening balance is in this month. One phone screen shows
+    the month's money (at the start, **Entró**, **Salió**, at the end, or
+    "Hay ahora" for the month in progress), its close's status, and its fee
+    ("Pagaron todo: 5 de 10 casas", "Falta cobrar: L 495.00 con mora").
+    **Entró** and **Salió** open every entry of the month by category, each
+    with who paid or who was paid, what for, the date, the receipt or
+    invoice number and how it was paid; an expense shows **Ver la foto** or
+    "Sin foto" with its reason, and an entry undone says when and why. The
+    fee opens every house charged that month, by name: first those that
+    still owe something of it (its fee or its late fee), then those that
+    paid it all; tap one to open its file. Nothing is counted anew: the
+    money is the month close's, the entries add up to its lines, and who
+    owes is what "Lo que debe" and Quién debe say. Looking at it needs "Ver
+    finanzas" and gives out no document number. See "Trying Resumen del
+    mes" below.
+  - Next: the same breakdown as a document, a picture with a document
+    number to send by WhatsApp or print.
 - **Database: SQLite** (decided 29 October 2026), one file like Lindero's and
   Báscula Central's, so the droplet needs no database server. The rules that
   PostgreSQL's two logins enforced are now triggers in the file itself (see
@@ -699,6 +727,42 @@ August 2026, with L 2,500 in cash), and in that month a donation in cash
 Looking needs "Ver finanzas"; preparing needs "Preparar el cierre del mes";
 approving and sending back need "Aprobar el cierre del mes".
 
+### Trying Resumen del mes
+
+With the opening balance entered for a month at least two months ago (say
+September 2026), a base fee and a late fee in Configuración → Cuotas (L 70
+and L 50), late fees counted from September (Configuración → Mora), a few
+families registered from paper forms dated before September, and in
+October some fee payments, a donation and two expenses:
+
+1. On Inicio, tap **Resumen del mes**. It opens on this month, marked "Mes
+   en curso", with "Hay ahora" at the foot of the money, and the whole
+   month fits on the screen without scrolling.
+2. Tap the month's name (**Cambiar**) and choose October. (If the opening
+   balance is in this month there is no other month yet: the list says so.) It is marked "Sin
+   cerrar" (or "Cierre por aprobar", or "Cerrado", as Cierre del mes says).
+   The money matches Cierre del mes for October: at the start, what came
+   in, what went out, at the end.
+3. Tap **Entró**: "Entradas de octubre", by category, the largest first,
+   each with its total. Each payment shows the family, its house code,
+   "Cuota de octubre de 2026", the date, the receipt number and how it was
+   paid. Tap **‹ Resumen**, then **Salió**: each expense shows who was paid
+   and **Ver la foto** or "Sin foto".
+4. Undo an October payment (Anular, from the household's file). In
+   October it now says "Anulado el … Se descuenta en noviembre"; in this
+   month the same amount appears again with "Se anuló lo anotado el …",
+   taken off. Each month's categories still add up to its money.
+5. Back on October, tap the fee card ("Ver quién pagó y quién falta"):
+   every house charged October's fee, first **Faltan de pagar**, then
+   **Pagaron todo**. A house that paid part shows "Pagó L 30.00 de
+   L 70.00 y debe L 50.00 de mora"; one that paid in full late, "Pagó la
+   cuota tarde: falta la mora". A house made inactive before October's
+   deadline is not there. Tap a house to open its file.
+6. This month's fee says "Se paga hasta el …": until then, nobody is late.
+
+Looking needs "Ver finanzas". It shows names and amounts only, never an ID
+number or a phone.
+
 ### Trying Quién debe
 
 With a base fee and a late fee in Configuración → Cuotas from a past month
@@ -796,6 +860,18 @@ service worker). To try that on the computer: `npm run build`, then
 
 `npm run db:reset` empties the local database (it refuses to run in
 production). Run `user:first-admin` again afterwards.
+
+### Made-up data to try things with
+
+After `npm run db:reset` and `user:first-admin`, `ALLOW_MADE_UP_DATA=yes npm run db:demo`
+fills the database with made-up data from three months ago until today:
+ten families (on time, late, in part, ahead, never, moved away), the fee and
+the deadline, donations, expenses with and without a photo, and two entries
+undone. Nothing is closed, so every month can still be changed. It acts as
+the administrator, goes in through the same rules as the screens, and
+refuses a database that already has any family or money, so it cannot spoil
+real data. The test copy takes it too:
+[docs/test-copy.md](docs/test-copy.md), "Made-up data on the test copy".
 
 ### The database
 
