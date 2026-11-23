@@ -162,9 +162,7 @@ export function PaymentScreen({ id, again, onOpen }: { id: string; again?: Payme
   if (!data) {
     return (
       <main className="screen stack">
-        <button className="btn" style={{ justifySelf: "start" }} onClick={() => onOpen("/finanzas/cobrar")}>
-          <Icon name="back" /> Cobrar
-        </button>
+        <BackButton label="Cobrar" onClick={() => onOpen("/finanzas/cobrar")} />
         <p className={loadError ? "message error" : "muted"}>{loadError ?? "Cargando…"}</p>
       </main>
     );

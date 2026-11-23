@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { api } from "../api.ts";
 import type { HouseholdFile } from "../census.ts";
+import { BackButton } from "../components/BackButton.tsx";
 import { MonthField } from "../components/CalendarField.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
@@ -64,9 +65,7 @@ export function StatementScreen({ householdId, canHandOut, onOpen }: { household
   if (!statement) {
     return (
       <main className="screen stack">
-        <button className="btn" style={{ justifySelf: "start" }} onClick={leave}>
-          <Icon name="back" /> Vivienda
-        </button>
+        <BackButton label="Vivienda" onClick={leave} />
         <p className={error ? "message error" : "muted"}>{error ?? "Cargando…"}</p>
       </main>
     );
@@ -114,9 +113,7 @@ export function StatementScreen({ householdId, canHandOut, onOpen }: { household
 
   return (
     <main className="screen stack">
-      <button className="btn" style={{ justifySelf: "start" }} onClick={leave}>
-        <Icon name="back" /> Vivienda
-      </button>
+      <BackButton label="Vivienda" onClick={leave} />
       <h1>Estado de cuenta</h1>
       {made ? (
         <>

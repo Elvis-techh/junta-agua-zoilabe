@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiError, api } from "../api.ts";
 import { formatLempiras, newSubmissionId, parseLempiras } from "../census.ts";
+import { BackButton } from "../components/BackButton.tsx";
 import { AmountInput } from "../components/AmountInput.tsx";
 import { DateField } from "../components/CalendarField.tsx";
 import { Dialog } from "../components/Dialog.tsx";
@@ -71,9 +72,7 @@ export function ExpenseScreen({ canReverse, onOpen }: { canReverse: boolean; onO
   if (!setup) {
     return (
       <main className="screen stack">
-        <button className="btn" style={{ justifySelf: "start" }} onClick={leave}>
-          <Icon name="back" /> Inicio
-        </button>
+        <BackButton label="Inicio" onClick={leave} />
         <p className={loadError ? "message error" : "muted"}>{loadError ?? "Cargando…"}</p>
       </main>
     );
@@ -192,9 +191,7 @@ export function ExpenseScreen({ canReverse, onOpen }: { canReverse: boolean; onO
     case "category":
       return (
         <main className="screen stack">
-          <button className="btn" style={{ justifySelf: "start" }} onClick={leave}>
-            <Icon name="back" /> Inicio
-          </button>
+          <BackButton label="Inicio" onClick={leave} />
           <h1>¿Qué gasto es?</h1>
           <div className="choice-grid">
             {setup.categories.map((choice) => (

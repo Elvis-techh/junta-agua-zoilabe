@@ -16,6 +16,7 @@ import {
   statusEntryLine,
   whatsappLink,
 } from "../census.ts";
+import { BackButton } from "../components/BackButton.tsx";
 import { DateField } from "../components/CalendarField.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import { PhoneField } from "../components/PhoneField.tsx";
@@ -67,9 +68,7 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
   if (!file) {
     return (
       <main className="screen stack">
-        <button className="btn" style={{ justifySelf: "start" }} onClick={() => onOpen("/censo")}>
-          <Icon name="back" /> Censo
-        </button>
+        <BackButton label="Censo" onClick={() => onOpen("/censo")} />
         <p className={error ? "message error" : "muted"}>{error ?? "Cargando…"}</p>
       </main>
     );
@@ -79,9 +78,7 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
 
   return (
     <main className="screen stack">
-      <button className="btn" style={{ justifySelf: "start" }} onClick={() => onOpen("/censo")}>
-        <Icon name="back" /> Censo
-      </button>
+      <BackButton label="Censo" onClick={() => onOpen("/censo")} />
 
       <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
         <h1 style={{ margin: 0 }}>Vivienda {file.code}</h1>
