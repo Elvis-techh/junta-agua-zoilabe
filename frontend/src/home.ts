@@ -48,8 +48,8 @@ export function routeOf(path: string): Route {
   if (/^\/finanzas\/cierre\/\d{4}-(0[1-9]|1[0-2])-01$/.test(path)) {
     return path as Route;
   }
-  // Resumen del mes: a month, and its parts (what came in, what was spent, the month's fee).
-  if (/^\/finanzas\/resumen\/\d{4}-(0[1-9]|1[0-2])-01(\/(entradas|gastos|cuota))?$/.test(path)) {
+  // Resumen del mes: a month, and its parts (what came in, what was spent, the month's fee, its document).
+  if (/^\/finanzas\/resumen\/\d{4}-(0[1-9]|1[0-2])-01(\/(entradas|gastos|cuota|documento))?$/.test(path)) {
     return path as Route;
   }
   return "/";
