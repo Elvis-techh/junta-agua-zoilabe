@@ -323,8 +323,28 @@ changing how money, permissions or the history log work.
     owes is what "Lo que debe" and Quién debe say. Looking at it needs "Ver
     finanzas" and gives out no document number. See "Trying Resumen del
     mes" below.
-  - Next: the same breakdown as a document, a picture with a document
-    number to send by WhatsApp or print.
+  - **Lista del censo: built.** The census list for the municipality and the
+    board's papers (App Plan, "Reports": filtered by sector and status;
+    screen, printout, CSV). On **Censo**, **Imprimir o guardar la lista**
+    opens it: choose the sector (or all) and active, inactive or all houses.
+    **Imprimir** gives the list a document number and opens the phone's or
+    computer's print window (on a phone, "Guardar como PDF" is there too).
+    **Guardar para Excel** does the same and saves a CSV file instead.
+    **Nothing is written to Historial** (owner decision of 24 November 2026:
+    the board will not audit who printed what); the list itself says who
+    made it and when. Both carry the same heading (board, number, filters, who made it and when)
+    and the same columns: code, name, relation, identity, phone, sector,
+    references, water, status (with why it is inactive), paper form number
+    and last verified date (the board agreed on these columns on 24
+    November 2026). A phone is written without its "+" ("504 9988-7766"), so
+    Excel keeps it as text. Identity and phone are whole only for someone
+    with "Ver identidad y teléfono completos"; otherwise the server masks
+    them, and the list says so. It needs "Ver el censo" and "Imprimir y
+    exportar el censo". See "Trying la lista del censo" below.
+  - Next: the yearly census snapshot, frozen at year end, then the history
+    log extract, guest invitations and the print layout every printout
+    shares (date and time, who made it, document number; the logo is left
+    out for now, owner 24 November 2026).
 - **Database: SQLite** (decided 29 October 2026), one file like Lindero's and
   Báscula Central's, so the droplet needs no database server. The rules that
   PostgreSQL's two logins enforced are now triggers in the file itself (see
@@ -864,6 +884,28 @@ Opening the app from scratch with no signal needs the installed app (its
 service worker). To try that on the computer: `npm run build`, then
 `npx --workspace @zoilabe/frontend vite preview`, and open
 `http://localhost:4173` with `npm run dev:backend` running.
+
+### Trying la lista del censo
+
+1. Open **Censo** and tap **Imprimir o guardar la lista** (it is there for
+   someone with "Imprimir y exportar el censo").
+2. Choose a **Sector** and **Viviendas** (Activas, Inactivas or Todas): the
+   count under them says how many houses the list will have.
+3. Tap **Imprimir**. It says "Lista del censo nº 1, lista para imprimir", the
+   print window opens, and the list shows under the buttons. On paper it is
+   one table across the page, with nothing else of the screen.
+4. Tap **Hacer otra**, then **Guardar para Excel**: a file
+   `lista-del-censo-n2.csv` is saved. Open it in Excel: the accents are right
+   and the phones show as text, written without the "+" ("504 9988-7766").
+5. **Historial** shows nothing for either list: printing is not logged.
+6. Every role holds every permission today, so every list has identity and
+   phone whole. A list made without "Ver identidad y teléfono completos"
+   (a guest's, later) shows only their last digits and says they are
+   hidden; the tests check it until a Permisos screen can take it away.
+
+Choosing changes nothing; each **Imprimir** or **Guardar para Excel** takes a
+new number, as an Estado de cuenta does. **Imprimir otra vez** prints the
+same list again, with the same number.
 
 ### Starting over
 
