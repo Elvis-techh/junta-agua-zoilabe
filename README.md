@@ -337,11 +337,13 @@ changing how money, permissions or the history log work.
     fee. **Compartir la imagen**, **Enviar como texto** (WhatsApp asks which
     chat) and **Guardar la imagen** work as on Estado de cuenta. What came
     in is by category, with how many entries; each expense is its own line
-    with who was paid, the date and the invoice number. It gives only the
-    totals of who owes, never their names: whether a document that is sent
-    on may name them is the board's decision, so Resumen del mes and Quién
-    debe stay the only places that do. Nothing is counted anew. See
-    "Trying Estado financiero del mes" below.
+    with who was paid, the date and the invoice number. Under the fee it
+    lists the houses that still owe something of the month (**Faltan de
+    pagar**), each with the owner's name, what it owes and its code, as
+    Resumen del mes does; owner decision of 24 November 2026, though the
+    document is sent on by WhatsApp. It never carries an ID number or a
+    phone. Nothing is counted anew. See "Trying Estado financiero del mes"
+    below.
   - **Lista del censo: built.** The census list for the municipality and the
     board's papers (App Plan, "Reports": filtered by sector and status;
     screen, printout, CSV). On **Censo**, **Imprimir o guardar la lista**
@@ -831,8 +833,11 @@ With the data of "Trying Resumen del mes" (or the made-up data):
    its number is the next one, because every document shares one count.
 5. Close October (Cierre del mes) and make the statement again: it says
    "Cerrado: las cifras ya no cambian."
-6. The names of the houses that owe are not on it, only how many and how
-   much. That is on purpose, until the board decides.
+6. Under the fee, **Faltan de pagar** lists each house that still owes
+   something of October, with its owner's name, what it owes and its code;
+   the same houses and amounts as under "Faltan de pagar" on Resumen del
+   mes. A house that paid everything is not listed. No ID number or phone
+   is on the document.
 
 Making one needs "Imprimir y exportar finanzas"; someone without it sees Resumen del
 mes but not the button.

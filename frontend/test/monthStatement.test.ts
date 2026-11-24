@@ -83,7 +83,7 @@ describe("Estado financiero del mes", () => {
     const lines = monthStatementLines(october, document);
     assert.deepEqual(
       lines.filter((line) => line.kind === "heading").map((line) => line.text),
-      ["Estado financiero nº 14", "El dinero", "Lo que entró", "Lo que se gastó", "Cuota de octubre de 2026"],
+      ["Estado financiero nº 14", "El dinero", "Lo que entró", "Lo que se gastó", "Cuota de octubre de 2026", "Faltan de pagar (1)"],
     );
     const rows = lines.filter((line) => line.kind === "row" || line.kind === "total").map((line) => [line.text, line.amount]);
     assert.deepEqual(rows, [
@@ -96,6 +96,7 @@ describe("Estado financiero del mes", () => {
       ["Total que entró", "L 300.00"],
       ["Cloro: Ferretería El Puente", "L 50.00"],
       ["Total que se gastó", "L 50.00"],
+      ["Bruno Díaz", "L 90.00"],
     ]);
     // Where the money is, and how many entries make a category.
     assert.equal(lines.find((line) => line.text === "Al terminar el mes")?.sub, "Caja L 1,190.00 · Banco L 5,200.00");
@@ -121,10 +122,32 @@ describe("Estado financiero del mes", () => {
     assert.equal(says({ ...october, month: "2026-11-01", status: "open" }), "Mes en curso: las cifras son de hoy y pueden cambiar.");
   });
 
-  it("gives totals of who owes, never their names or house codes: the board has not decided that", () => {
+  it("names the houses that still owe, with what each owes, and the houses that paid are not listed", () => {
+    const lines = monthStatementLines(october, document);
+    assert.equal(lines.find((line) => line.kind === "heading" && line.text.startsWith("Faltan"))?.text, "Faltan de pagar (1)");
+    const owing = lines.find((line) => line.text === "Bruno Díaz");
+    assert.equal(owing?.kind, "row");
+    assert.equal(owing?.amount, "L 90.00");
+    assert.equal(owing?.sub, "Z-0002 · Pagó L 30.00 de L 70.00 y debe L 50.00 de mora");
+    assert.ok(!lines.some((line) => line.text === "Ana López"), "a house that paid all is not listed");
+
     const text = monthStatementText(october, document);
     assert.match(text, /Falta cobrar: L 40\.00 de cuota y L 50\.00 de mora/);
-    assert.doesNotMatch(text, /Ana López|Bruno Díaz|Z-000/);
+    assert.match(text, /\*Faltan de pagar \(1\)\*\n• Bruno Díaz: L 90\.00 \(Z-0002 · Pagó L 30\.00 de L 70\.00 y debe L 50\.00 de mora\)/);
+  });
+
+  it("has no list of who owes when nobody does, or nobody was charged", () => {
+    const paidAll = { ...october, fee: { ...october.fee, houses: october.fee.houses.map((house) => ({ ...house, paidCentavos: house.priceCentavos, lateFeeCentavos: 0 })), owedCentavos: 0, lateFeesCentavos: 0 } };
+    assert.ok(!monthStatementLines(paidAll, document).some((line) => line.text.startsWith("Faltan")));
+    const nobody = { ...october, fee: { ...october.fee, houses: [], chargedCentavos: 0, paidCentavos: 0, owedCentavos: 0, lateFeesCentavos: 0 } };
+    assert.ok(!monthStatementLines(nobody, document).some((line) => line.text.startsWith("Faltan")));
+  });
+
+  it("gives a house with no owner a name to read, and never an ID number or a phone", () => {
+    const unnamed = { ...october, fee: { ...october.fee, houses: [{ ...october.fee.houses[1]!, ownerName: null, sectorName: "El Centro" }] } };
+    const lines = monthStatementLines(unnamed, document);
+    assert.equal(lines.find((line) => line.text === "Sin nombre")?.sub, "Z-0002 · El Centro · Pagó L 30.00 de L 70.00 y debe L 50.00 de mora");
+    assert.ok(!JSON.stringify(lines).match(/idNumber|phone|\d{13}/));
   });
 
   it("reads the same on the screen, in the picture and as WhatsApp text", () => {

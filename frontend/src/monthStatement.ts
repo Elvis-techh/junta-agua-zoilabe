@@ -8,14 +8,15 @@
  * so the three cannot say different things, and so it looks like a house's
  * statement and a receipt.
  *
- * It carries totals, never names of the houses that owe: a document is sent
- * and forwarded, and who may be told who owes is the board's decision, not
- * this file's. Who owes is on Resumen del mes and Quién debe.
+ * It names the houses that still owe something of the month, with what each
+ * owes (owner, 24 November 2026): the document is sent on by WhatsApp, and the
+ * owner decided it may carry those names. Only the owner's name and the
+ * house's code: never an ID number or a phone.
  */
 import { formatLempiras } from "./census.ts";
 import { monthTitle } from "./monthClose.ts";
 import type { MonthSummary, SummaryEntry } from "./monthSummary.ts";
-import { dayName, feeLines, moneyLines, moneyTotal, placesLine, summaryStatus } from "./monthSummary.ts";
+import { dayName, feeGroups, feeHouseLine, feeLines, houseOwes, moneyLines, moneyTotal, placesLine, summaryStatus } from "./monthSummary.ts";
 import { monthName } from "./payments.ts";
 import type { StatementDocument, StatementLine } from "./statement.ts";
 import { BOARD_NAME, calendarDate, dateAndTime, linesToText } from "./statement.ts";
@@ -89,6 +90,20 @@ export function monthStatementLines(summary: MonthSummary, document: StatementDo
 
   lines.push({ kind: "heading", text: `Cuota de ${monthName(summary.month)}` });
   lines.push(...feeLines(fee, summary.month).map((text) => ({ kind: "text" as const, text })));
+
+  // Who still owes something of the month, and how much, as Resumen del mes lists them.
+  const { owing } = feeGroups(fee);
+  if (owing.length > 0) {
+    lines.push(
+      { kind: "heading", text: `Faltan de pagar (${owing.length})` },
+      ...owing.map((house) => ({
+        kind: "row" as const,
+        text: house.ownerName ?? "Sin nombre",
+        amount: formatLempiras(houseOwes(house)),
+        sub: [house.code, house.sectorName, feeHouseLine(house, fee.pastDeadline)].filter(Boolean).join(" · "),
+      })),
+    );
+  }
 
   if (document) {
     lines.push({ kind: "small", text: `Hecho por ${document.madeBy} el ${dateAndTime(document.madeAt)} · Documento nº ${document.number}` });
