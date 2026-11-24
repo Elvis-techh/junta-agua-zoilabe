@@ -238,9 +238,10 @@ changing how money, permissions or the history log work.
     treasurer chooses (January of this year to start with) and what it owes
     today: the same months and late fees as **Lo que debe**. Payments that
     were undone are left out. **Hacer para enviar** gives it a document
-    number (one counter for every document the app hands out), puts it in
-    Historial under Impresiones, and draws it as a picture with the board's
-    name, the date and time and who made it. Owner decisions of 15 November
+    number (one counter for every document the app hands out) and draws it
+    as a picture with the board's name, the date and time and who made it.
+    It leaves nothing in Historial (owner decision of 24 November 2026:
+    printing is not logged; until then it was). Owner decisions of 15 November
     2026: the statement is a picture, shared through the phone's own Share
     button, with a second button that opens the family's WhatsApp chat with
     the same statement as text; and the treasurer chooses the month its
@@ -248,8 +249,9 @@ changing how money, permissions or the history log work.
   - **Digital receipts (Recibo digital): built.** On a payment or other-income
     card in a household's file, **Recibo** opens the entry as a receipt and,
     with **Hacer y compartir**, draws it as a picture to send by WhatsApp,
-    exactly like a statement and sharing its document number. Owner decision
-    of 16 November 2026: receipts cover other income (late fees,
+    exactly like a statement and sharing its document number, and, like a
+    statement, leaving nothing in Historial (owner decision of 24 November
+    2026). Owner decision of 16 November 2026: receipts cover other income (late fees,
     reconnections, donations, other) as well as monthly fees, and one running
     count numbers every document. An expense has no resident receipt, and a
     payment that was undone has none. The paper receipt still stands; this is
@@ -677,8 +679,7 @@ que debe"):
 6. **Enviar como texto** opens the family's WhatsApp chat with the same
    statement written out. It is there only for a family with a number, and
    for a user who may see the whole number.
-7. In **Historial**, under Impresiones: "… hizo el estado de cuenta nº 1 de
-   la vivienda Z-0001 (…), desde enero de 2026".
+7. **Historial** shows nothing for it: printing is not logged.
 8. Undo one of the family's payments (**Anular pago**) and open the
    statement again: that payment is gone from it, and its month is owed.
 
@@ -704,8 +705,7 @@ late fee, say):
    be made for a donation from outside the census too (no house, image only).
 5. A reversed payment or income shows no **Recibo** button, and the server
    refuses a receipt for one.
-6. In **Historial → Impresiones**: "… hizo el recibo nº 2 de una cuota
-   mensual: … , recibo de papel nº …".
+6. **Historial** shows nothing for it: printing is not logged.
 
 Looking needs "Ver finanzas"; making one needs "Imprimir y exportar
 finanzas". The number is the same running count a statement uses, so a

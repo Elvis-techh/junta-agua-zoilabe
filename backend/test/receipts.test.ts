@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
 
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { auditLog, documents, feeRates } from "../src/db/schema.js";
 import { firstOfMonth } from "../src/lib/fees.js";
@@ -143,7 +143,7 @@ describe("Recibo digital: a receipt for a money-in entry", () => {
     assert.equal((await handOut(randomUUID())).statusCode, 404);
   });
 
-  it("hands one out with the next document number, shared with statements, and logs it under Impresiones", async () => {
+  it("hands one out with the next document number, shared with statements, and leaves nothing in Historial", async () => {
     const payment = await pay([thisMonth], 7000);
     const before = (await t.db.select().from(documents)).length;
     // Looking changes nothing.
@@ -166,13 +166,9 @@ describe("Recibo digital: a receipt for a money-in entry", () => {
     assert.equal(row!.householdId, house.id);
     assert.deepEqual(row!.details, { transactionId: payment.id, amountCentavos: 7000, paperReceiptNumber: payment.paperReceiptNumber });
 
-    const [logged] = await t.db
-      .select()
-      .from(auditLog)
-      .where(and(eq(auditLog.entityType, "document"), eq(auditLog.entityId, String(document.number))));
-    assert.equal(logged!.area, "exports");
-    assert.equal(logged!.action, "receipt.issued");
-    assert.match(logged!.summary, new RegExp(`^Tina Tesorera \\(Tesorero/a\\) hizo el recibo nº ${document.number} de una cuota mensual: Rosa Martínez, vivienda ${house.code}, recibo de papel nº ${payment.paperReceiptNumber}$`));
+    // Printing is not logged (owner, 24 November 2026).
+    assert.equal((await t.db.select().from(auditLog).where(eq(auditLog.entityType, "document"))).length, 0);
+    assert.equal((await t.db.select().from(auditLog).where(eq(auditLog.area, "exports"))).length, 0);
   });
 
   it("lets only those who may see finances look, and only those who may export finances hand one out", async () => {

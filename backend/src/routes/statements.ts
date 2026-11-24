@@ -12,10 +12,10 @@
  * A payment that was undone ("Anulado") is not on it, nor is its reversal:
  * the family sees what stands.
  *
- * Looking at a statement changes nothing. Handing one out does: it takes
- * the next document number, and is in Historial under Exportaciones (App
- * Plan: "every printout carries … a document number. Every export is
- * logged").
+ * Looking at a statement changes nothing. Handing one out takes the next
+ * document number and nothing else: it is not in Historial, because the
+ * board will not audit who printed what (owner, 24 November 2026; before
+ * that it was logged under Impresiones).
  */
 import { and, asc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import type { FastifyPluginAsync } from "fastify";
@@ -25,7 +25,6 @@ import { actorOf } from "../auth/plugin.js";
 import type { DbOrTx } from "../db/client.js";
 import { inTransaction } from "../db/client.js";
 import { categories, documents, paymentMonths, sectors, households, transactions } from "../db/schema.js";
-import { recordAudit } from "../lib/audit.js";
 import { NO_HOUSEHOLD, householdOf } from "../lib/entries.js";
 import { firstOfMonth, monthName } from "../lib/fees.js";
 import { HttpError, parse } from "../lib/http.js";
@@ -174,8 +173,9 @@ export const statementRoutes: FastifyPluginAsync<{ timeZone: string }> = async (
   });
 
   /**
-   * Hand out a house's statement: it takes the next document number and is
-   * logged, and comes back with who made it and when, to be drawn and sent.
+   * Hand out a house's statement: it takes the next document number, and
+   * comes back with who made it and when, to be drawn and sent. Nothing is
+   * written to Historial.
    */
   app.post<{ Params: Params }>("/finance/households/:id/statement", hand, async (request, reply) => {
     if (!z.uuid().safeParse(request.params.id).success) {
@@ -198,24 +198,6 @@ export const statementRoutes: FastifyPluginAsync<{ timeZone: string }> = async (
         })
         .returning({ id: documents.id, createdAt: documents.createdAt })
         .get()!;
-
-      recordAudit(tx, actor, {
-        area: "exports",
-        action: "statement.issued",
-        summary:
-          `${actor.name} (${actor.role}) hizo el estado de cuenta nº ${document.id} de la vivienda ${statement.household.code}` +
-          ` (${statement.household.ownerName}), desde ${monthName(from)}`,
-        entityType: "document",
-        entityId: String(document.id),
-        after: {
-          kind: "household_statement",
-          householdId: statement.household.id,
-          from,
-          madeOn: day,
-          paidCentavos: statement.paidCentavos,
-          owedCentavos: statement.owed.totalCentavos,
-        },
-      });
 
       return { statement, document: { number: document.id, madeAt: document.createdAt, madeBy: actor.name } };
     });
