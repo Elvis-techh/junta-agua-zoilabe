@@ -327,21 +327,24 @@ changing how money, permissions or the history log work.
     board's papers (App Plan, "Reports": filtered by sector and status;
     screen, printout, CSV). On **Censo**, **Imprimir o guardar la lista**
     opens it: choose the sector (or all) and active, inactive or all houses.
-    **Imprimir** gives the list a document number, puts it in Historial
-    under Impresiones with the filters used, and opens the phone's or
+    **Imprimir** gives the list a document number and opens the phone's or
     computer's print window (on a phone, "Guardar como PDF" is there too).
-    **Guardar para Excel** does the same and saves a CSV file instead. Both
-    carry the same heading (board, number, filters, who made it and when)
+    **Guardar para Excel** does the same and saves a CSV file instead.
+    **Nothing is written to Historial** (owner decision of 24 November 2026:
+    the board will not audit who printed what); the list itself says who
+    made it and when. Both carry the same heading (board, number, filters, who made it and when)
     and the same columns: code, name, relation, identity, phone, sector,
     references, water, status (with why it is inactive), paper form number
-    and last verified date. Identity and phone are whole only for someone
+    and last verified date (the board agreed on these columns on 24
+    November 2026). A phone is written without its "+" ("504 9988-7766"), so
+    Excel keeps it as text. Identity and phone are whole only for someone
     with "Ver identidad y teléfono completos"; otherwise the server masks
     them, and the list says so. It needs "Ver el censo" and "Imprimir y
     exportar el censo". See "Trying la lista del censo" below.
   - Next: the yearly census snapshot, frozen at year end, then the history
     log extract, guest invitations and the print layout every printout
-    shares (logo, date and time, who made it, document number). The
-    monthly statement as a document waits on its own branch.
+    shares (date and time, who made it, document number; the logo is left
+    out for now, owner 24 November 2026).
 - **Database: SQLite** (decided 29 October 2026), one file like Lindero's and
   Báscula Central's, so the droplet needs no database server. The rules that
   PostgreSQL's two logins enforced are now triggers in the file itself (see
@@ -893,11 +896,8 @@ service worker). To try that on the computer: `npm run build`, then
    one table across the page, with nothing else of the screen.
 4. Tap **Hacer otra**, then **Guardar para Excel**: a file
    `lista-del-censo-n2.csv` is saved. Open it in Excel: the accents are right
-   and the phones show as text (each starts with an apostrophe, so Excel
-   never reads "+504…" as a sum).
-5. In **Historial**, under Impresiones: "… imprimió la lista del censo nº 1:
-   viviendas activas, todos los sectores (9 viviendas, con identidad y
-   teléfono completos)".
+   and the phones show as text, written without the "+" ("504 9988-7766").
+5. **Historial** shows nothing for either list: printing is not logged.
 6. Every role holds every permission today, so every list has identity and
    phone whole. A list made without "Ver identidad y teléfono completos"
    (a guest's, later) shows only their last digits and says they are

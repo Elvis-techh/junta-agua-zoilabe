@@ -178,7 +178,7 @@ export function CensusListScreen({ me, onOpen }: { me: Me; onOpen: Go }) {
         </button>
       </div>
       <p className="muted" style={{ margin: 0 }}>
-        Cada lista que se imprime o se guarda lleva un número de documento y queda en el Historial.
+        Cada lista que se imprime o se guarda lleva su número de documento.
       </p>
     </main>
   );

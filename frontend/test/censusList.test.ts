@@ -80,7 +80,7 @@ describe("Lista del censo", () => {
       "Ana López",
       "Dueño/a",
       "0801-1990-12345",
-      "+504 9988-7766",
+      "504 9988-7766",
       "El Centro",
       'Casa azul, "frente a la escuela"',
       "Conectada",
@@ -113,16 +113,19 @@ describe("Lista del censo", () => {
     assert.equal(lines[1], '"Lista del censo nº 14"');
     assert.equal(lines[4], "");
     assert.equal(lines[5], CENSUS_LIST_COLUMNS.map((column) => `"${column.title}"`).join(","));
-    // Quotes doubled; a phone's "+" behind an apostrophe, so Excel keeps it as text.
+    // Quotes doubled; the phone has no "+", so Excel keeps it as text without help.
     assert.equal(
       lines[6],
-      '"Z-0001","Ana López","Dueño/a","0801-1990-12345","\'+504 9988-7766","El Centro","Casa azul, ""frente a la escuela""","Conectada","Activa","112","3 de marzo de 2026"',
+      '"Z-0001","Ana López","Dueño/a","0801-1990-12345","504 9988-7766","El Centro","Casa azul, ""frente a la escuela""","Conectada","Activa","112","3 de marzo de 2026"',
     );
     assert.equal(lines.length, 9);
     assert.equal(lines[8], "");
 
     const sneaky = { ...list, households: [{ ...list.households[1]!, ownerName: "=HYPERLINK(\"x\")" }] };
     assert.match(censusListCsv(sneaky), /"'=HYPERLINK\(""x""\)"/);
+    // No phone cell starts with a sign Excel would read as a formula.
+    assert.ok(!csv.includes("+504"));
+    assert.ok(!csv.includes("'504"));
     assert.equal(censusListFileName(list), "lista-del-censo-n14.csv");
   });
 

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
 
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { auditLog, documents } from "../src/db/schema.js";
 import { HONDURAS_TIME_ZONE, businessToday } from "../src/lib/time.js";
@@ -58,7 +58,7 @@ describe("Lista del censo: the census list as a document", () => {
     await t.close();
   });
 
-  it("hands out the filtered list with the next document number, logged under Impresiones", async () => {
+  it("hands out the filtered list with the next document number, and writes nothing to Historial", async () => {
     const ana = await register("Ana López", sectorA.id, "99887766");
     const beto = await register("Beto Díaz", sectorA.id, null);
     const carla = await register("Carla Mejía", sectorB.id, "98765432");
@@ -119,18 +119,9 @@ describe("Lista del censo: the census list as a document", () => {
       madeOn: today,
     });
 
-    const [entry] = await t.db
-      .select()
-      .from(auditLog)
-      .where(and(eq(auditLog.entityType, "document"), eq(auditLog.entityId, String(handed.document.number))));
-    assert.equal(entry!.area, "exports");
-    assert.equal(entry!.action, "census_list.issued");
-    assert.match(entry!.summary, /imprimió la lista del censo nº \d+: viviendas activas, sector El Centro \(1 vivienda, con identidad y teléfono completos\)/);
-    const [csvEntry] = await t.db
-      .select()
-      .from(auditLog)
-      .where(and(eq(auditLog.entityType, "document"), eq(auditLog.entityId, String(second.json().document.number))));
-    assert.match(csvEntry!.summary, /guardó la lista del censo nº \d+: viviendas todas, todos los sectores \(3 viviendas, con/);
+    // The owner's decision of 24 November 2026: printing leaves no entry in Historial.
+    assert.equal((await t.db.select().from(auditLog).where(eq(auditLog.entityType, "document"))).length, 0);
+    assert.equal((await t.db.select().from(auditLog).where(eq(auditLog.area, "exports"))).length, 0);
   });
 
   it("masks ID numbers and phones for someone who may not see them whole, and says so", async () => {

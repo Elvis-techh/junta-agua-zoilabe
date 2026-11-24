@@ -4,9 +4,10 @@
  * for a guest with census access.
  *
  * Looking at the list on Censo changes nothing. Printing it or saving it for
- * a spreadsheet does: it takes the next document number and is in Historial
- * under Impresiones, with the filters used ("Every printout carries … a
- * document number. Every export is logged"). The rows come back in the same
+ * a spreadsheet takes the next document number, and nothing else: the owner
+ * decided on 24 November 2026 that printing is not written to Historial (the
+ * board will not audit who printed what). The `documents` row still says who
+ * made the list and for which filters. The rows come back in the same
  * answer, so what is printed is exactly what was numbered.
  *
  * ID numbers and phones are masked here, as on every census screen, unless
@@ -22,7 +23,6 @@ import { actorOf } from "../auth/plugin.js";
 import type { DbOrTx } from "../db/client.js";
 import { inTransaction } from "../db/client.js";
 import { documents, householdOwners, households, people, sectors } from "../db/schema.js";
-import { recordAudit } from "../lib/audit.js";
 import { maskDigits } from "../lib/census.js";
 import { HttpError, parse } from "../lib/http.js";
 import { maskPhone } from "../lib/phone.js";
@@ -52,8 +52,6 @@ export interface CensusListRow {
   paperFormNumber: string | null;
   lastVerifiedOn: string | null;
 }
-
-const STATUS_WORDS = { active: "activas", inactive: "inactivas", all: "todas" } as const;
 
 /** The houses on the list, by code, each with the person registered for it now. */
 export function censusListOf(db: DbOrTx, filters: CensusListFilters, sensitive: boolean): CensusListRow[] {
@@ -96,8 +94,8 @@ export const censusListRoutes: FastifyPluginAsync<{ timeZone: string }> = async 
 
   /**
    * Print the census list or save it for a spreadsheet: it takes the next
-   * document number and is logged, and comes back with its rows, who made
-   * it and when, to be drawn.
+   * document number, and comes back with its rows, who made it and when, to
+   * be drawn.
    */
   app.post("/census/list", hand, async (request, reply) => {
     // Seeing the census and printing it are two permissions; the list needs both.
@@ -131,19 +129,6 @@ export const censusListRoutes: FastifyPluginAsync<{ timeZone: string }> = async 
         .values({ kind: "census_list", details, createdBy: actor.userId! })
         .returning({ id: documents.id, createdAt: documents.createdAt })
         .get()!;
-
-      recordAudit(tx, actor, {
-        area: "exports",
-        action: "census_list.issued",
-        summary:
-          `${actor.name} (${actor.role}) ${body.format === "csv" ? "guardó" : "imprimió"} la lista del censo nº ${document.id}:` +
-          ` viviendas ${STATUS_WORDS[body.status]}, ${sector ? `sector ${sector.name}` : "todos los sectores"}` +
-          ` (${rows.length === 1 ? "1 vivienda" : `${rows.length} viviendas`}` +
-          `${sensitive ? ", con identidad y teléfono completos" : ""})`,
-        entityType: "document",
-        entityId: String(document.id),
-        after: { kind: "census_list", ...details },
-      });
 
       return {
         document: { number: document.id, madeAt: document.createdAt, madeBy: actor.name },

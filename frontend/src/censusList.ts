@@ -101,6 +101,7 @@ export const CENSUS_LIST_COLUMNS: readonly CensusListColumn[] = [
   { title: "Relación", value: (row) => RELATIONS[row.relation] },
   { title: "Identidad", value: (row) => (row.idNumber === null ? NO_ID_NUMBER : formatIdNumber(row.idNumber)) },
   {
+    // Without its "+": Excel would read "+504 …" as a sum (owner, 24 November 2026).
     title: "Teléfono",
     value: (row) =>
       row.phone === null
@@ -108,7 +109,7 @@ export const CENSUS_LIST_COLUMNS: readonly CensusListColumn[] = [
           ? PHONE_MISSING[row.phoneMissing]
           : ""
         : /^\+\d+$/.test(row.phone)
-          ? formatPhone(row.phone)
+          ? formatPhone(row.phone).replace(/^\+/, "")
           : row.phone,
   },
   { title: "Sector", value: (row) => row.sectorName },
@@ -125,7 +126,7 @@ export const CENSUS_LIST_COLUMNS: readonly CensusListColumn[] = [
 
 /**
  * One cell of the file. Every cell is quoted, so commas and line breaks stay
- * inside it. One that starts like a formula ("+504…", "=…") gets an
+ * inside it. One that starts like a formula ("=…", "+…", "-…", "@…") gets an
  * apostrophe first, so a spreadsheet shows it as text and never runs it.
  */
 function csvCell(text: string): string {
