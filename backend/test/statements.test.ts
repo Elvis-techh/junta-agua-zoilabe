@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
 
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { auditLog, documents, feeRates } from "../src/db/schema.js";
-import { firstOfMonth, monthName } from "../src/lib/fees.js";
+import { firstOfMonth } from "../src/lib/fees.js";
 import { addMonths } from "../src/lib/payments.js";
 import { HONDURAS_TIME_ZONE, businessToday } from "../src/lib/time.js";
 import type { TestApp } from "./helpers.js";
@@ -175,7 +175,7 @@ describe("Estado de cuenta: a house's statement", () => {
     assert.deepEqual(s.owed, { months: [], lateFees: [], monthsCentavos: 0, lateFeesCentavos: 0, totalCentavos: 0 });
   });
 
-  it("hands one out with the next document number, who made it, and an entry in Historial", async () => {
+  it("hands one out with the next document number and who made it, and leaves nothing in Historial", async () => {
     const noDocuments = (await t.db.select().from(documents)).length;
     // Looking changes nothing.
     await statement(house.id, m(8));
@@ -199,16 +199,9 @@ describe("Estado de cuenta: a house's statement", () => {
     assert.equal(row!.createdBy, treasurer.id);
     assert.deepEqual(row!.details, { from: m(8), madeOn: today, paidCentavos: handed.paidCentavos, owedCentavos: 28000 });
 
-    const [logged] = await t.db
-      .select()
-      .from(auditLog)
-      .where(and(eq(auditLog.entityType, "document"), eq(auditLog.entityId, String(document.number))));
-    assert.equal(logged!.area, "exports");
-    assert.equal(logged!.action, "statement.issued");
-    assert.equal(
-      logged!.summary,
-      `Tina Tesorera (Tesorero/a) hizo el estado de cuenta nº ${document.number} de la vivienda ${house.code} (Rosa Martínez), desde ${monthName(m(8))}`,
-    );
+    // Printing is not logged (owner, 24 November 2026).
+    assert.equal((await t.db.select().from(auditLog).where(eq(auditLog.entityType, "document"))).length, 0);
+    assert.equal((await t.db.select().from(auditLog).where(eq(auditLog.area, "exports"))).length, 0);
   });
 
   it("lets only those who may see finances look, and only those who may export finances hand one out", async () => {

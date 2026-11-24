@@ -11,9 +11,10 @@
  * and a reversal is not a receipt of its own.
  *
  * Like a statement (src/routes/statements.ts), looking at it changes nothing;
- * handing it out takes the next document number, is logged under exports, and
- * is drawn and sent on the phone. The number is the one running count every
- * document shares.
+ * handing it out takes the next document number and is drawn and sent on the
+ * phone. It is not in Historial: the board will not audit who printed what
+ * (owner, 24 November 2026; before that it was logged under Impresiones). The
+ * number is the one running count every document shares.
  */
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import type { FastifyPluginAsync } from "fastify";
@@ -23,7 +24,6 @@ import { actorOf } from "../auth/plugin.js";
 import type { DbOrTx } from "../db/client.js";
 import { inTransaction } from "../db/client.js";
 import { categories, documents, householdOwners, households, paymentMonths, people, sectors, transactions, users } from "../db/schema.js";
-import { recordAudit } from "../lib/audit.js";
 import { HttpError, parse } from "../lib/http.js";
 import { businessToday } from "../lib/time.js";
 import { INCOME_TYPES } from "./income.js";
@@ -116,14 +116,6 @@ export function receiptOf(db: DbOrTx, transactionId: string, today: string) {
   };
 }
 
-/** The receipt's one-line "what for", for the history entry. */
-function conceptSummary(concept: Concept): string {
-  if (concept.kind === "monthly") {
-    return "una cuota mensual";
-  }
-  return concept.type === "other" && concept.note ? concept.note : "otro ingreso";
-}
-
 export const receiptRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app, options) => {
   const view = { preHandler: app.requirePermission("finance:view") };
   const hand = { preHandler: app.requirePermission("export:finance") };
@@ -137,7 +129,7 @@ export const receiptRoutes: FastifyPluginAsync<{ timeZone: string }> = async (ap
     return { receipt: receiptOf(app.db, request.params.id, today()) };
   });
 
-  /** Hand out a receipt: it takes the next document number and is logged. */
+  /** Hand out a receipt: it takes the next document number. Nothing is written to Historial. */
   app.post<{ Params: Params }>("/finance/receipts/:id", hand, async (request, reply) => {
     if (!z.uuid().safeParse(request.params.id).success) {
       throw NO_RECEIPT;
@@ -157,23 +149,6 @@ export const receiptRoutes: FastifyPluginAsync<{ timeZone: string }> = async (ap
         })
         .returning({ id: documents.id, createdAt: documents.createdAt })
         .get()!;
-
-      recordAudit(tx, actor, {
-        area: "exports",
-        action: "receipt.issued",
-        summary:
-          `${actor.name} (${actor.role}) hizo el recibo nº ${document.id} de ${conceptSummary(receipt.concept)}: ` +
-          `${receipt.payerName ?? ""}${receipt.household ? `, vivienda ${receipt.household.code}` : ""}, recibo de papel nº ${receipt.paperReceiptNumber}`,
-        entityType: "document",
-        entityId: String(document.id),
-        after: {
-          kind: "receipt",
-          transactionId: receipt.transactionId,
-          householdCode: receipt.household?.code ?? null,
-          amountCentavos: receipt.amountCentavos,
-          paperReceiptNumber: receipt.paperReceiptNumber,
-        },
-      });
 
       return { receipt, document: { number: document.id, madeAt: document.createdAt, madeBy: actor.name } };
     });

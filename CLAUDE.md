@@ -73,11 +73,12 @@ one more thing to run and back up there.
   through `search_text()`. SQLite's `lower()` and `LIKE` only know A to Z.
 - **Every document the app hands out takes its number from `documents`**
   (a statement, a receipt and the census list today; more reports later): one row per document.
-  A statement and a receipt also write a history entry under "exports", in
-  the same transaction. **The census list does not, and a new report does
-  not either**: the owner decided on 24 November 2026 that the board will
-  not audit who printed what, so printing leaves nothing in Historial. The
-  row keeps what it was made for and who made it, not its contents. Looking
+  **None of them writes a history entry, and a new report does not
+  either**: the owner decided on 24 November 2026 that the board will not
+  audit who printed what, so printing leaves nothing in Historial (a
+  statement and a receipt did, under "exports", until then; those old
+  entries stay). The row keeps what it was made for and who made it, not its
+  contents. Looking
   at something on the screen is not a document; sending, saving or printing
   it is.
 - **Receipt photos are files, not rows.** `backend/src/lib/receiptPhotos.ts`

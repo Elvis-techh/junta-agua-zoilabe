@@ -1,7 +1,9 @@
 /**
  * The Historial tab: the history log, newest first, filtered by date range,
  * person, area and record. Reading it is not itself logged (App Plan: page
- * views are not logged; exports are, and arrive with the reports).
+ * views are not logged), and neither is printing: the board will not audit
+ * who printed what (owner, 24 November 2026). The "exports" area stays for
+ * the entries made before that.
  */
 import { and, desc, eq, gte, lt } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
