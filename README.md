@@ -323,6 +323,27 @@ changing how money, permissions or the history log work.
     owes is what "Lo que debe" and Quién debe say. Looking at it needs "Ver
     finanzas" and gives out no document number. See "Trying Resumen del
     mes" below.
+  - **Estado financiero del mes: built.** The same month as a document
+    (App Plan, Module 5: "Monthly financial statement"), asked for in the
+    plan's Phase 3 list. **Hacer estado para enviar**, under the fee card on
+    Resumen del mes (shown to whoever may export finances), opens it for
+    the month on screen; **Hacer para enviar** gives it the next document
+    number (the same count as statements and receipts) and draws it as a
+    picture; nothing is written to Historial (owner decision of 24 November
+    2026: printing is not logged). The picture has the board's
+    name, the month and whether it is closed (a month not closed says its
+    figures may still change), the money at the start, what came in and
+    what was spent, what is left in the box and the bank, and the month's
+    fee. **Compartir la imagen**, **Enviar como texto** (WhatsApp asks which
+    chat) and **Guardar la imagen** work as on Estado de cuenta. What came
+    in is by category, with how many entries; each expense is its own line
+    with who was paid, the date and the invoice number. Under the fee it
+    lists the houses that still owe something of the month (**Faltan de
+    pagar**), each with the owner's name, what it owes and its code, as
+    Resumen del mes does; owner decision of 24 November 2026, though the
+    document is sent on by WhatsApp. It never carries an ID number or a
+    phone. Nothing is counted anew. See "Trying Estado financiero del mes"
+    below.
   - **Lista del censo: built.** The census list for the municipality and the
     board's papers (App Plan, "Reports": filtered by sector and status;
     screen, printout, CSV). On **Censo**, **Imprimir o guardar la lista**
@@ -790,6 +811,36 @@ October some fee payments, a donation and two expenses:
 
 Looking needs "Ver finanzas". It shows names and amounts only, never an ID
 number or a phone.
+
+### Trying Estado financiero del mes
+
+With the data of "Trying Resumen del mes" (or the made-up data):
+
+1. On Inicio, tap **Resumen del mes**, choose October with **Cambiar**, and
+   tap **Hacer estado para enviar** under the fee card. The month is on the
+   screen as a document: "Estado financiero del mes", the month, whether
+   it is closed ("Sin cerrar: las cifras pueden cambiar"), the money, what
+   came in by category, each expense, and the fee. Nothing has a number
+   yet: looking is not making.
+2. Check it against Resumen del mes: the money at the start, **Entró**,
+   **Salió** and the end are the same; each income category's total is the
+   one under **Entró**; each expense is the one under **Salió**.
+3. Tap **Hacer para enviar**. It says "Estado financiero nº …, listo para
+   enviar", and shows the picture. Tap **Compartir la imagen** (on a phone),
+   **Enviar como texto** (WhatsApp asks which chat) and **Guardar la
+   imagen**; the text says the same as the picture.
+4. Historial shows nothing for it. Make a house's Estado de cuenta now:
+   its number is the next one, because every document shares one count.
+5. Close October (Cierre del mes) and make the statement again: it says
+   "Cerrado: las cifras ya no cambian."
+6. Under the fee, **Faltan de pagar** lists each house that still owes
+   something of October, with its owner's name, what it owes and its code;
+   the same houses and amounts as under "Faltan de pagar" on Resumen del
+   mes. A house that paid everything is not listed. No ID number or phone
+   is on the document.
+
+Making one needs "Imprimir y exportar finanzas"; someone without it sees Resumen del
+mes but not the button.
 
 ### Trying Quién debe
 

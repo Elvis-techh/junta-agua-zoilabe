@@ -72,8 +72,8 @@ export interface MonthSummary {
   fee: FeeSummary;
 }
 
-/** The detail screens a summary opens: what came in, what was spent, and the month's fee. */
-export type SummaryPart = "entradas" | "gastos" | "cuota";
+/** The screens a summary opens: what came in, what was spent, the month's fee, and its document. */
+export type SummaryPart = "entradas" | "gastos" | "cuota" | "documento";
 
 const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 

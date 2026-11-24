@@ -63,10 +63,10 @@ export interface StatementLine {
 }
 
 /** "3 de marzo de 2026" for a calendar date. */
-const calendarDate = (date: string) => formatDate(`${date}T12:00:00Z`);
+export const calendarDate = (date: string) => formatDate(`${date}T12:00:00Z`);
 
 /** "15 de noviembre de 2026, 2:05 p. m.", in Honduras time: a document says its year too. */
-const dateAndTime = (iso: string) =>
+export const dateAndTime = (iso: string) =>
   new Intl.DateTimeFormat("es-HN", {
     timeZone: "America/Tegucigalpa",
     day: "numeric",

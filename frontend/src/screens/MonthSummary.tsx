@@ -10,6 +10,7 @@ import { photoAddress } from "../expenses.ts";
 import { Icon } from "../icons.tsx";
 import { monthTitle } from "../monthClose.ts";
 import type { FeeHouse, MonthSummary, SummaryEntry, SummaryPart } from "../monthSummary.ts";
+import { MonthStatementPart } from "./MonthStatement.tsx";
 import {
   dayName,
   entryDetails,
@@ -43,7 +44,7 @@ const together = (text: string) => text.replace(/\bL /g, "L\u00a0").replace(/nº
  * (backend/src/lib/monthSummary.ts), as Cierre, Quién debe and Lo que debe
  * do.
  */
-export function MonthSummaryScreen({ month, part, onOpen }: { month: string | null; part: SummaryPart | null; onOpen: Go }) {
+export function MonthSummaryScreen({ month, part, canHandOut, onOpen }: { month: string | null; part: SummaryPart | null; canHandOut: boolean; onOpen: Go }) {
   const [data, setData] = useState<MonthSummary | null>(null);
   const [error, setError] = useState<{ text: string; code: string } | null>(null);
 
@@ -74,7 +75,10 @@ export function MonthSummaryScreen({ month, part, onOpen }: { month: string | nu
   if (part === "cuota") {
     return <FeePart summary={data} back={back} onOpen={onOpen} />;
   }
-  return <Summary summary={data} back={back} onOpen={onOpen} />;
+  if (part === "documento" && canHandOut) {
+    return <MonthStatementPart summary={data} canHandOut={canHandOut} back={back} onOpen={onOpen} />;
+  }
+  return <Summary summary={data} back={back} canHandOut={canHandOut} onOpen={onOpen} />;
 }
 
 /**
@@ -83,7 +87,7 @@ export function MonthSummaryScreen({ month, part, onOpen }: { month: string | nu
  * "Salió" open what came in and what went out, and its fee, which opens
  * who paid and who still owes.
  */
-function Summary({ summary, back, onOpen }: { summary: MonthSummary; back: ReactNode; onOpen: Go }) {
+function Summary({ summary, back, canHandOut, onOpen }: { summary: MonthSummary; back: ReactNode; canHandOut: boolean; onOpen: Go }) {
   const [choosing, setChoosing] = useState(false);
   const status = summaryStatus(summary);
   const months = summaryMonths(summary);
@@ -132,6 +136,12 @@ function Summary({ summary, back, onOpen }: { summary: MonthSummary; back: React
           <Icon name="people" size={22} /> Ver quién pagó y quién falta
         </span>
       </button>
+
+      {canHandOut && (
+        <button className="btn block" onClick={() => onOpen(summaryRoute(summary.month, "documento"))}>
+          <Icon name="whatsapp" /> Hacer estado para enviar
+        </button>
+      )}
 
       {choosing && (
         <Dialog title="¿Qué mes?" onClose={() => setChoosing(false)}>
