@@ -7,6 +7,7 @@ export type Route =
   | "/censo"
   | "/censo/buscar"
   | "/censo/registrar"
+  | "/censo/lista"
   | "/configuracion"
   | "/finanzas/cobrar"
   | "/finanzas/ingreso"
@@ -30,6 +31,7 @@ export function routeOf(path: string): Route {
     "/censo",
     "/censo/buscar",
     "/censo/registrar",
+    "/censo/lista",
     "/configuracion",
     "/finanzas/cobrar",
     "/finanzas/ingreso",
@@ -67,6 +69,7 @@ export function labelOf(route: Route): string {
     "/censo": "Censo",
     "/censo/buscar": "Buscar",
     "/censo/registrar": "Registrar familia",
+    "/censo/lista": "Lista del censo",
     "/configuracion": "Configuración",
     "/finanzas/cobrar": "Cobrar",
     "/finanzas/ingreso": "Otro ingreso",

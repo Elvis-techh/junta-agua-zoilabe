@@ -64,6 +64,12 @@ export function CensusScreen({ me, onOpen, autoFocus }: { me: Me; onOpen: Go; au
         </button>
       )}
 
+      {me.permissions.includes("export:census") && (
+        <button className="btn block" onClick={() => onOpen("/censo/lista")}>
+          <Icon name="print" /> Imprimir o guardar la lista
+        </button>
+      )}
+
       <label>
         Buscar
         <input
