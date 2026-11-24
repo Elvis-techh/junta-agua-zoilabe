@@ -21,8 +21,9 @@ interface Made {
 /**
  * Estado financiero del mes (owner, 23 November 2026): the month's summary as
  * a document with a number, to send by WhatsApp or save to print. Looking at
- * it changes nothing; "Hacer para enviar" gives it its number, puts it in
- * Historial and draws it as a picture, as a house's Estado de cuenta does.
+ * it changes nothing; "Hacer para enviar" gives it its number and draws it
+ * as a picture, as a house's Estado de cuenta does. Nothing is written to
+ * Historial (owner, 24 November 2026).
  * The text goes to a chat the sender chooses: a month's statement is for the
  * board and the fiscal, not for one family.
  */

@@ -328,8 +328,9 @@ changing how money, permissions or the history log work.
     plan's Phase 3 list. **Hacer estado para enviar**, under the fee card on
     Resumen del mes (shown to whoever may export finances), opens it for
     the month on screen; **Hacer para enviar** gives it the next document
-    number (the same count as statements and receipts), puts it in
-    Historial under Impresiones and draws it as a picture: the board's
+    number (the same count as statements and receipts) and draws it as a
+    picture; nothing is written to Historial (owner decision of 24 November
+    2026: printing is not logged). The picture has the board's
     name, the month and whether it is closed (a month not closed says its
     figures may still change), the money at the start, what came in and
     what was spent, what is left in the box and the bank, and the month's
@@ -341,8 +342,28 @@ changing how money, permissions or the history log work.
     on may name them is the board's decision, so Resumen del mes and Quién
     debe stay the only places that do. Nothing is counted anew. See
     "Trying Estado financiero del mes" below.
-  - Next: the census list and the yearly snapshot for the municipality, the
-    history log extract, guest invitations and the shared print layout.
+  - **Lista del censo: built.** The census list for the municipality and the
+    board's papers (App Plan, "Reports": filtered by sector and status;
+    screen, printout, CSV). On **Censo**, **Imprimir o guardar la lista**
+    opens it: choose the sector (or all) and active, inactive or all houses.
+    **Imprimir** gives the list a document number and opens the phone's or
+    computer's print window (on a phone, "Guardar como PDF" is there too).
+    **Guardar para Excel** does the same and saves a CSV file instead.
+    **Nothing is written to Historial** (owner decision of 24 November 2026:
+    the board will not audit who printed what); the list itself says who
+    made it and when. Both carry the same heading (board, number, filters, who made it and when)
+    and the same columns: code, name, relation, identity, phone, sector,
+    references, water, status (with why it is inactive), paper form number
+    and last verified date (the board agreed on these columns on 24
+    November 2026). A phone is written without its "+" ("504 9988-7766"), so
+    Excel keeps it as text. Identity and phone are whole only for someone
+    with "Ver identidad y teléfono completos"; otherwise the server masks
+    them, and the list says so. It needs "Ver el censo" and "Imprimir y
+    exportar el censo". See "Trying la lista del censo" below.
+  - Next: the yearly census snapshot, frozen at year end, then the history
+    log extract, guest invitations and the print layout every printout
+    shares (date and time, who made it, document number; the logo is left
+    out for now, owner 24 November 2026).
 - **Database: SQLite** (decided 29 October 2026), one file like Lindero's and
   Báscula Central's, so the droplet needs no database server. The rules that
   PostgreSQL's two logins enforced are now triggers in the file itself (see
@@ -798,7 +819,7 @@ With the data of "Trying Resumen del mes" (or the made-up data):
    screen as a document: "Estado financiero del mes", the month, whether
    it is closed ("Sin cerrar: las cifras pueden cambiar"), the money, what
    came in by category, each expense, and the fee. Nothing has a number
-   yet and nothing is in Historial: looking is not making.
+   yet: looking is not making.
 2. Check it against Resumen del mes: the money at the start, **Entró**,
    **Salió** and the end are the same; each income category's total is the
    one under **Entró**; each expense is the one under **Salió**.
@@ -806,9 +827,8 @@ With the data of "Trying Resumen del mes" (or the made-up data):
    enviar", and shows the picture. Tap **Compartir la imagen** (on a phone),
    **Enviar como texto** (WhatsApp asks which chat) and **Guardar la
    imagen**; the text says the same as the picture.
-4. In Historial, under Impresiones: "… hizo el estado financiero nº … de
-   octubre de 2026". Make a house's Estado de cuenta now: its number is the
-   next one, because every document shares one count.
+4. Historial shows nothing for it. Make a house's Estado de cuenta now:
+   its number is the next one, because every document shares one count.
 5. Close October (Cierre del mes) and make the statement again: it says
    "Cerrado: las cifras ya no cambian."
 6. The names of the houses that owe are not on it, only how many and how
@@ -910,6 +930,28 @@ Opening the app from scratch with no signal needs the installed app (its
 service worker). To try that on the computer: `npm run build`, then
 `npx --workspace @zoilabe/frontend vite preview`, and open
 `http://localhost:4173` with `npm run dev:backend` running.
+
+### Trying la lista del censo
+
+1. Open **Censo** and tap **Imprimir o guardar la lista** (it is there for
+   someone with "Imprimir y exportar el censo").
+2. Choose a **Sector** and **Viviendas** (Activas, Inactivas or Todas): the
+   count under them says how many houses the list will have.
+3. Tap **Imprimir**. It says "Lista del censo nº 1, lista para imprimir", the
+   print window opens, and the list shows under the buttons. On paper it is
+   one table across the page, with nothing else of the screen.
+4. Tap **Hacer otra**, then **Guardar para Excel**: a file
+   `lista-del-censo-n2.csv` is saved. Open it in Excel: the accents are right
+   and the phones show as text, written without the "+" ("504 9988-7766").
+5. **Historial** shows nothing for either list: printing is not logged.
+6. Every role holds every permission today, so every list has identity and
+   phone whole. A list made without "Ver identidad y teléfono completos"
+   (a guest's, later) shows only their last digits and says they are
+   hidden; the tests check it until a Permisos screen can take it away.
+
+Choosing changes nothing; each **Imprimir** or **Guardar para Excel** takes a
+new number, as an Estado de cuenta does. **Imprimir otra vez** prints the
+same list again, with the same number.
 
 ### Starting over
 

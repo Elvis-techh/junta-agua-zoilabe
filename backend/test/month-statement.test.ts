@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
 
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { auditLog, categories, documents, feeRates } from "../src/db/schema.js";
-import { firstOfMonth, monthName } from "../src/lib/fees.js";
+import { firstOfMonth } from "../src/lib/fees.js";
 import { addMonths } from "../src/lib/payments.js";
 import { HONDURAS_TIME_ZONE, businessToday } from "../src/lib/time.js";
 import type { TestApp } from "./helpers.js";
@@ -14,7 +14,8 @@ import { buildTestApp, signedInUser, takeAway } from "./helpers.js";
 /**
  * Estado financiero del mes (owner, 23 November 2026): Resumen del mes as a
  * numbered document. It must say what the summary says, take the same
- * document count as statements and receipts, and be logged.
+ * document count as statements and receipts, and leave nothing in Historial
+ * (owner, 24 November 2026: printing is not logged).
  */
 describe("Estado financiero del mes: a month's summary as a numbered document", () => {
   let t: TestApp;
@@ -81,7 +82,7 @@ describe("Estado financiero del mes: a month's summary as a numbered document", 
     await t.close();
   });
 
-  it("hands one out with the next document number, the summary it was made from, and an entry in Historial", async () => {
+  it("hands one out with the next document number, the summary it was made from, and nothing in Historial", async () => {
     const before = (await t.db.select().from(documents)).length;
     // Looking at the summary changes nothing.
     const looked = await call(treasurer.cookie, "GET", `/api/finance/summary/${month}`);
@@ -113,13 +114,8 @@ describe("Estado financiero del mes: a month's summary as a numbered document", 
       expectedCentavos: 600000 + 7000 - 2000,
     });
 
-    const [logged] = await t.db
-      .select()
-      .from(auditLog)
-      .where(and(eq(auditLog.entityType, "document"), eq(auditLog.entityId, String(document.number))));
-    assert.equal(logged!.area, "exports");
-    assert.equal(logged!.action, "month_statement.issued");
-    assert.equal(logged!.summary, `Tina Tesorera (Tesorero/a) hizo el estado financiero nº ${document.number} de ${monthName(month)}`);
+    assert.equal((await t.db.select().from(auditLog).where(eq(auditLog.entityType, "document"))).length, 0);
+    assert.equal((await t.db.select().from(auditLog).where(eq(auditLog.area, "exports"))).length, 0);
   });
 
   it("shares one running count with every other document", async () => {

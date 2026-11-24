@@ -11,8 +11,8 @@
  *
  * Looking at it changes nothing. Handing it out as a document ("Estado
  * financiero del mes", owner, 23 November 2026) takes the next document
- * number and is in Historial under Impresiones, as a house's statement is:
- * the same figures, read and numbered in one transaction.
+ * number: the same figures, read and numbered in one transaction. It writes
+ * nothing to Historial: printing is not logged (owner, 24 November 2026).
  */
 import { eq } from "drizzle-orm";
 import type { FastifyPluginAsync } from "fastify";
@@ -22,7 +22,6 @@ import { actorOf } from "../auth/plugin.js";
 import type { DbOrTx } from "../db/client.js";
 import { inTransaction } from "../db/client.js";
 import { documents, months } from "../db/schema.js";
-import { recordAudit } from "../lib/audit.js";
 import { openingBalance } from "../lib/balance.js";
 import { firstOfMonth, monthName } from "../lib/fees.js";
 import { HttpError, parse } from "../lib/http.js";
@@ -76,8 +75,7 @@ export const monthSummaryRoutes: FastifyPluginAsync<{ timeZone: string }> = asyn
 
   /**
    * Hand out a month's summary as a document: it takes the next document
-   * number and is logged, and comes back with who made it and when, to be
-   * drawn and sent. Any month the summary can be looked at, closed or not;
+   * number, and comes back with who made it and when, to be drawn and sent. Any month the summary can be looked at, closed or not;
    * the document says which it was.
    */
   app.post<{ Params: { month: string } }>("/finance/summary/:month/statement", hand, async (request, reply) => {
@@ -101,15 +99,6 @@ export const monthSummaryRoutes: FastifyPluginAsync<{ timeZone: string }> = asyn
         .values({ kind: "month_statement", householdId: null, details: made, createdBy: actor.userId! })
         .returning({ id: documents.id, createdAt: documents.createdAt })
         .get()!;
-
-      recordAudit(tx, actor, {
-        area: "exports",
-        action: "month_statement.issued",
-        summary: `${actor.name} (${actor.role}) hizo el estado financiero nº ${document.id} de ${monthName(month)}`,
-        entityType: "document",
-        entityId: String(document.id),
-        after: { kind: "month_statement", ...made },
-      });
 
       return { summary, document: { number: document.id, madeAt: document.createdAt, madeBy: actor.name } };
     });

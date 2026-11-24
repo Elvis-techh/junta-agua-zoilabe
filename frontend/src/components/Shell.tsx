@@ -10,6 +10,7 @@ import { Icon } from "../icons.tsx";
 import { censusQueue, remember, sendRegistration } from "../queue.ts";
 import { ArrearsScreen } from "../screens/Arrears.tsx";
 import { CensusScreen } from "../screens/Census.tsx";
+import { CensusListScreen } from "../screens/CensusList.tsx";
 import type { PaymentPreset } from "../screens/Collect.tsx";
 import { CollectScreen, PaymentScreen } from "../screens/Collect.tsx";
 import { ExpenseScreen } from "../screens/Expense.tsx";
@@ -100,6 +101,9 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
   const screen = () => {
     if ((route === "/censo" || route === "/censo/buscar") && can("census:view")) {
       return <CensusScreen me={me} onOpen={go} autoFocus={route === "/censo/buscar"} />;
+    }
+    if (route === "/censo/lista" && can("census:view") && can("export:census")) {
+      return <CensusListScreen me={me} onOpen={go} />;
     }
     if (route === "/censo/registrar" && can("census:edit")) {
       // A new key per start, so "Registrar otra" begins from a clean form.

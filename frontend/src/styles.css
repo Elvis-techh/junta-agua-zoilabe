@@ -905,6 +905,92 @@ textarea:focus-visible {
   border-radius: var(--radius);
 }
 
+/* Lista del censo: the list as it is printed, also shown on the screen under its buttons. */
+.print-document {
+  display: grid;
+  gap: 4px;
+}
+
+.print-document h2,
+.print-document p {
+  margin: 0;
+}
+
+.print-board {
+  font-weight: 700;
+  color: var(--primary, #0b5c8c);
+}
+
+.table-scroll {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+
+.census-list table {
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.census-list th,
+.census-list td {
+  border: 1px solid var(--line);
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.census-list th {
+  white-space: nowrap;
+}
+
+/*
+ * Printing shows the document alone, across the page: everything else on
+ * the screen (buttons, the bar, "Hay más abajo") stays off the paper.
+ */
+@page {
+  size: landscape;
+  margin: 12mm;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .print-document,
+  .print-document * {
+    visibility: visible;
+  }
+
+  .print-document {
+    position: absolute;
+    inset: 0 0 auto 0;
+    color: #000;
+  }
+
+  .print-document .table-scroll {
+    overflow: visible;
+  }
+
+  .census-list table {
+    width: 100%;
+    font-size: 9pt;
+  }
+
+  .census-list th,
+  .census-list td {
+    border-color: #777;
+  }
+
+  .census-list thead {
+    display: table-header-group;
+  }
+
+  .census-list tr {
+    break-inside: avoid;
+  }
+}
+
 /* Gasto: the photo of a receipt, whole on the screen whatever its shape, so the button under it stays in reach. */
 .receipt-photo {
   display: block;
