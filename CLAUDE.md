@@ -72,7 +72,7 @@ one more thing to run and back up there.
 - **Text comparisons that must understand Spanish** happen in JavaScript or
   through `search_text()`. SQLite's `lower()` and `LIKE` only know A to Z.
 - **Every document the app hands out takes its number from `documents`**
-  (a statement, a receipt and the census list today; more reports later): one row per document.
+  (a statement, a receipt, the month's statement and the census list today; more reports later): one row per document.
   **None of them writes a history entry, and a new report does not
   either**: the owner decided on 24 November 2026 that the board will not
   audit who printed what, so printing leaves nothing in Historial (a

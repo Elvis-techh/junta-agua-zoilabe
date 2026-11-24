@@ -137,7 +137,7 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
     // Resumen del mes: the month in progress, a month ("/finanzas/resumen/2026-10-01"), or one of its parts.
     if ((route === "/finanzas/resumen" || route.startsWith("/finanzas/resumen/")) && can("finance:view")) {
       const [month = null, part = null] = route.split("/").slice(3);
-      return <MonthSummaryScreen key={route} month={month} part={part as SummaryPart | null} onOpen={go} />;
+      return <MonthSummaryScreen key={route} month={month} part={part as SummaryPart | null} canHandOut={can("export:finance")} onOpen={go} />;
     }
     // Otro ingreso: from Inicio it finds the house in the census (or none); from Cobrar or a house's file, by id.
     if (route === "/finanzas/ingreso" && can("finance:record") && can("finance:view") && can("census:view")) {
