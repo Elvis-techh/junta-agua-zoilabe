@@ -53,11 +53,12 @@ Eight roles cover the technical administrator and the board, and each user holds
 
 Every role holds every permission: viewing the census with full ID numbers and phones, registering and deactivating records, setting fees and different amounts, recording and correcting money, preparing and approving a month close, viewing finances, managing users and guest invitations, editing role permissions, changing settings, viewing the history log, and printing and exporting.
 
-Five rules sit behind this:
+Six rules sit behind this:
 
-- **Two people close a month.** Anyone can prepare a month close and anyone else can approve it, but never the same person for the same month. Nobody can change their own role.
+- **Two people close a month.** Anyone can prepare a month close and anyone else can approve it, but never the same person for the same month. Nobody can change their own role, or the permissions of their own role.
 - **Every change says who.** Each history entry names the person and their role, which is why roles stay although they no longer limit anyone.
 - **Permissions are data.** The Permisos tab can still narrow a role later without new code, and every change is written to the history log.
+- **A permission turns off with the one it needs** (25 November 2026). Without "Ver finanzas", nothing that records, corrects, closes or prints money; without "Ver el censo", nothing that shows full identities, registers, deactivates, sets a different fee or prints the census; without "Ver el historial", no printing it; without "Ver los permisos", no editing them. A different fee also needs "Registrar y editar el censo". "Ver finanzas" includes the names of those who owe. The Administrador always keeps managing users, and viewing and editing permissions.
 - **The server decides.** Permissions are checked on every request. Hiding a button is a convenience, not security.
 - **Guests are not roles.** People outside the board, such as municipal staff, get a temporary invitation with its own view-only permissions (see Module 3).
 
@@ -445,6 +446,7 @@ Phases 0 and 1 are merged and the test copy is running. From Phase 3, the month 
 - [x] "Estado de cuenta" and "Recibo digital" no longer leave an entry in Historial (PR #60, merged on 24 November 2026).
 - [x] "Verificación del censo": the active houses not verified this year, by sector, and "Datos revisados" on a house's file (PR #62, merged on 25 November 2026). The owner tried it on the test copy.
 - [x] "Historial del año": a year of the history log, printed or saved for Excel, with a document number and without what "Ver detalle" shows (PR #63, merged on 25 November 2026). The owner tried it on the test copy.
+- [x] The Permisos screen: each cargo's permissions, turned off or on and confirmed before saving, with a permission turning off together with the one it needs. Nobody can change their own cargo's. Built on 25 November 2026.
 
 **What comes next**
 
@@ -455,8 +457,8 @@ The history log extract (PR #63) and the yearly verification list (PR #62) were 
 **Where to pick up next (25 November 2026)**
 
 - **Next:** a first version ready for real use. It records expenses, so receipt photos must be backed up first (see "Before real use"). Guest invitations, the shared print layout and Phase 4 are set aside for now. The frozen yearly census snapshot waits for the board to answer the questions under Still open. Phase 2's "done when" test follows when the board says how to run it.
-- **To try on the test copy** (steps in the README): every amount up to L 999,999,999.99 (PR #53), Quién debe listing every house that owes (PR #54), the month close (PR #55), Resumen del mes (PR #56), the way back (PR #57), the census list (PR #58), the monthly statement (PR #59), and Estado de cuenta and Recibo leaving nothing in Historial (PR #60). The owner tried Verificación del censo (PR #62) and Historial del año (PR #63) on 25 November.
-- **In this plan, but in no phase's list, and not built:** the Permisos screen (the server can already change a role's permissions), the Reportes screen, the rest of Configuración (categories, village and board profile, month close rules, system status, and the guest invitation rules, which wait with guest invitations), text size, and a change of a house's owner.
+- **To try on the test copy** (steps in the README): every amount up to L 999,999,999.99 (PR #53), Quién debe listing every house that owes (PR #54), the month close (PR #55), Resumen del mes (PR #56), the way back (PR #57), the census list (PR #58), the monthly statement (PR #59), and Estado de cuenta and Recibo leaving nothing in Historial (PR #60). The owner tried Verificación del censo (PR #62) and Historial del año (PR #63) on 25 November. The Permisos screen, built on 25 November, is also to be tried.
+- **In this plan, but in no phase's list, and not built:** the Reportes screen, the rest of Configuración (categories, village and board profile, month close rules, system status, and the guest invitation rules, which wait with guest invitations), text size, and a change of a house's owner.
 - **Before real use:** receipt photos stay on the computer, beside the database file, and are not in the nightly backup, so they must go to the bucket or into the backup before real expenses are entered on the droplet. The weekly second backup copy outside DigitalOcean is not built.
 - **Still open for the board:** how to run Phase 2's "done when" test, and the data-separation check on the droplet before the first deployment. For the frozen yearly census snapshot, which is not built: (1) whether a board member freezes it once the December list is done, or the app freezes it by itself on 31 December; (2) whether it can be frozen while houses are still not verified, and if so whether the snapshot marks them; (3) whether the municipality's copy carries full ID numbers and phones (the plan gives the municipality full ID numbers), and who on the board may open it whole; (4) whether a mistake found after freezing is put right by a corrected snapshot for the same year that keeps the first one, or not at all.
 - **How work goes:** one branch and one pull request per piece, tried on the test copy at prueba-agua.basculacentral.com before merging. This file is updated in the same pull request.
@@ -644,6 +646,9 @@ Phase 3 pieces in suggested build order (proposed on 19 November 2026; the board
 - Phase 4 (handover) is set aside for now, because the owner is fully involved in the project. The restore tried before launch stays in the plan, under Backups and Phase 0.
 - The first version records expenses.
 - The real app's address will be a subdomain of basculacentral.com. The name is not chosen yet.
+- A permission turns off together with the one it needs, on the Permisos screen and in the server (see "Roles and permissions"), so that "off" really means hidden and no button leads nowhere. Until then the server would still print finances for a role without "Ver finanzas"; no role had lost it.
+- Nobody can change the permissions of their own role, even with "Editar los permisos".
+- For now every role has the same features and permissions, so the role shown for each person changes nothing in what they can do. The administrator can set what each role may or may not do.
 
 **Still open**
 

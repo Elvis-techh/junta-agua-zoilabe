@@ -123,11 +123,44 @@ changing how money, permissions or the history log work.
     6 November 2026: the board does not always meet in full, and a task only
     one or two people could do would wait for them. Roles stay, so Historial
     shows who did what, and a permission can still be taken from a role
-    through the Permisos route (its screen is not built yet). A database
+    on the Permisos screen (below). A database
     seeded before that day gets every permission once, the next time the
     seed runs (the test copy runs it on every update), with a history entry for each role that gained something. A
     month close still takes two different people: the database refuses an
     approval by whoever prepared it.
+  - **Permisos: built.** The screen for what each cargo may do, from Inicio
+    → **Administración**, or the bar at the bottom. Choose a cargo, tap a
+    permission to turn it off or on, then **Revisar y guardar** and, on
+    **¿Está correcto?**, **Sí, guardar**. Nothing changes until then.
+    **A permission turns off with the one it needs** (owner decision of
+    25 November 2026): without **Ver finanzas** a cargo cannot record,
+    correct, close or print money; without **Ver el censo** it cannot see
+    full identities, register, deactivate, set a different fee or print the
+    census; the same for **Ver el historial** and printing it, and for
+    **Ver los permisos** and editing them. The server applies it to every
+    request (`REQUIRES` in `backend/src/lib/permissions.ts`) and refuses to
+    save a set that breaks it. Until now the server would still print
+    finances for a cargo without "Ver finanzas"; no cargo had lost it.
+    **Nobody changes the permissions of their own cargo** (owner decision of
+    25 November 2026), even with **Editar los permisos**: their own cargo is
+    only read, and the server refuses a save of it. So a cargo cannot give
+    itself back what was taken from it, and the Administrador's cargo is
+    changed only by someone of another cargo that has "Editar los permisos".
+    Every cargo starts with the same permissions, so until the administrator
+    changes them here, the cargo beside a name changes nothing. The
+    Administrador always keeps **Administrar usuarios**, **Ver los
+    permisos** and **Editar los permisos**. Before saving, the app warns when
+    a cargo that loses something keeps **Administrar usuarios**, since with
+    it someone can make an account of another cargo. If someone else saved
+    the same cargo meanwhile, the save is refused and the screen shows it as it is now. The
+    Historial entry says in words what was taken away and given. A button
+    whose screen would not open is not shown: **Cobrar** and **Otro ingreso**
+    need "Ver el censo" too, and without it the houses on **Quién debe** and
+    on a month's fee do not open. "Ver finanzas" still shows the names of
+    those who owe. **Crear y revocar invitaciones** has no switch while
+    guest invitations are set aside, and the two different-fee permissions
+    share one, since a different fee is only set while registering. See
+    "Trying los permisos" below.
   - **Every screen on everyone's Inicio: built.** Owner decision of
     14 November 2026: the whole board sees the same screens, whatever its
     role, the administrator too. Inicio shows first the large buttons for
@@ -989,8 +1022,8 @@ service worker). To try that on the computer: `npm run build`, then
 5. **Historial** shows nothing for either list: printing is not logged.
 6. Every role holds every permission today, so every list has identity and
    phone whole. A list made without "Ver identidad y teléfono completos"
-   (a guest's, later) shows only their last digits and says they are
-   hidden; the tests check it until a Permisos screen can take it away.
+   (a guest's, later, or a cargo that lost it in **Permisos**) shows only
+   their last digits and says they are hidden.
 
 Choosing changes nothing; each **Imprimir** or **Guardar para Excel** takes a
 new number, as an Estado de cuenta does. **Imprimir otra vez** prints the
@@ -1035,6 +1068,32 @@ same list again, with the same number.
    corrected, with no phone or ID number. **Historial → Ver detalle** still
    shows what changed.
 6. **Historial** gains no entry for either: printing is not logged.
+
+### Trying los permisos
+
+You need a second account to see what a change does: in **Usuarios**, make one
+with the cargo **Fiscal**, and sign in with it on another phone or in a
+private window.
+
+1. As the administrator, open **Permisos** and tap **Fiscal**.
+2. Tap **Ver finanzas**. It turns to **No**, and so do the five under it. The
+   bottom of the screen says "6 cambios sin guardar". **Deshacer** puts them
+   back.
+3. Tap **Revisar y guardar**: **¿Está correcto?** lists what the Fiscal will
+   no longer be able to do. Tap **Sí, guardar**.
+4. On the Fiscal's phone, close the app and open it again: Resumen del mes,
+   Quién debe and the other money buttons are gone.
+5. **Historial** says what was taken away, in words.
+6. On any cargo but your own, turn **Registrar y editar el censo** off, then
+   tap **Fijar una tarifa diferente al registrar**: the second brings the
+   first back with it. Tap **Deshacer**.
+7. Tap **Administrador**, your own cargo: nothing can be tapped, and it says
+   that nobody changes their own cargo's permissions.
+8. On the Fiscal's phone, open **Permisos** → **Fiscal**: the same, although
+   the Fiscal has "Editar los permisos". **Administrador** can be changed
+   from there, all but the three switches that say **Siempre**.
+9. Give the Fiscal everything again, from the administrator's phone: tap each
+   switch that says **No**, from **Ver finanzas** down, and save.
 
 ### Starting over
 

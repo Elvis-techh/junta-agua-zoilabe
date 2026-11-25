@@ -12,6 +12,7 @@ import { ArrearsScreen } from "../src/screens/Arrears.tsx";
 import { CollectScreen } from "../src/screens/Collect.tsx";
 import { HistoryScreen } from "../src/screens/History.tsx";
 import { OpeningBalanceScreen } from "../src/screens/OpeningBalance.tsx";
+import { PermissionsScreen } from "../src/screens/Permissions.tsx";
 import { RegisterScreen } from "../src/screens/Register.tsx";
 import { SettingsScreen } from "../src/screens/Settings.tsx";
 import { UsersScreen } from "../src/screens/Users.tsx";
@@ -27,9 +28,10 @@ const onOpen = () => undefined;
 const screens: Array<[string, ReactElement]> = [
   ["Registrar familia", createElement(RegisterScreen, { me, preset: null, onOpen })],
   ["Cobrar", createElement(CollectScreen, { onOpen, canSeeOwed: true })],
-  ["Quién debe", createElement(ArrearsScreen, { onOpen })],
+  ["Quién debe", createElement(ArrearsScreen, { onOpen, canOpenHouse: true, canCollect: true })],
   ["Saldo de la junta", createElement(OpeningBalanceScreen, { canRecord: true, canCorrect: true, onOpen })],
   ["Usuarios", createElement(UsersScreen, { me, onOpen })],
+  ["Permisos", createElement(PermissionsScreen, { me, roleCode: null, onOpen })],
   ["Historial", createElement(HistoryScreen, { canHandOut: true, onOpen })],
   ["Configuración", createElement(SettingsScreen, { onOpen })],
 ];

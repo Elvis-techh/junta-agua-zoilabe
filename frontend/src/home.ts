@@ -1,8 +1,11 @@
 import type { IconName } from "./icons.tsx";
+import { ROLES } from "./roles.ts";
 
 export type Route =
   | "/"
   | "/usuarios"
+  | "/permisos"
+  | `/permisos/${string}`
   | "/historial"
   | "/historial/ano"
   | "/censo"
@@ -29,6 +32,7 @@ export type Route =
 export function routeOf(path: string): Route {
   const fixed: Route[] = [
     "/usuarios",
+    "/permisos",
     "/historial",
     "/historial/ano",
     "/censo",
@@ -54,6 +58,10 @@ export function routeOf(path: string): Route {
   if (/^\/finanzas\/cierre\/\d{4}-(0[1-9]|1[0-2])-01$/.test(path)) {
     return path as Route;
   }
+  // Permisos: one cargo.
+  if (ROLES.some((role) => path === `/permisos/${role.code}`)) {
+    return path as Route;
+  }
   // Resumen del mes: a month, and its parts (what came in, what was spent, the month's fee, its document).
   if (/^\/finanzas\/resumen\/\d{4}-(0[1-9]|1[0-2])-01(\/(entradas|gastos|cuota|documento))?$/.test(path)) {
     return path as Route;
@@ -69,6 +77,7 @@ export function labelOf(route: Route): string {
   const names: Record<string, string> = {
     "/": "Inicio",
     "/usuarios": "Usuarios",
+    "/permisos": "Permisos",
     "/historial": "Historial",
     "/historial/ano": "Historial del año",
     "/censo": "Censo",
@@ -91,6 +100,9 @@ export function labelOf(route: Route): string {
   }
   if (route.startsWith("/censo/vivienda/")) {
     return "Vivienda";
+  }
+  if (route.startsWith("/permisos/")) {
+    return "Permisos";
   }
   if (route.startsWith("/finanzas/cobrar/")) {
     return "Cobrar";
@@ -138,6 +150,13 @@ export interface HomeButton {
   route?: Route;
   /** The button shows only when the user holds this permission. */
   permission?: string;
+  /** What else its screen needs: the button also shows only with all of these. */
+  also?: readonly string[];
+}
+
+/** Whether a button's screen would open for this person, so no button leads nowhere. */
+function allowed(button: HomeButton, permissions: readonly string[]): boolean {
+  return [button.permission, ...(button.also ?? [])].every((code) => !code || permissions.includes(code));
 }
 
 const B = {
@@ -145,10 +164,10 @@ const B = {
   buscar: { label: "Buscar", icon: "search", route: "/censo/buscar", permission: "census:view" },
   lista: { label: "Lista", icon: "list", route: "/censo", permission: "census:view" },
   censo: { label: "Censo", icon: "list", route: "/censo", permission: "census:view" },
-  cobrar: { label: "Cobrar", icon: "cash", route: "/finanzas/cobrar", permission: "finance:record" },
+  cobrar: { label: "Cobrar", icon: "cash", route: "/finanzas/cobrar", permission: "finance:record", also: ["census:view"] },
   gasto: { label: "Gasto", icon: "receipt", route: "/finanzas/gasto", permission: "finance:record" },
   // Money from someone outside the census, and the latest entries to undo (Anular); for a house, Cobrar asks (19 November 2026).
-  ingreso: { label: "Otro ingreso", icon: "plus", route: "/finanzas/ingreso", permission: "finance:record" },
+  ingreso: { label: "Otro ingreso", icon: "plus", route: "/finanzas/ingreso", permission: "finance:record", also: ["census:view"] },
   resumen: { label: "Resumen del mes", icon: "chart", route: "/finanzas/resumen", permission: "finance:view" },
   quienDebe: { label: "Quién debe", icon: "alert", route: "/finanzas/quien-debe", permission: "finance:view" },
   saldo: { label: "Saldo de la junta", icon: "chart", route: "/finanzas/saldo", permission: "finance:view" },
@@ -159,7 +178,7 @@ const B = {
   reportes: { label: "Reportes", icon: "print" },
   historial: { label: "Historial", icon: "clock", route: "/historial", permission: "log:view" },
   usuarios: { label: "Usuarios", icon: "people", route: "/usuarios", permission: "users:manage" },
-  permisos: { label: "Permisos", icon: "key" },
+  permisos: { label: "Permisos", icon: "key", route: "/permisos", permission: "permissions:view" },
   configuracion: { label: "Configuración", icon: "gear", route: "/configuracion", permission: "settings:edit" },
 } satisfies Record<string, HomeButton>;
 
@@ -177,9 +196,7 @@ export const HOME_BUTTONS: Record<string, HomeButton[]> = {
 
 /** This user's buttons: their role's, less any whose permission the Permisos tab took away. */
 export function homeButtons(roleCode: string, permissions: readonly string[]): HomeButton[] {
-  return (HOME_BUTTONS[roleCode] ?? []).filter(
-    (button) => !button.permission || permissions.includes(button.permission),
-  );
+  return (HOME_BUTTONS[roleCode] ?? []).filter((button) => allowed(button, permissions));
 }
 
 /**
@@ -192,7 +209,7 @@ export function homeButtons(roleCode: string, permissions: readonly string[]): H
 export function otherButtons(roleCode: string, permissions: readonly string[]): HomeButton[] {
   const shown = new Set(homeButtons(roleCode, permissions).map((button) => button.route));
   return (Object.values(B) as HomeButton[]).filter((button) => {
-    if (!button.route || shown.has(button.route) || (button.permission && !permissions.includes(button.permission))) {
+    if (!button.route || shown.has(button.route) || !allowed(button, permissions)) {
       return false;
     }
     shown.add(button.route);
@@ -225,7 +242,6 @@ export function homeSections(roleCode: string, permissions: readonly string[]): 
   const isSetup = (button: HomeButton) => SETUP.includes(button);
   const own = homeButtons(roleCode, permissions);
   const others = otherButtons(roleCode, permissions);
-  // A setup button the role holds shows even before its screen is built ("Próximamente").
   const setup = SETUP.filter((button) => own.includes(button) || others.includes(button));
   return { own: own.filter((b) => !isSetup(b)), others: others.filter((b) => !isSetup(b)), setup };
 }
@@ -246,6 +262,7 @@ export function navigation(permissions: readonly string[]): { bar: Tab[]; more: 
     { label: "Inicio", icon: "home", route: "/" },
     { label: "Censo", icon: "list", route: "/censo", permission: "census:view" },
     { label: "Usuarios", icon: "people", route: "/usuarios", permission: "users:manage" },
+    { label: "Permisos", icon: "key", route: "/permisos", permission: "permissions:view" },
     { label: "Historial", icon: "clock", route: "/historial", permission: "log:view" },
     { label: "Configuración", icon: "gear", route: "/configuracion", permission: "settings:edit" },
   ];
@@ -259,6 +276,9 @@ export function navigation(permissions: readonly string[]): { bar: Tab[]; more: 
 export function tabOf(route: Route): Route {
   if (route.startsWith("/censo")) {
     return "/censo";
+  }
+  if (route.startsWith("/permisos")) {
+    return "/permisos";
   }
   return route.startsWith("/historial") ? "/historial" : route;
 }

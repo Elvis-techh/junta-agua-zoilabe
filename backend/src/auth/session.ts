@@ -22,7 +22,7 @@ import { and, eq, gt, inArray, isNull, ne } from "drizzle-orm";
 import type { DbOrTx } from "../db/client.js";
 import { accessTokens, rolePermissions, roles, users } from "../db/schema.js";
 import type { Permission } from "../lib/permissions.js";
-import { isPermission } from "../lib/permissions.js";
+import { effectivePermissions, isPermission } from "../lib/permissions.js";
 
 export const SESSION_COOKIE = "zoilabe_session";
 
@@ -136,7 +136,8 @@ export function getSessionUser(db: DbOrTx, token: string): SessionUser | null {
     name: row.name,
     roleCode: row.roleCode,
     roleName: row.roleName,
-    permissions: new Set(granted.map((g) => g.permission).filter(isPermission)),
+    // A permission whose needed one is off counts as off, on every route at once.
+    permissions: effectivePermissions(granted.map((g) => g.permission).filter(isPermission)),
     sessionId: row.sessionId,
     sessionRenewedAt: row.sessionRenewedAt ?? row.sessionCreatedAt,
   };

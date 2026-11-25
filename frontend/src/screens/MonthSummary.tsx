@@ -44,7 +44,20 @@ const together = (text: string) => text.replace(/\bL /g, "L\u00a0").replace(/nº
  * (backend/src/lib/monthSummary.ts), as Cierre, Quién debe and Lo que debe
  * do.
  */
-export function MonthSummaryScreen({ month, part, canHandOut, onOpen }: { month: string | null; part: SummaryPart | null; canHandOut: boolean; onOpen: Go }) {
+export function MonthSummaryScreen({
+  month,
+  part,
+  canHandOut,
+  canOpenHouse,
+  onOpen,
+}: {
+  month: string | null;
+  part: SummaryPart | null;
+  canHandOut: boolean;
+  /** Whether a house on "Cuota" opens its file, which is the census's. */
+  canOpenHouse: boolean;
+  onOpen: Go;
+}) {
   const [data, setData] = useState<MonthSummary | null>(null);
   const [error, setError] = useState<{ text: string; code: string } | null>(null);
 
@@ -73,7 +86,7 @@ export function MonthSummaryScreen({ month, part, canHandOut, onOpen }: { month:
     return <EntriesPart summary={data} kind={part === "entradas" ? "income" : "expense"} back={back} />;
   }
   if (part === "cuota") {
-    return <FeePart summary={data} back={back} onOpen={onOpen} />;
+    return <FeePart summary={data} back={back} canOpenHouse={canOpenHouse} onOpen={onOpen} />;
   }
   if (part === "documento" && canHandOut) {
     return <MonthStatementPart summary={data} canHandOut={canHandOut} back={back} onOpen={onOpen} />;
@@ -239,28 +252,39 @@ function EntryCard({ entry, month, onPhoto }: { entry: SummaryEntry; month: stri
 }
 
 /** Every house charged the month's fee: first those who still owe something of it, then those who paid it all. */
-function FeePart({ summary, back, onOpen }: { summary: MonthSummary; back: ReactNode; onOpen: Go }) {
+function FeePart({ summary, back, canOpenHouse, onOpen }: { summary: MonthSummary; back: ReactNode; canOpenHouse: boolean; onOpen: Go }) {
   const { fee } = summary;
   const { owing, upToDate } = feeGroups(fee);
-  const house = (row: FeeHouse) => (
-    <button key={row.id} className="card household-card" onClick={() => onOpen(`/censo/vivienda/${row.id}`)}>
-      <div className="money-line">
-        <strong>{row.ownerName ?? "Sin nombre"}</strong>
-        {houseOwes(row) > 0 ? (
-          <strong className="amount">{formatLempiras(houseOwes(row))}</strong>
-        ) : (
-          <span className="status ok">
-            <Icon name="check" size={18} /> Pagó
-          </span>
-        )}
+  const house = (row: FeeHouse) => {
+    const inside = (
+      <>
+        <div className="money-line">
+          <strong>{row.ownerName ?? "Sin nombre"}</strong>
+          {houseOwes(row) > 0 ? (
+            <strong className="amount">{formatLempiras(houseOwes(row))}</strong>
+          ) : (
+            <span className="status ok">
+              <Icon name="check" size={18} /> Pagó
+            </span>
+          )}
+        </div>
+        <div className="muted">
+          {row.code}
+          {row.sectorName ? ` · ${row.sectorName}` : ""}
+        </div>
+        <div>{together(feeHouseLine(row, fee.pastDeadline))}</div>
+      </>
+    );
+    return canOpenHouse ? (
+      <button key={row.id} className="card household-card" onClick={() => onOpen(`/censo/vivienda/${row.id}`)}>
+        {inside}
+      </button>
+    ) : (
+      <div key={row.id} className="card household-card" style={{ cursor: "default" }}>
+        {inside}
       </div>
-      <div className="muted">
-        {row.code}
-        {row.sectorName ? ` · ${row.sectorName}` : ""}
-      </div>
-      <div>{together(feeHouseLine(row, fee.pastDeadline))}</div>
-    </button>
-  );
+    );
+  };
   return (
     <main className="screen stack">
       {back}
