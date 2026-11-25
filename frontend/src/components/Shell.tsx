@@ -18,6 +18,7 @@ import { HistoryScreen } from "../screens/History.tsx";
 import { HomeScreen } from "../screens/Home.tsx";
 import { HouseholdScreen } from "../screens/Household.tsx";
 import { IncomeScreen } from "../screens/Income.tsx";
+import { LogExtractScreen } from "../screens/LogExtract.tsx";
 import { ClosedMonthScreen, MonthCloseScreen } from "../screens/MonthClose.tsx";
 import { MonthSummaryScreen } from "../screens/MonthSummary.tsx";
 import { OpeningBalanceScreen } from "../screens/OpeningBalance.tsx";
@@ -170,7 +171,10 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
       return <UsersScreen me={me} onOpen={go} />;
     }
     if (route === "/historial" && can("log:view")) {
-      return <HistoryScreen onOpen={go} />;
+      return <HistoryScreen canHandOut={can("export:log")} onOpen={go} />;
+    }
+    if (route === "/historial/ano" && can("log:view") && can("export:log")) {
+      return <LogExtractScreen onOpen={go} />;
     }
     if (route === "/configuracion" && can("settings:edit")) {
       return <SettingsScreen onOpen={go} />;

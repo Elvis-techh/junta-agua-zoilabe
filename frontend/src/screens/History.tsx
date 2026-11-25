@@ -6,6 +6,7 @@ import { BackButton } from "../components/BackButton.tsx";
 import { DateField } from "../components/CalendarField.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import type { Go } from "../components/Shell.tsx";
+import { Icon } from "../icons.tsx";
 import { formatDateTime } from "../time.ts";
 
 const AREAS = [
@@ -30,7 +31,7 @@ interface Detail {
  * Historial: every entry as a plain sentence, newest first —
  * "12 de marzo, 3:40 p. m.: Ana (Tesorera) registró un pago…".
  */
-export function HistoryScreen({ onOpen }: { onOpen: Go }) {
+export function HistoryScreen({ canHandOut, onOpen }: { canHandOut: boolean; onOpen: Go }) {
   const [area, setArea] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -79,6 +80,13 @@ export function HistoryScreen({ onOpen }: { onOpen: Go }) {
     <main className="screen wide stack">
       <BackButton onClick={() => onOpen("/")} />
       <h1>Historial</h1>
+      {canHandOut && (
+        <div className="row">
+          <button className="btn" onClick={() => onOpen("/historial/ano")}>
+            <Icon name="print" /> Imprimir o guardar un año
+          </button>
+        </div>
+      )}
       <div className="row">
         <label style={{ flex: "1 1 160px" }}>
           Tipo

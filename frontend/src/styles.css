@@ -905,7 +905,7 @@ textarea:focus-visible {
   border-radius: var(--radius);
 }
 
-/* Lista del censo: the list as it is printed, also shown on the screen under its buttons. */
+/* Lista del censo and Historial del año: the table as it is printed, also shown on the screen under its buttons. */
 .print-document {
   display: grid;
   gap: 4px;
@@ -926,21 +926,26 @@ textarea:focus-visible {
   margin-top: 8px;
 }
 
-.census-list table {
+.print-table table {
   border-collapse: collapse;
   font-size: 0.85rem;
 }
 
-.census-list th,
-.census-list td {
+.print-table th,
+.print-table td {
   border: 1px solid var(--line);
   padding: 4px 6px;
   text-align: left;
   vertical-align: top;
 }
 
-.census-list th {
+.print-table th {
   white-space: nowrap;
+}
+
+/* Long sentences keep a readable width on a phone: the table scrolls sideways instead of squeezing them. */
+.print-table .sentence {
+  min-width: 15rem;
 }
 
 /*
@@ -972,21 +977,26 @@ textarea:focus-visible {
     overflow: visible;
   }
 
-  .census-list table {
+  .print-table table {
     width: 100%;
     font-size: 9pt;
   }
 
-  .census-list th,
-  .census-list td {
+  .print-table th,
+  .print-table td {
     border-color: #777;
   }
 
-  .census-list thead {
+  /* On paper the table is as wide as the page, whatever that is. */
+  .print-table .sentence {
+    min-width: 0;
+  }
+
+  .print-table thead {
     display: table-header-group;
   }
 
-  .census-list tr {
+  .print-table tr {
     break-inside: avoid;
   }
 }

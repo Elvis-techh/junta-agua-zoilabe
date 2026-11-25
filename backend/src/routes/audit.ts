@@ -14,6 +14,7 @@ import { auditLog } from "../db/schema.js";
 import { maskDigits } from "../lib/census.js";
 import { HttpError, parse } from "../lib/http.js";
 import { maskPhone } from "../lib/phone.js";
+import { hondurasStartOfDay } from "../lib/time.js";
 
 const AREAS = ["census", "finances", "users", "settings", "security", "exports"] as const;
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida.");
@@ -28,15 +29,6 @@ const listQuery = z.object({
   before: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
 });
-
-/**
- * The first instant of a calendar day in Honduras (UTC−6 all year). Filters
- * are by the board's calendar, not by UTC's, or an entry made at 7 pm would
- * be listed under the next day.
- */
-function hondurasStartOfDay(date: string): Date {
-  return new Date(`${date}T00:00:00-06:00`);
-}
 
 function nextDay(date: string): string {
   const next = new Date(`${date}T00:00:00Z`);
