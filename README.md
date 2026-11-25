@@ -2,8 +2,9 @@
 
 One app and one database for the Aldea Zoilabe water board (Tela, Atlántida):
 census of households and owners, monthly fees and expenses, personal accounts
-with roles, and a permanent history log. The Municipality of Tela gets
-read-only access through temporary guest invitations.
+with roles, and a permanent history log. The plan gives the Municipality of
+Tela read-only access through temporary guest invitations, which are set
+aside for now (owner, 25 November 2026).
 
 The full specification is [docs/app-plan.md](docs/app-plan.md). Read it before
 changing how money, permissions or the history log work.
@@ -300,9 +301,9 @@ changing how money, permissions or the history log work.
   A different amount starts with the month after the house's last payment
   (board decision, 25 October 2026); a newly registered house has none yet,
   so its amount starts with the month it is registered in.
-- **Phase 3 (Close, reports and guests): started.** The month close above is
-  its first piece; the rest are listed under "Phase 3 pieces" in the
-  [app plan](docs/app-plan.md).
+- **Phase 3 (Close, reports and guests): merged, except what waits or is set
+  aside.** The month close above was its first piece; all of them are listed
+  under "Phase 3 pieces" in the [app plan](docs/app-plan.md).
   - **Resumen del mes: built.** Asked for by the owner on 19 November 2026,
     so the board can check, month by month, who was charged, who paid, who
     still owes, what came in and what the money was spent on. It opens from
@@ -390,11 +391,21 @@ changing how money, permissions or the history log work.
     for the extract. It takes the next document number and writes nothing to
     Historial. It needs "Ver el historial" and "Imprimir y exportar el
     historial". See "Trying el historial del año" below.
-  - Next: guest invitations and the print layout every printout shares (date
-    and time, who made it, document number; the logo is left out for now,
-    owner 24 November 2026). The frozen yearly census snapshot waits for the
-    board to answer what it holds and when it is taken (see "Still open for
-    the board" in the [app plan](docs/app-plan.md)).
+  - **Set aside for now** (owner, 25 November 2026): guest invitations and
+    the print layout every printout shares. They may be taken up again later.
+    Each printout already shows who made it and its document number, and all
+    but the digital receipt also show when it was made.
+  - **Not built: the frozen yearly census snapshot.** It waits for the board
+    to answer four questions about it (see "Still open for the board" in the
+    [app plan](docs/app-plan.md)).
+- **Phase 4 (Handover): set aside for now** (owner, 25 November 2026), who is
+  fully involved in the project. The restore tried before launch stays in
+  the plan, under Backups and Phase 0.
+- **Next: a first version for real use.** It records expenses and will be at
+  a subdomain of basculacentral.com (owner, 25 November 2026). The real app is
+  not set up on a droplet yet. Before real expenses are entered, receipt
+  photos must be backed up: today the nightly backup copies the database file
+  only.
 - **Database: SQLite** (decided 29 October 2026), one file like Lindero's and
   Báscula Central's, so the droplet needs no database server. The rules that
   PostgreSQL's two logins enforced are now triggers in the file itself (see
