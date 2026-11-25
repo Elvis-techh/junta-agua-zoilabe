@@ -41,7 +41,7 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
   const [sensitiveVisible, setSensitiveVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<"household" | "person" | "deactivate" | "reactivate" | null>(null);
+  const [dialog, setDialog] = useState<"household" | "person" | "deactivate" | "reactivate" | "verify" | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -141,6 +141,11 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
         </div>
         {file.lastVerifiedOn && <div>Verificada el {calendarDate(file.lastVerifiedOn)}</div>}
       </section>
+      {can("census:edit") && file.lastVerifiedOn !== todayInHonduras() && (
+        <button className="btn block" onClick={() => setDialog("verify")}>
+          <Icon name="check" /> Datos revisados
+        </button>
+      )}
 
       <StatusHistory file={file} />
 
@@ -233,6 +238,7 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
       )}
       {dialog === "deactivate" && <Deactivate file={file} onClose={() => setDialog(null)} onSaved={changed} />}
       {dialog === "reactivate" && <Reactivate file={file} onClose={() => setDialog(null)} onSaved={changed} />}
+      {dialog === "verify" && <Verify file={file} onClose={() => setDialog(null)} onSaved={changed} />}
     </main>
   );
 }
@@ -845,6 +851,44 @@ function Reactivate({ file, onClose, onSaved }: { file: HouseholdFile; onClose: 
       {error && <p className="message error">{error}</p>}
       <button className="btn go block" disabled={busy} onClick={() => void save()}>
         <Icon name="check" /> Sí, reactivar
+      </button>
+    </Dialog>
+  );
+}
+
+/**
+ * "Datos revisados" (App Plan, Module 1, "Yearly verification"): someone went
+ * over the house's details with the family today, and they are right. A
+ * detail that changed is corrected first, with its own button.
+ */
+function Verify({ file, onClose, onSaved }: { file: HouseholdFile; onClose: () => void; onSaved: (text: string) => Promise<void> }) {
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api("POST", `/census/households/${file.id}/verify`);
+      await onSaved(`Vivienda ${file.code} verificada hoy.`);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog title={`Verificar ${file.code}`} onClose={onClose}>
+      <p style={{ margin: 0 }}>
+        ¿Revisó hoy con la familia el nombre, la identidad, el teléfono, el sector, las referencias y el agua?
+      </p>
+      <p className="muted" style={{ margin: 0 }}>
+        Si algo cambió, toque «Corregir datos» primero.
+      </p>
+      {error && <p className="message error">{error}</p>}
+      <button className="btn go block" disabled={busy} onClick={() => void save()}>
+        <Icon name="check" /> Sí, están bien
       </button>
     </Dialog>
   );

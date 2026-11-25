@@ -97,7 +97,7 @@ history version had:
 |---|---|---|
 | `recordAudit` (`src/lib/audit.ts`) | two history entries chain to the same predecessor | advisory lock `7_311_002` |
 | Registrar familia (`POST /census/households`) | two houses get the same Z-code; a retried send is saved twice | advisory lock `7_311_003` |
-| `lockHousehold` (household edit, deactivate, reactivate) | two edits each log a "before" that is no longer true | `SELECT … FOR UPDATE` |
+| `lockHousehold` (household edit, deactivate, reactivate, "Datos revisados") | two edits each log a "before" that is no longer true | `SELECT … FOR UPDATE` |
 | Person edit (`PATCH /census/people/:id`) | the same | `FOR UPDATE` |
 | `lockUser` (`src/routes/users.ts`: role, password, suspend…) | the same, on a user | `FOR UPDATE` |
 | Sector edit (`PATCH /settings/sectors/:id`) | the same, on a sector | `FOR UPDATE` |
