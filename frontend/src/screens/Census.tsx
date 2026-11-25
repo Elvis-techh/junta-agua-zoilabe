@@ -64,11 +64,17 @@ export function CensusScreen({ me, onOpen, autoFocus }: { me: Me; onOpen: Go; au
         </button>
       )}
 
-      {me.permissions.includes("export:census") && (
-        <button className="btn block" onClick={() => onOpen("/censo/lista")}>
-          <Icon name="print" /> Imprimir o guardar la lista
+      {/* Side by side, so the search stays on the first screen. */}
+      <div className="row">
+        {me.permissions.includes("export:census") && (
+          <button className="btn" style={{ flex: "1 1 0", padding: "0 12px" }} onClick={() => onOpen("/censo/lista")}>
+            <Icon name="print" /> Imprimir
+          </button>
+        )}
+        <button className="btn" style={{ flex: "1 1 0", padding: "0 12px" }} onClick={() => onOpen("/censo/verificar")}>
+          <Icon name="check" /> Verificar
         </button>
-      )}
+      </div>
 
       <label>
         Buscar

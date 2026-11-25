@@ -31,7 +31,7 @@ describe("Made-up data for the test copy", () => {
 
   it("fills three months back and this one, and every month's entries add up to its figures", async () => {
     const result = await fillWithMadeUpData(t.app, cookie, today);
-    assert.equal(result.households, 10);
+    assert.equal(result.households, 11);
     assert.deepEqual(result.months, [-3, -2, -1, 0].map((by) => addMonths(thisMonth, by)));
 
     const current = await get("/finance/summary");
@@ -61,5 +61,15 @@ describe("Made-up data for the test copy", () => {
     const entries = (await get(`/finance/summary/${thisMonth}`)).entries as Array<{ undoesOn: string | null; reversedOn: string | null }>;
     assert.equal(entries.filter((entry) => entry.reversedOn).length, 1);
     assert.equal(entries.filter((entry) => entry.undoesOn).length, 1);
+  });
+
+  it("leaves one house for Verificación del censo, from last year's paper form, that owes nothing from before the fee was set", async () => {
+    const list = await get("/census/verification");
+    const names = list.unverified.map((house: { ownerName: string }) => house.ownerName);
+    // From January to March the others' paper forms, three months back, are from last year too.
+    assert.ok(names.includes("Marta Reyes"), names.join(", "));
+    assert.ok(thisMonth.slice(5, 7) <= "03" || names.length === 1, names.join(", "));
+    const arrears = await get("/finance/arrears");
+    assert.ok(!arrears.households.some((house: { ownerName: string }) => house.ownerName === "Marta Reyes"));
   });
 });

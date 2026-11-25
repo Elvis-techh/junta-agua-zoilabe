@@ -35,6 +35,8 @@ interface Family {
   new?: boolean;
   /** Moved away: inactive from this month back, day 1. */
   movedAwayIn?: number;
+  /** Registered from a paper form filled in last November, so Verificación del censo lists it until someone checks it again. */
+  paperLastYear?: boolean;
 }
 
 const SECTORS = ["El Centro", "La Ceiba", "Los Pinos"];
@@ -60,6 +62,8 @@ const FAMILIES: Family[] = [
   { name: "Karla Ortiz", sector: 2, payments: [{ paidIn: 3, day: 9, covers: [3] }], movedAwayIn: 2 },
   // On time, but one of the payments is undone later.
   { name: "Luis Pineda", sector: 0, payments: [3, 2, 1].map((paidIn) => ({ paidIn, day: 4, covers: [paidIn] })) },
+  // Its paper form is from last year, and it pays on time.
+  { name: "Marta Reyes", sector: 2, payments: [3, 2, 1, 0].map((paidIn) => ({ paidIn, day: 6, covers: [paidIn] })), paperLastYear: true },
 ];
 
 export interface DemoDataResult {
@@ -113,7 +117,9 @@ export async function fillWithMadeUpData(app: FastifyInstance, cookie: string, t
       person: { fullName: family.name, idNumber: String((idNumber += 1)).padStart(13, "0"), phone: `9900${String(1000 + index)}` },
       household: { sectorId: sectorIds[family.sector], references: "Casa de prueba", waterConnection: "connected", relation: "owner" },
       fee: { kind: "base" },
-      ...(family.new ? {} : { paper: { date: dayOf(m(3), 1), formNumber: String(100 + index) } }),
+      ...(family.new
+        ? {}
+        : { paper: { date: family.paperLastYear ? `${Number(today.slice(0, 4)) - 1}-11-20` : dayOf(m(3), 1), formNumber: String(100 + index) } }),
     });
     houses.set(family.name, created.household.id);
   }

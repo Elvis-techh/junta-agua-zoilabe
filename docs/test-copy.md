@@ -276,7 +276,7 @@ Then step 6 again, for a new administrator.
 
 To try a screen with something on it, there is a command that fills an
 **empty** test copy with made-up data, from three months ago until today:
-ten families (on time, late, in part, ahead, never, one that moved away),
+eleven families (on time, late, in part, ahead, never, one that moved away, one from last year's paper form),
 a fee of L 70.00 and a deadline of the 15th (made up, like the rest),
 donations, expenses with and without a photo, and two entries undone.
 Nothing is closed, so every month can still be prepared and closed.

@@ -348,8 +348,7 @@ changing how money, permissions or the history log work.
     below.
   - **Lista del censo: built.** The census list for the municipality and the
     board's papers (App Plan, "Reports": filtered by sector and status;
-    screen, printout, CSV). On **Censo**, **Imprimir o guardar la lista**
-    opens it: choose the sector (or all) and active, inactive or all houses.
+    screen, printout, CSV). On **Censo**, **Imprimir** opens it: choose the sector (or all) and active, inactive or all houses.
     **Imprimir** gives the list a document number and opens the phone's or
     computer's print window (on a phone, "Guardar como PDF" is there too).
     **Guardar para Excel** does the same and saves a CSV file instead.
@@ -364,10 +363,25 @@ changing how money, permissions or the history log work.
     with "Ver identidad y teléfono completos"; otherwise the server masks
     them, and the list says so. It needs "Ver el censo" and "Imprimir y
     exportar el censo". See "Trying la lista del censo" below.
-  - Next: the yearly census snapshot, frozen at year end, then the history
-    log extract, guest invitations and the print layout every printout
-    shares (date and time, who made it, document number; the logo is left
-    out for now, owner 24 November 2026).
+  - **Verificación del censo: built**, the first half of the yearly census
+    snapshot (App Plan, Module 1, "Yearly verification": "In December the
+    app lists houses not verified that year, then freezes a census snapshot
+    for the municipality"). On a house's file, **Datos revisados** says
+    someone went over its details with the family today and they are right:
+    its "Verificada el" date becomes today, with one entry in Historial. A
+    second tap the same day changes nothing. On **Censo**, **Verificar**
+    lists the active houses not verified this year (Honduras's calendar
+    year), under their sector, each with when it was last verified. A house
+    gets its first date when it is registered (the paper form's date in
+    paper entry mode), and an inactive house is not listed. It needs
+    "Registrar y editar el censo" to mark a house, and "Ver el censo" to see
+    the list. See "Trying la verificación del censo" below.
+  - Next: the frozen yearly snapshot itself, once the board answers what it
+    holds and when it is taken (see "Still open for the board" in the
+    [app plan](docs/app-plan.md)), then the history log extract, guest
+    invitations and the print layout every printout shares (date and time,
+    who made it, document number; the logo is left out for now, owner 24
+    November 2026).
 - **Database: SQLite** (decided 29 October 2026), one file like Lindero's and
   Báscula Central's, so the droplet needs no database server. The rules that
   PostgreSQL's two logins enforced are now triggers in the file itself (see
@@ -938,8 +952,8 @@ service worker). To try that on the computer: `npm run build`, then
 
 ### Trying la lista del censo
 
-1. Open **Censo** and tap **Imprimir o guardar la lista** (it is there for
-   someone with "Imprimir y exportar el censo").
+1. Open **Censo** and tap **Imprimir** (it is there for someone with
+   "Imprimir y exportar el censo").
 2. Choose a **Sector** and **Viviendas** (Activas, Inactivas or Todas): the
    count under them says how many houses the list will have.
 3. Tap **Imprimir**. It says "Lista del censo nº 1, lista para imprimir", the
@@ -958,6 +972,24 @@ Choosing changes nothing; each **Imprimir** or **Guardar para Excel** takes a
 new number, as an Estado de cuenta does. **Imprimir otra vez** prints the
 same list again, with the same number.
 
+### Trying la verificación del censo
+
+1. Open **Censo** and tap **Verificar**. It says how many active houses are
+   left to verify this year, out of all of them, and lists them under their
+   sector. With the made-up data (`npm run db:demo`) that is Marta Reyes,
+   whose paper form is from last November; from January to March the
+   others' forms, three months back, are from last year too. To make one
+   yourself, register a family with **Copiar una hoja de papel** and a date
+   from last year.
+2. Tap a house: its file opens. Tap **Datos revisados**; the window asks
+   whether its details were gone over with the family today. Tap **Sí,
+   están bien**: "Verificada el" shows today, and the button is gone until
+   tomorrow.
+3. Tap **‹ Verificación**: the house is no longer on the list.
+4. **Historial** has one entry: "… revisó con la familia los datos de la
+   vivienda Z-…". A house registered today is already verified this year,
+   and a deactivated house is not on the list.
+
 ### Starting over
 
 `npm run db:reset` empties the local database (it refuses to run in
@@ -967,7 +999,7 @@ production). Run `user:first-admin` again afterwards.
 
 After `npm run db:reset` and `user:first-admin`, `ALLOW_MADE_UP_DATA=yes npm run db:demo`
 fills the database with made-up data from three months ago until today:
-ten families (on time, late, in part, ahead, never, moved away), the fee and
+eleven families (on time, late, in part, ahead, never, moved away, one from last year's paper form), the fee and
 the deadline, donations, expenses with and without a photo, and two entries
 undone. Nothing is closed, so every month can still be changed. It acts as
 the administrator, goes in through the same rules as the screens, and

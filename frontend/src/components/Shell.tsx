@@ -26,6 +26,7 @@ import { RegisterScreen } from "../screens/Register.tsx";
 import { SettingsScreen } from "../screens/Settings.tsx";
 import { StatementScreen } from "../screens/Statement.tsx";
 import { UsersScreen } from "../screens/Users.tsx";
+import { VerificationScreen } from "../screens/Verification.tsx";
 import { PreviousScreen } from "./BackButton.tsx";
 import { Dialog } from "./Dialog.tsx";
 import { MoreBelow } from "./MoreBelow.tsx";
@@ -104,6 +105,9 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
     }
     if (route === "/censo/lista" && can("census:view") && can("export:census")) {
       return <CensusListScreen me={me} onOpen={go} />;
+    }
+    if (route === "/censo/verificar" && can("census:view")) {
+      return <VerificationScreen onOpen={go} />;
     }
     if (route === "/censo/registrar" && can("census:edit")) {
       // A new key per start, so "Registrar otra" begins from a clean form.

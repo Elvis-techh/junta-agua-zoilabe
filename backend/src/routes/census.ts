@@ -842,6 +842,80 @@ export const censusRoutes: FastifyPluginAsync<{ timeZone: string }> = async (app
     return { ok: true };
   });
 
+  /**
+   * "Datos revisados" (App Plan, Module 1, "Yearly verification"): someone
+   * went over the house's details with the family today and they are right,
+   * so its last-verified date becomes today. A second tap the same day, or a
+   * retry on weak signal, changes nothing and writes nothing to Historial.
+   */
+  app.post<Params>("/census/households/:id/verify", edit, async (request) => {
+    const actor = actorOf(request);
+    const day = today();
+
+    const verified = inTransaction(app.db, (tx) => {
+      const household = lockHousehold(tx, request.params.id);
+      if (household.lastVerifiedOn === day) {
+        return false;
+      }
+      tx.update(households).set({ lastVerifiedOn: day }).where(eq(households.id, household.id)).run();
+      recordAudit(tx, actor, {
+        area: "census",
+        action: "household.verified",
+        summary: `${actor.name} (${actor.role}) revisó con la familia los datos de la vivienda ${household.code}`,
+        entityType: "household",
+        entityId: household.id,
+        before: { lastVerifiedOn: household.lastVerifiedOn },
+        after: { lastVerifiedOn: day },
+        reason: null,
+      });
+      return true;
+    });
+
+    return { verifiedOn: day, alreadyVerified: !verified };
+  });
+
+  /**
+   * Verificación del censo: the active houses whose details nobody has gone
+   * over with the family this year (Honduras's calendar year), by sector and
+   * code, so the board can walk one sector at a time. In December the board
+   * finishes this list before the year's census is frozen. An inactive house
+   * is not on it: it is not counted in the census.
+   */
+  app.get("/census/verification", view, async () => {
+    const day = today();
+    const year = day.slice(0, 4);
+    const yearStart = `${year}-01-01`;
+
+    const active = app.db
+      .select({
+        id: households.id,
+        code: households.code,
+        ownerName: people.fullName,
+        sectorName: sectors.name,
+        references: households.references,
+        lastVerifiedOn: households.lastVerifiedOn,
+      })
+      .from(households)
+      .innerJoin(sectors, eq(sectors.id, households.sectorId))
+      .innerJoin(householdOwners, currentOwner)
+      .innerJoin(people, eq(people.id, householdOwners.personId))
+      .where(eq(households.status, "active"))
+      .orderBy(asc(households.code))
+      .all();
+    // Calendar dates are "YYYY-MM-DD" text, so comparing the text compares the days.
+    const unverified = active
+      .filter((house) => house.lastVerifiedOn === null || house.lastVerifiedOn < yearStart)
+      // Sector names in Spanish order ("Ánimas" before "Bella Vista"), which SQLite's sorting does not know; codes stay in order within each.
+      .sort((a, b) => a.sectorName.localeCompare(b.sectorName, "es", { sensitivity: "base" }));
+
+    return {
+      today: day,
+      year: Number(year),
+      activeCount: active.length,
+      verifiedCount: active.length - unverified.length,
+      unverified,
+    };
+  });
 };
 
 const FIELD_NAMES: Record<string, string> = {
