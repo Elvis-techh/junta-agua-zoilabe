@@ -19,7 +19,7 @@ unchanged: never build on the droplet, reload Nginx (never restart it) after
 | OS user | root (PM2) | `lindero` | `zoilabe` |
 | Lives in | `/root/weight_software` | `/opt/lindero` | `/opt/zoilabe` |
 | Listens on | `127.0.0.1:3000` | `127.0.0.1:3001` | `127.0.0.1:3002` |
-| Subdomain | `api.basculacentral.com` | `lindero.basculacentral.com` | to be chosen |
+| Subdomain | `api.basculacentral.com` | `lindero.basculacentral.com` | a `basculacentral.com` subdomain, name to be chosen |
 | Backups | hourly → Spaces `weight-station-storage` | nightly 02:15 | nightly 02:45 → its own bucket or folder |
 
 Nothing new is installed for the database: like the other two apps, it is
