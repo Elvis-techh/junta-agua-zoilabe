@@ -10,6 +10,7 @@
  */
 import type { InactiveReason, PhoneMissing, Relation, WaterConnection } from "./census.ts";
 import { INACTIVE_REASONS, NO_ID_NUMBER, PHONE_MISSING, RELATIONS, WATER_CONNECTIONS, formatIdNumber } from "./census.ts";
+import { csvFile } from "./csv.ts";
 import { formatPhone } from "./phone.ts";
 import { BOARD_NAME } from "./statement.ts";
 import { formatDate } from "./time.ts";
@@ -125,28 +126,16 @@ export const CENSUS_LIST_COLUMNS: readonly CensusListColumn[] = [
 ];
 
 /**
- * One cell of the file. Every cell is quoted, so commas and line breaks stay
- * inside it. One that starts like a formula ("=…", "+…", "-…", "@…") gets an
- * apostrophe first, so a spreadsheet shows it as text and never runs it.
- */
-function csvCell(text: string): string {
-  const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
-  return `"${safe.replace(/"/g, '""')}"`;
-}
-
-/**
  * The list as a file for Excel: the heading lines, an empty line, then one
- * row per house under the column titles. It starts with the mark that tells
- * Excel the accents are UTF-8, and ends its lines as Windows does.
+ * row per house under the column titles.
  */
 export function censusListCsv(list: CensusList): string {
-  const rows = [
+  return csvFile([
     ...censusListHeading(list).map((line) => [line]),
     [],
     CENSUS_LIST_COLUMNS.map((column) => column.title),
     ...list.households.map((row) => CENSUS_LIST_COLUMNS.map((column) => column.value(row))),
-  ];
-  return `﻿${rows.map((cells) => cells.map(csvCell).join(",")).join("\r\n")}\r\n`;
+  ]);
 }
 
 /** "lista-del-censo-n12.csv" */

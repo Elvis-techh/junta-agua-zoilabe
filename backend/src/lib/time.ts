@@ -26,6 +26,15 @@ export function businessToday(timeZone: string, now: Date = new Date()): string 
   return `${find("year")}-${find("month")}-${find("day")}`;
 }
 
+/**
+ * The first instant of a calendar day in Honduras (UTC−6 all year). Dates are
+ * filtered by the board's calendar, not by UTC's, or an entry made at 7 pm
+ * would be listed under the next day.
+ */
+export function hondurasStartOfDay(date: string): Date {
+  return new Date(`${date}T00:00:00-06:00`);
+}
+
 /** "12 de marzo de 2026, 3:40 p. m." — how the Historial shows an instant. */
 export function formatHondurasDateTime(instant: Date, timeZone = HONDURAS_TIME_ZONE): string {
   return new Intl.DateTimeFormat("es-HN", {

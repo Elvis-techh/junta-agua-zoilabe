@@ -17,6 +17,7 @@ import { expenseRoutes } from "./routes/expenses.js";
 import { healthRoutes } from "./routes/health.js";
 import { arrearsRoutes } from "./routes/arrears.js";
 import { incomeRoutes } from "./routes/income.js";
+import { logExtractRoutes } from "./routes/logExtract.js";
 import { monthCloseRoutes } from "./routes/monthClose.js";
 import { monthSummaryRoutes } from "./routes/monthSummary.js";
 import { openingBalanceRoutes } from "./routes/openingBalance.js";
@@ -83,6 +84,7 @@ export async function buildApp(config: AppConfig, db: Db) {
       await api.register(userRoutes);
       await api.register(permissionRoutes);
       await api.register(auditRoutes);
+      await api.register(logExtractRoutes, { timeZone: config.timeZone });
       await api.register(censusRoutes, { timeZone: config.timeZone });
       await api.register(censusListRoutes, { timeZone: config.timeZone });
       await api.register(sectorRoutes);

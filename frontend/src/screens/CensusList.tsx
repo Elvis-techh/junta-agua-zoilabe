@@ -27,9 +27,8 @@ interface Made {
 /**
  * Lista del censo (App Plan, "Reports"): the census filtered by sector and
  * status, to print or to save for Excel. Choosing changes nothing; "Imprimir"
- * and "Guardar para Excel" give the list a document number and put it in
- * Historial, then print it or save the file, with the same heading and
- * columns either way.
+ * and "Guardar para Excel" give the list a document number, then print it or
+ * save the file, with the same heading and columns either way.
  */
 export function CensusListScreen({ me, onOpen }: { me: Me; onOpen: Go }) {
   const [sectorId, setSectorId] = useState("");
@@ -188,7 +187,7 @@ export function CensusListScreen({ me, onOpen }: { me: Me; onOpen: Go }) {
 export function CensusListDocument({ list }: { list: CensusList }) {
   const [board, title, ...rest] = censusListHeading(list);
   return (
-    <section className="print-document census-list">
+    <section className="print-document print-table">
       <p className="print-board">{board}</p>
       <h2>{title}</h2>
       {rest.map((line, index) => (

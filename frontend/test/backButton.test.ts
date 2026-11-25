@@ -30,7 +30,7 @@ const screens: Array<[string, ReactElement]> = [
   ["Quién debe", createElement(ArrearsScreen, { onOpen })],
   ["Saldo de la junta", createElement(OpeningBalanceScreen, { canRecord: true, canCorrect: true, onOpen })],
   ["Usuarios", createElement(UsersScreen, { me, onOpen })],
-  ["Historial", createElement(HistoryScreen, { onOpen })],
+  ["Historial", createElement(HistoryScreen, { canHandOut: true, onOpen })],
   ["Configuración", createElement(SettingsScreen, { onOpen })],
 ];
 

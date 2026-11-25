@@ -211,7 +211,7 @@ Page views are not logged. Since 24 November 2026 printouts and exports are not 
 - **Append-only.** The database itself accepts new entries but refuses to change or remove any.
 - **Tamper-evident.** Each entry stores a fingerprint of the one before it, so an altered entry breaks the chain. A nightly check reports the result in Configuration.
 - **Backed up.** The log is part of every nightly backup and is kept permanently.
-- **Yearly extract.** A PDF and CSV of the year's log is saved for the board's records.
+- **Yearly extract.** A PDF and CSV of the year's log is saved for the board's records. Built in PR #63: on Historial, "Imprimir o guardar un año" opens a year (Honduras's calendar year), to print or to save for Excel, oldest entry first, with a document number. Each entry carries its date and time, who made it and their role, what happened and the reason. What "Ver detalle" shows (the values before and after, which include ID numbers and phones) stays in the app (decided 25 November). The year in progress can be taken too, and says it is not over. It takes "Ver el historial" and "Imprimir y exportar el historial", and the app makes it only when someone asks.
 
 **How it is read**
 
@@ -272,7 +272,7 @@ Twenty-one tables hold everything, and people are kept apart from households so 
 | receipt_files | Keys of receipt photos in the storage bucket | transactions |
 | months | Month, status (open, prepared, closed), who prepared and approved, the cash counted and the cash the app expected, the reason for a difference, and who sent it back and why | users |
 | opening_balances | The cash and bank figures the app's money starts from, with the month; a correction points to the entry it replaces | users |
-| documents | One numbered row per document handed out (household statements, receipts, monthly statements, census lists): what it was made for, not its contents | users |
+| documents | One numbered row per document handed out (household statements, receipts, monthly statements, census lists, history log extracts): what it was made for, not its contents | users |
 | audit_log | The history log, each entry chained to the one before | users |
 | settings | Configuration values with their start dates | users |
 
@@ -387,12 +387,12 @@ Phases 1 to 3 are built and tested on the builder's computer before anything cha
 | 0. Foundation | Merged | Sign-in (phone and password since 9 November 2026), roles and permissions, history log, backup and restore scripts (merged in PR #1 on 2026-10-24) | Subdomain, the data-separation check, backups to the storage bucket, a restore on a test server |
 | 1. Census | Merged | Everything, including paper entry mode and the offline queue (merged in PRs #3 to #5 on 2026-10-25). Its "done when" test, the secretary typing in ten paper forms from a phone, has not been run yet; the test copy is ready for it, using made-up forms | Nothing |
 | 2. Finances | Merged | Everything, merged by 19 November 2026; receipt photos stay on the computer until the bucket is connected. Its "done when" test waits for the board to say how to run it | Receipt photos in the storage bucket |
-| 3. Close, reports and guests | In progress | The month close (PR #55), Resumen del mes (PR #56), the census list (PR #58) and the monthly statement (PR #59), merged from 19 to 24 November 2026; the yearly verification list (PR #62, in review); the frozen yearly census snapshot, the history log extract, guest invitations and the shared print layout are still to build | A guest signing in from a municipal phone at the real address |
+| 3. Close, reports and guests | In progress | The month close (PR #55), Resumen del mes (PR #56), the census list (PR #58) and the monthly statement (PR #59), merged from 19 to 24 November 2026; the yearly verification list (PR #62), merged on 25 November 2026; the history log extract (PR #63, in review); the frozen yearly census snapshot, guest invitations and the shared print layout are still to build | A guest signing in from a municipal phone at the real address |
 | 4. Handover | Not started | A first draft of the runbook | The restore test, board-owned accounts, training and installing on every director's phone |
 
 **Done so far (as of 25 November 2026)**
 
-Phases 0 and 1 are merged and the test copy is running. From Phase 3, the month close, Resumen del mes, the census list and the monthly statement are merged. Every Phase 2 piece is merged, the month close last (19 November 2026): fees can be set and removed in Configuración, including changes that start in a past month, monthly fee payments can be recorded, a payment recorded by mistake can be reversed, and each house shows what it owes once a month's payment deadline is over. Board members sign in with their phone number and a password.
+Phases 0 and 1 are merged and the test copy is running. From Phase 3, the month close, Resumen del mes, the census list, the monthly statement and the yearly verification list are merged. Every Phase 2 piece is merged, the month close last (19 November 2026): fees can be set and removed in Configuración, including changes that start in a past month, monthly fee payments can be recorded, a payment recorded by mistake can be reversed, and each house shows what it owes once a month's payment deadline is over. Board members sign in with their phone number and a password.
 
 - [x] Test copy running at [prueba-agua.basculacentral.com](https://prueba-agua.basculacentral.com) with made-up data only, set up on 1 November 2026 (PRs #11 to #13). Every pull request now goes there for a phone check. Its own separation check passed; the real app's is still open below.
 - [x] Database moved to SQLite (PR #8).
@@ -441,18 +441,19 @@ Phases 0 and 1 are merged and the test copy is running. From Phase 3, the month 
 - [x] The census list, "Lista del censo": filtered by sector and status, printed or saved for Excel (CSV), with a document number (PR #58, merged on 24 November 2026).
 - [x] The monthly statement, "Estado financiero del mes": Resumen del mes as a numbered picture to share or save, or text to send by WhatsApp, naming the houses that still owe (PR #59, merged on 24 November 2026).
 - [x] "Estado de cuenta" and "Recibo digital" no longer leave an entry in Historial (PR #60, merged on 24 November 2026).
-- [ ] "Verificación del censo": the active houses not verified this year, by sector, and "Datos revisados" on a house's file (PR #62, in review).
+- [x] "Verificación del censo": the active houses not verified this year, by sector, and "Datos revisados" on a house's file (PR #62, merged on 25 November 2026).
+- [ ] "Historial del año": a year of the history log, printed or saved for Excel, with a document number and without what "Ver detalle" shows (PR #63, in review).
 
 **What comes next**
 
-Phase 2 is built: the app sets fees, records monthly fee payments and other income, shows what each house owes with its late fees, and reverses a payment recorded by mistake. Expenses (category, supplier, amount and receipt photo) are built (PR #41, merged on 15 November 2026). The opening balance ("Saldo de la junta", PR #45) was merged on 19 November 2026. The month close ("Preparar cierre", "Aprobar cierre" and "Devolver"), the last Phase 2 piece, was merged in PR #55 on 19 November 2026. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test. In Phase 3, the month close, "Resumen del mes", the census list and the monthly statement are merged; the pieces still to build are listed below.
+Phase 2 is built: the app sets fees, records monthly fee payments and other income, shows what each house owes with its late fees, and reverses a payment recorded by mistake. Expenses (category, supplier, amount and receipt photo) are built (PR #41, merged on 15 November 2026). The opening balance ("Saldo de la junta", PR #45) was merged on 19 November 2026. The month close ("Preparar cierre", "Aprobar cierre" and "Devolver"), the last Phase 2 piece, was merged in PR #55 on 19 November 2026. Nothing in Phase 2 waits for a board answer now, except how to run its "done when" test. In Phase 3, the month close, "Resumen del mes", the census list, the monthly statement and the December verification list are merged; the pieces still to build are listed below.
 
 "Estado de cuenta" and "Recibo digital" leaving nothing in Historial (PR #60), the monthly statement (PR #59) and the census list (PR #58) were merged on 24 November 2026, the way back to the previous screen (PR #57) on 22 November 2026, and "Resumen del mes" (PR #56) on 20 November 2026. The month close (PR #55), every amount up to L 999,999,999.99 (PR #53), Quién debe listing every house that owes (PR #54), the name check (PR #49), Saldo de la junta above L 99,999.99 (PR #51), a way back on every screen (PR #52), Registrar familia without an ID or references (PR #48), Cobrar's list of families (PR #47), the Inicio order (PR #46) and the opening balance (PR #45) were merged on 19 November 2026. Digital receipts ("Recibo digital", PR #43) were merged on 17 November 2026. Household statements ("Estado de cuenta", PR #42) were merged on 15 November 2026. Expenses ("Gasto", PR #41) were merged on 15 November 2026. The status history (PR #40) was merged on 15 November 2026, after PR #36 to #39 on 14 November 2026. The start month (PR #32) was closed without merging.
 
 **Where to pick up next (25 November 2026)**
 
-- **Next:** the frozen yearly census snapshot, once the board answers the questions under Still open, then the other Phase 3 pieces below. The December verification list is built (PR #62, in review). Phase 2's "done when" test follows when the board says how to run it.
-- **To try on the test copy** (steps in the README): every amount up to L 999,999,999.99 (PR #53), Quién debe listing every house that owes (PR #54), the month close (PR #55), Resumen del mes (PR #56), the way back (PR #57), the census list (PR #58), the monthly statement (PR #59), Estado de cuenta and Recibo leaving nothing in Historial (PR #60), and Verificación del censo with "Datos revisados" (PR #62).
+- **Next:** temporary guest invitations and the print layout every printout shares. The history log extract is built (PR #63, in review). The frozen yearly census snapshot waits for the board to answer the questions under Still open. Phase 2's "done when" test follows when the board says how to run it.
+- **To try on the test copy** (steps in the README): every amount up to L 999,999,999.99 (PR #53), Quién debe listing every house that owes (PR #54), the month close (PR #55), Resumen del mes (PR #56), the way back (PR #57), the census list (PR #58), the monthly statement (PR #59), Estado de cuenta and Recibo leaving nothing in Historial (PR #60), Verificación del censo with "Datos revisados" (PR #62), and Historial del año (PR #63).
 - **In this plan, but in no phase's list, and not built:** the Permisos screen (the server can already change a role's permissions), the Reportes screen, the rest of Configuración (categories, village and board profile, month close rules, guest invitation rules and system status), text size, and a change of a house's owner.
 - **Before real use:** receipt photos stay on the computer, beside the database file, and are not in the nightly backup, so they must go to the bucket or into the backup before real expenses are entered on the droplet. The weekly second backup copy outside DigitalOcean is not built.
 - **Still open for the board:** how to run Phase 2's "done when" test, and the data-separation check on the droplet before the first deployment. For the frozen yearly census snapshot: (1) whether a board member freezes it once the December list is done, or the app freezes it by itself on 31 December; (2) whether it can be frozen while houses are still not verified, and if so whether the snapshot marks them; (3) whether the municipality's copy carries full ID numbers and phones (the plan gives the municipality full ID numbers), and who on the board may open it whole; (4) whether a mistake found after freezing is put right by a corrected snapshot for the same year that keeps the first one, or not at all.
@@ -489,9 +490,9 @@ Phase 3 pieces in suggested build order (proposed on 19 November 2026; the board
 - [x] Monthly breakdown on the screen, "Resumen del mes": for any month, the money at its start and end, what came in and from whom, what was spent and on what, and the month's fee: who was charged, who paid and who still owes. Asked for by the owner on 19 November 2026. Merged in PR #56 on 20 November 2026.
 - [x] The monthly statement as a document: the same breakdown as a picture with a document number, to share or save, or as text to send by WhatsApp. Merged in PR #59 on 24 November 2026.
 - [x] The census list, filtered by sector and status: printed, or saved as a CSV file. Merged in PR #58 on 24 November 2026.
-- [x] The December list of houses not yet verified that year, "Verificación del censo", and "Datos revisados" on a house's file to verify it. PR #62, in review.
+- [x] The December list of houses not yet verified that year, "Verificación del censo", and "Datos revisados" on a house's file to verify it. Merged in PR #62 on 25 November 2026.
 - [ ] The yearly census snapshot for the municipality, frozen at year end. Waits for the board's answers under Still open.
-- [ ] The history log extract, for the fiscal and the president.
+- [x] The history log extract, "Historial del año", for the fiscal and the president: a year of the log, printed or saved for Excel. PR #63, in review.
 - [ ] Temporary guest invitations, and the print layout every printout shares: date and time, who made it and its document number. The logo is left out for now (24 November 2026).
 
 **Decisions made on 23 October 2026**
@@ -633,6 +634,10 @@ Phase 3 pieces in suggested build order (proposed on 19 November 2026; the board
 - The census list's columns are: code, name, relation, identity, phone, sector, references, water connection, status (with the reason when inactive), paper form number and last-verified date.
 - The census list writes phone numbers without the "+".
 - Printouts leave the board's logo out for now.
+
+**Decisions made on 25 November 2026**
+
+- The history log extract carries each entry's date and time, who made it and their role, what happened and the reason. It does not carry what "Ver detalle" shows, the values before and after, because they include families' ID numbers and phones and the file can be sent on to anyone. Those stay in the app and its backups.
 
 **Still open**
 

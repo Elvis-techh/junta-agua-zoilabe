@@ -4,6 +4,7 @@ export type Route =
   | "/"
   | "/usuarios"
   | "/historial"
+  | "/historial/ano"
   | "/censo"
   | "/censo/buscar"
   | "/censo/registrar"
@@ -29,6 +30,7 @@ export function routeOf(path: string): Route {
   const fixed: Route[] = [
     "/usuarios",
     "/historial",
+    "/historial/ano",
     "/censo",
     "/censo/buscar",
     "/censo/registrar",
@@ -68,6 +70,7 @@ export function labelOf(route: Route): string {
     "/": "Inicio",
     "/usuarios": "Usuarios",
     "/historial": "Historial",
+    "/historial/ano": "Historial del año",
     "/censo": "Censo",
     "/censo/buscar": "Buscar",
     "/censo/registrar": "Registrar familia",
@@ -254,5 +257,8 @@ export function navigation(permissions: readonly string[]): { bar: Tab[]; more: 
 
 /** Which tab a screen belongs to, so the bar lights the right one. */
 export function tabOf(route: Route): Route {
-  return route.startsWith("/censo") ? "/censo" : route;
+  if (route.startsWith("/censo")) {
+    return "/censo";
+  }
+  return route.startsWith("/historial") ? "/historial" : route;
 }

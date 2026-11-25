@@ -73,7 +73,7 @@ one more thing to run and back up there.
 - **Text comparisons that must understand Spanish** happen in JavaScript or
   through `search_text()`. SQLite's `lower()` and `LIKE` only know A to Z.
 - **Every document the app hands out takes its number from `documents`**
-  (a statement, a receipt, the month's statement and the census list today; more reports later): one row per document.
+  (a statement, a receipt, the month's statement, the census list and the year's history log today; more reports later): one row per document.
   **None of them writes a history entry, and a new report does not
   either**: the owner decided on 24 November 2026 that the board will not
   audit who printed what, so printing leaves nothing in Historial (a
@@ -81,7 +81,8 @@ one more thing to run and back up there.
   entries stay). The row keeps what it was made for and who made it, not its
   contents. Looking
   at something on the screen is not a document; sending, saving or printing
-  it is.
+  it is. A file for Excel is made by `csvFile` (`frontend/src/csv.ts`), so
+  nothing a person typed runs as a formula.
 - **Receipt photos are files, not rows.** `backend/src/lib/receiptPhotos.ts`
   writes each one into the `receipts` folder beside the database file (inside
   the one folder the API may write on the droplet) before the transaction

@@ -565,9 +565,9 @@ export const documents = sqliteTable(
   "documents",
   {
     id: serial("id"),
-    kind: text("kind", { enum: ["household_statement", "receipt", "month_statement", "census_list"] }).notNull(),
+    kind: text("kind", { enum: ["household_statement", "receipt", "month_statement", "census_list", "log_extract"] }).notNull(),
     householdId: uuid("household_id").references(() => households.id),
-    /** What it was made for: a statement's first month, a month's statement's month and totals, or the census list's filters, and the day it was made. A month's statement and a census list have no household. */
+    /** What it was made for: a statement's first month, a month's statement's month and totals, the census list's filters, or the history log extract's year, and the day it was made. Only a household statement and a receipt have a household. */
     details: json<Record<string, unknown>>("details").notNull(),
     createdAt: createdAt(),
     createdBy: uuid("created_by")

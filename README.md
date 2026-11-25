@@ -376,12 +376,25 @@ changing how money, permissions or the history log work.
     paper entry mode), and an inactive house is not listed. It needs
     "Registrar y editar el censo" to mark a house, and "Ver el censo" to see
     the list. See "Trying la verificación del censo" below.
-  - Next: the frozen yearly snapshot itself, once the board answers what it
-    holds and when it is taken (see "Still open for the board" in the
-    [app plan](docs/app-plan.md)), then the history log extract, guest
-    invitations and the print layout every printout shares (date and time,
-    who made it, document number; the logo is left out for now, owner 24
-    November 2026).
+  - **Historial del año: built.** The history log extract for the fiscal, the
+    president and the board's records (App Plan, Module 4, "Yearly
+    extract"). On **Historial**, **Imprimir o guardar un año** opens it:
+    choose the year (it starts on the last one that is over, or this one
+    while there is no other), then **Imprimir** or **Guardar para Excel**, as
+    on Lista del censo. It holds that calendar year in Honduras time, oldest
+    entry first; the year in progress says it is not over. Each entry has its
+    date and time, who made it and their role, what happened and the reason.
+    **What "Ver detalle" shows is left out** (owner decision of 25 November
+    2026): the values before and after include ID numbers and phones, and
+    the file can be sent on to anyone. The server does not even read them
+    for the extract. It takes the next document number and writes nothing to
+    Historial. It needs "Ver el historial" and "Imprimir y exportar el
+    historial". See "Trying el historial del año" below.
+  - Next: guest invitations and the print layout every printout shares (date
+    and time, who made it, document number; the logo is left out for now,
+    owner 24 November 2026). The frozen yearly census snapshot waits for the
+    board to answer what it holds and when it is taken (see "Still open for
+    the board" in the [app plan](docs/app-plan.md)).
 - **Database: SQLite** (decided 29 October 2026), one file like Lindero's and
   Báscula Central's, so the droplet needs no database server. The rules that
   PostgreSQL's two logins enforced are now triggers in the file itself (see
@@ -989,6 +1002,28 @@ same list again, with the same number.
 4. **Historial** has one entry: "… revisó con la familia los datos de la
    vivienda Z-…". A house registered today is already verified this year,
    and a deactivated house is not on the list.
+
+### Trying el historial del año
+
+1. Open **Historial** and tap **Imprimir o guardar un año** (it is there for
+   someone with "Imprimir y exportar el historial").
+2. **Año** lists the years that have entries, newest first, and under it is
+   how many the chosen one has. A new database, or the test copy, has only
+   this year, marked "(no ha terminado)".
+3. Tap **Imprimir**. It says "Historial de 2026, documento nº …, listo para
+   imprimir", the print window opens ("Guardar como PDF" is there too), and
+   the extract shows under the buttons, where the table scrolls sideways on a
+   phone. On paper it is one table across the page, with the column titles on
+   every page and nothing else of the screen. About a dozen entries fit on a
+   page, so look at the page count before printing on paper.
+4. Tap **Hacer otro**, then **Guardar para Excel**: a file such as
+   `historial-2026-n2.csv` is saved. Its columns are Fecha y hora, Quién,
+   Cargo, Qué pasó and Motivo.
+5. Check what is left out: change a family's phone from its file
+   (**Corregir**), and make the extract again. It says that the data was
+   corrected, with no phone or ID number. **Historial → Ver detalle** still
+   shows what changed.
+6. **Historial** gains no entry for either: printing is not logged.
 
 ### Starting over
 
