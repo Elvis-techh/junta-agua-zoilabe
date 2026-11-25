@@ -13,8 +13,9 @@ about how something is done here, look at how Lindero does it.
 
 ## The specification
 
-[docs/app-plan.md](docs/app-plan.md) is a snapshot of the board's App Plan.
-Build what it says. Anything that decides how money is counted (fees, late
+[docs/app-plan.md](docs/app-plan.md) is the board's App Plan. It began as a
+copy of a Claude Docs doc that is now a short to-do list, so the full plan is
+kept in this file. Build what it says. Anything that decides how money is counted (fees, late
 fees, what is owed, month close) or who may see what is the board's decision,
 never Claude's: lay out the options and the trade-off, then wait.
 
@@ -118,9 +119,10 @@ the file. Tests make their own database in memory.
    at. It is the permanent record of why the change exists.
 4. **Keep the docs current, in the same pull request.** The owner asked for
    this standing rule: every fix or feature updates `README.md` (how to run,
-   test and use what changed, and its Status section), and this file when it
-   changes how work is done here. A pull request whose docs are out of date
-   is not finished.
+   test and use what changed, and its Status section), `docs/app-plan.md`
+   (what is built, what comes next, and any decision, only as the board or
+   the owner made it), and this file when it changes how work is done here.
+   A pull request whose docs are out of date is not finished.
 5. **If something broke, revert the pull request** with GitHub's Revert
    button. Never rewrite `main`'s history.
 
