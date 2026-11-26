@@ -550,6 +550,11 @@ select {
   color: var(--ok);
 }
 
+.message.warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
 pre.detail {
   white-space: pre-wrap;
   word-break: break-word;
@@ -590,6 +595,121 @@ pre.detail {
 .bottombar button[aria-current="page"] {
   color: var(--primary);
   font-weight: 700;
+}
+
+/* ---- Permisos ------------------------------------------------------------ */
+
+/*
+ * A cargo to choose, with what it cannot do under its name. The left column
+ * is a little wider, so "Vicepresidente/a" stays whole on a 360 px phone.
+ */
+.choice-grid.cargo-grid {
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+}
+
+.choice-grid .btn.cargo-choice {
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 2px;
+  font-size: 1rem;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.cargo-choice small {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* One permission: what it allows on the left, the answer on the right. The whole row is the switch. */
+.permission-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 6px 12px;
+  border: 2px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Only to be read: for someone who may not change it, and what the administrator always keeps. */
+.permission-row.fixed {
+  border-color: var(--line);
+  cursor: default;
+}
+
+.permission-row:focus-visible {
+  outline: 3px solid #f2a900;
+  outline-offset: 2px;
+}
+
+.permission-words,
+.permission-answer {
+  display: grid;
+  gap: 2px;
+}
+
+.permission-words {
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.permission-words small {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.permission-answer {
+  flex: none;
+  justify-items: end;
+}
+
+/* Beside the answer, where there is room for it: the row does not grow under the finger. */
+.permission-answer small {
+  color: var(--warn);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* What is not saved yet stays at the bottom of the screen, above the bar. */
+.save-bar {
+  position: sticky;
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  z-index: 3;
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 10px 0;
+  border-top: 2px solid var(--line);
+  background: var(--bg);
+}
+
+.save-bar .message {
+  margin: 0;
+}
+
+/* "Deshacer" and "Revisar y guardar" side by side, each on one line on a 360 px phone. */
+.save-bar .btn {
+  padding: 0 10px;
+}
+
+/* ...and above "Hay más abajo" when that is showing too. */
+body:has(.more-below:not(.in-dialog)) .save-bar {
+  bottom: calc(64px + env(safe-area-inset-bottom) + var(--tap));
+}
+
+.change-list {
+  margin: 4px 0 0;
+  padding-left: 22px;
 }
 
 /* ---- Dialog ------------------------------------------------------------ */

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { HOME_BUTTONS, homeButtons, homeSections, navigation, otherButtons, routeOf, tabOf } from "../src/home.ts";
+import { HOME_BUTTONS, homeButtons, homeSections, labelOf, navigation, otherButtons, routeOf, tabOf } from "../src/home.ts";
 import { ROLES } from "../src/roles.ts";
 
 describe("home buttons", () => {
@@ -16,7 +16,7 @@ describe("home buttons", () => {
   });
 
   it("lets every role, the administrator too, open every built screen from Inicio (owner, 14 November 2026)", () => {
-    const everything = ["census:view", "census:edit", "finance:view", "finance:record", "log:view", "users:manage", "settings:edit"];
+    const everything = ["census:view", "census:edit", "finance:view", "finance:record", "log:view", "users:manage", "permissions:view", "settings:edit"];
     const built = (role: string) =>
       new Set([...homeButtons(role, everything), ...otherButtons(role, everything)].flatMap((b) => (b.route ? [b.route] : [])));
     const expected = built("tesorero");
@@ -27,7 +27,7 @@ describe("home buttons", () => {
       assert.equal(new Set(others).size, others.length, role.code);
       assert.ok(!others.some((route) => homeButtons(role.code, everything).some((b) => b.route === route)), role.code);
     }
-    for (const route of ["/finanzas/cobrar", "/finanzas/gasto", "/censo/registrar", "/usuarios", "/historial", "/configuracion"]) {
+    for (const route of ["/finanzas/cobrar", "/finanzas/gasto", "/censo/registrar", "/usuarios", "/permisos", "/historial", "/configuracion"]) {
       assert.ok(expected.has(route as never), route);
     }
     const forAdmin = otherButtons("administrador", everything).map((b) => b.label);
@@ -35,13 +35,13 @@ describe("home buttons", () => {
       assert.ok(forAdmin.includes(label), label);
     }
     // Already among the administrator's own buttons, so not again; and never a screen not built yet.
-    for (const label of ["Usuarios", "Configuración", "Censo", "Permisos"]) {
+    for (const label of ["Usuarios", "Permisos", "Configuración", "Censo"]) {
       assert.ok(!forAdmin.includes(label), label);
     }
   });
 
   it("puts Usuarios, Permisos and Configuración last on Inicio, for every role (owner, 19 November 2026)", () => {
-    const everything = ["census:view", "census:edit", "finance:view", "finance:record", "log:view", "users:manage", "settings:edit"];
+    const everything = ["census:view", "census:edit", "finance:view", "finance:record", "log:view", "users:manage", "permissions:view", "settings:edit"];
     const setup = ["Usuarios", "Permisos", "Configuración"];
 
     // The administrator's usual buttons are all setup ones, so the other tasks come first.
@@ -54,7 +54,7 @@ describe("home buttons", () => {
     // The treasurer's own work stays on top, unchanged.
     const treasurer = homeSections("tesorero", everything);
     assert.deepEqual(treasurer.own.map((b) => b.label), ["Cobrar", "Gasto", "Resumen del mes", "Quién debe"]);
-    assert.deepEqual(treasurer.setup.map((b) => b.label), ["Usuarios", "Configuración"]);
+    assert.deepEqual(treasurer.setup.map((b) => b.label), setup);
 
     for (const role of ROLES) {
       const sections = homeSections(role.code, everything);
@@ -74,6 +74,34 @@ describe("home buttons", () => {
     const withoutLog = homeButtons("fiscal", []).map((b) => b.label);
     assert.ok(withLog.includes("Historial"));
     assert.ok(!withoutLog.includes("Historial"));
+  });
+
+  it("shows no button whose screen would not open (owner, 25 November 2026)", () => {
+    // Cobrar and Otro ingreso find the family in the census; Gasto does not.
+    const noCensus = ["finance:view", "finance:record"];
+    const all = (permissions: string[]) => {
+      const sections = homeSections("tesorero", permissions);
+      return [...sections.own, ...sections.others, ...sections.setup].map((b) => b.label);
+    };
+    assert.ok(all(noCensus).includes("Gasto"));
+    assert.ok(!all(noCensus).includes("Cobrar") && !all(noCensus).includes("Otro ingreso"));
+    const withCensus = all([...noCensus, "census:view"]);
+    assert.ok(withCensus.includes("Cobrar") && withCensus.includes("Otro ingreso"));
+  });
+
+  it("opens Permisos, and one cargo, from Inicio and from the bar", () => {
+    assert.deepEqual(homeButtons("administrador", ["permissions:view"]).map((b) => [b.label, b.route]), [["Permisos", "/permisos"]]);
+    assert.deepEqual(homeButtons("administrador", []), []);
+    assert.deepEqual(navigation(["users:manage", "permissions:view"]).bar.map((t) => t.label), ["Inicio", "Usuarios", "Permisos"]);
+    for (const path of ["/permisos", "/permisos/fiscal", "/permisos/segundo_vocal"]) {
+      assert.equal(routeOf(path), path);
+      assert.equal(tabOf(routeOf(path)), "/permisos");
+    }
+    for (const path of ["/permisos/tesorera", "/permisos/fiscal/x", "/permisos/"]) {
+      assert.equal(routeOf(path), "/", path);
+    }
+    assert.equal(labelOf("/permisos"), "Permisos");
+    assert.equal(labelOf("/permisos/fiscal"), "Permisos");
   });
 
   it("never shows more than four items in the bar, the rest under Más", () => {

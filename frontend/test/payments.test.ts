@@ -71,7 +71,8 @@ describe("sharing a payment on the phone, before it is sent", () => {
 
 describe("Cobrar's place in the app", () => {
   it("opens from the treasurer's Cobrar button, and its addresses are known", () => {
-    const cobrar = homeButtons("tesorero", ["finance:record"]).find((b) => b.label === "Cobrar");
+    // Its list of families is the census's, so the button needs both (25 November 2026).
+    const cobrar = homeButtons("tesorero", ["finance:record", "census:view"]).find((b) => b.label === "Cobrar");
     assert.equal(cobrar?.route, "/finanzas/cobrar");
     assert.equal(homeButtons("tesorero", []).some((b) => b.label === "Cobrar"), false);
     assert.equal(routeOf("/finanzas/cobrar"), "/finanzas/cobrar");
