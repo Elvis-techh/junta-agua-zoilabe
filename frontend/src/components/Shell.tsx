@@ -25,6 +25,7 @@ import { OpeningBalanceScreen } from "../screens/OpeningBalance.tsx";
 import { PermissionsScreen } from "../screens/Permissions.tsx";
 import type { RegisterPreset } from "../screens/Register.tsx";
 import { RegisterScreen } from "../screens/Register.tsx";
+import { ReportsScreen } from "../screens/Reports.tsx";
 import { SettingsScreen } from "../screens/Settings.tsx";
 import { StatementScreen } from "../screens/Statement.tsx";
 import { UsersScreen } from "../screens/Users.tsx";
@@ -191,6 +192,10 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
     }
     if (route === "/historial/ano" && can("log:view") && can("export:log")) {
       return <LogExtractScreen onOpen={go} />;
+    }
+    // A list of links only: each report's screen, and the server behind it, checks its own permissions.
+    if (route === "/reportes") {
+      return <ReportsScreen me={me} onOpen={go} />;
     }
     if (route === "/configuracion" && can("settings:edit")) {
       return <SettingsScreen onOpen={go} />;

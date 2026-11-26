@@ -1,4 +1,5 @@
 import type { IconName } from "./icons.tsx";
+import { reportsFor } from "./reports.ts";
 import { ROLES } from "./roles.ts";
 
 export type Route =
@@ -14,6 +15,7 @@ export type Route =
   | "/censo/lista"
   | "/censo/verificar"
   | "/configuracion"
+  | "/reportes"
   | "/finanzas/cobrar"
   | "/finanzas/ingreso"
   | "/finanzas/gasto"
@@ -41,6 +43,7 @@ export function routeOf(path: string): Route {
     "/censo/lista",
     "/censo/verificar",
     "/configuracion",
+    "/reportes",
     "/finanzas/cobrar",
     "/finanzas/ingreso",
     "/finanzas/gasto",
@@ -86,6 +89,7 @@ export function labelOf(route: Route): string {
     "/censo/lista": "Lista del censo",
     "/censo/verificar": "Verificación",
     "/configuracion": "Configuración",
+    "/reportes": "Reportes",
     "/finanzas/cobrar": "Cobrar",
     "/finanzas/ingreso": "Otro ingreso",
     "/finanzas/gasto": "Gasto",
@@ -152,11 +156,13 @@ export interface HomeButton {
   permission?: string;
   /** What else its screen needs: the button also shows only with all of these. */
   also?: readonly string[];
+  /** For a screen no list of permissions describes ("any one of these reports"): the button shows only when this says yes. */
+  shownTo?: (permissions: readonly string[]) => boolean;
 }
 
 /** Whether a button's screen would open for this person, so no button leads nowhere. */
 function allowed(button: HomeButton, permissions: readonly string[]): boolean {
-  return [button.permission, ...(button.also ?? [])].every((code) => !code || permissions.includes(code));
+  return [button.permission, ...(button.also ?? [])].every((code) => !code || permissions.includes(code)) && (!button.shownTo || button.shownTo(permissions));
 }
 
 const B = {
@@ -175,7 +181,8 @@ const B = {
   cierre: { label: "Cierre del mes", icon: "check", route: "/finanzas/cierre", permission: "finance:view" },
   preparar: { label: "Preparar cierre", icon: "check", route: "/finanzas/cierre", permission: "month:prepare" },
   aprobar: { label: "Aprobar cierre", icon: "check", route: "/finanzas/cierre", permission: "month:approve" },
-  reportes: { label: "Reportes", icon: "print" },
+  // Shown to whoever may make at least one report; each report's own screen checks the rest.
+  reportes: { label: "Reportes", icon: "print", route: "/reportes", shownTo: (permissions) => reportsFor(permissions).length > 0 },
   historial: { label: "Historial", icon: "clock", route: "/historial", permission: "log:view" },
   usuarios: { label: "Usuarios", icon: "people", route: "/usuarios", permission: "users:manage" },
   permisos: { label: "Permisos", icon: "key", route: "/permisos", permission: "permissions:view" },
