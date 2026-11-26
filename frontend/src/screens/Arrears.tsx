@@ -70,9 +70,10 @@ export function arrearsSummary(list: Arrears): string {
  * most owed first, each with its months and the late fee owed for each. An
  * inactive house, or one without water, is marked (owner, 19 November 2026).
  * A tap opens the house's file, to collect from there. The server works it
- * all out (backend/src/routes/arrears.ts).
+ * all out (backend/src/routes/arrears.ts). A cargo that may not see the
+ * census reads the same list, and its houses do not open.
  */
-export function ArrearsScreen({ onOpen }: { onOpen: Go }) {
+export function ArrearsScreen({ onOpen, canOpenHouse, canCollect }: { onOpen: Go; canOpenHouse: boolean; canCollect: boolean }) {
   const [list, setList] = useState<Arrears | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,8 +100,8 @@ export function ArrearsScreen({ onOpen }: { onOpen: Go }) {
           </p>
           {list.households.map((house) => {
             const mark = arrearsMark(house);
-            return (
-              <button key={house.id} className="card household-card" onClick={() => onOpen(`/censo/vivienda/${house.id}`)}>
+            const inside = (
+              <>
                 <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
                   <strong>{house.code}</strong>
                   <strong style={{ whiteSpace: "nowrap" }}>{formatLempiras(house.totalCentavos)}</strong>
@@ -116,10 +117,19 @@ export function ArrearsScreen({ onOpen }: { onOpen: Go }) {
                   <div key={month.month}>{arrearsMonthLine(month)}</div>
                 ))}
                 {house.months.length > 6 && <div className="muted">y {house.months.length - 6} meses más</div>}
+              </>
+            );
+            return canOpenHouse ? (
+              <button key={house.id} className="card household-card" onClick={() => onOpen(`/censo/vivienda/${house.id}`)}>
+                {inside}
               </button>
+            ) : (
+              <div key={house.id} className="card household-card" style={{ cursor: "default" }}>
+                {inside}
+              </div>
             );
           })}
-          {list.households.length > 0 && (
+          {canCollect && list.households.length > 0 && (
             <button className="btn block" onClick={() => onOpen("/finanzas/cobrar")}>
               <Icon name="cash" /> Cobrar
             </button>

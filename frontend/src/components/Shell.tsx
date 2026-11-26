@@ -22,8 +22,10 @@ import { LogExtractScreen } from "../screens/LogExtract.tsx";
 import { ClosedMonthScreen, MonthCloseScreen } from "../screens/MonthClose.tsx";
 import { MonthSummaryScreen } from "../screens/MonthSummary.tsx";
 import { OpeningBalanceScreen } from "../screens/OpeningBalance.tsx";
+import { PermissionsScreen } from "../screens/Permissions.tsx";
 import type { RegisterPreset } from "../screens/Register.tsx";
 import { RegisterScreen } from "../screens/Register.tsx";
+import { ReportsScreen } from "../screens/Reports.tsx";
 import { SettingsScreen } from "../screens/Settings.tsx";
 import { StatementScreen } from "../screens/Statement.tsx";
 import { UsersScreen } from "../screens/Users.tsx";
@@ -128,7 +130,9 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
       );
     }
     if (route === "/finanzas/quien-debe" && can("finance:view")) {
-      return <ArrearsScreen onOpen={go} />;
+      return (
+        <ArrearsScreen onOpen={go} canOpenHouse={can("census:view")} canCollect={can("finance:record") && can("census:view")} />
+      );
     }
     if (route === "/finanzas/saldo" && can("finance:view")) {
       return <OpeningBalanceScreen canRecord={can("finance:record")} canCorrect={can("finance:reverse")} onOpen={go} />;
@@ -142,7 +146,16 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
     // Resumen del mes: the month in progress, a month ("/finanzas/resumen/2026-10-01"), or one of its parts.
     if ((route === "/finanzas/resumen" || route.startsWith("/finanzas/resumen/")) && can("finance:view")) {
       const [month = null, part = null] = route.split("/").slice(3);
-      return <MonthSummaryScreen key={route} month={month} part={part as SummaryPart | null} canHandOut={can("export:finance")} onOpen={go} />;
+      return (
+        <MonthSummaryScreen
+          key={route}
+          month={month}
+          part={part as SummaryPart | null}
+          canHandOut={can("export:finance")}
+          canOpenHouse={can("census:view")}
+          onOpen={go}
+        />
+      );
     }
     // Otro ingreso: from Inicio it finds the house in the census (or none); from Cobrar or a house's file, by id.
     if (route === "/finanzas/ingreso" && can("finance:record") && can("finance:view") && can("census:view")) {
@@ -170,11 +183,19 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
     if (route === "/usuarios" && can("users:manage")) {
       return <UsersScreen me={me} onOpen={go} />;
     }
+    // Permisos: the list of cargos, or one cargo ("/permisos/fiscal").
+    if ((route === "/permisos" || route.startsWith("/permisos/")) && can("permissions:view")) {
+      return <PermissionsScreen key={route} me={me} roleCode={route.split("/")[2] ?? null} onOpen={go} />;
+    }
     if (route === "/historial" && can("log:view")) {
       return <HistoryScreen canHandOut={can("export:log")} onOpen={go} />;
     }
     if (route === "/historial/ano" && can("log:view") && can("export:log")) {
       return <LogExtractScreen onOpen={go} />;
+    }
+    // A list of links only: each report's screen, and the server behind it, checks its own permissions.
+    if (route === "/reportes") {
+      return <ReportsScreen me={me} onOpen={go} />;
     }
     if (route === "/configuracion" && can("settings:edit")) {
       return <SettingsScreen onOpen={go} />;

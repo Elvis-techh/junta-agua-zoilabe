@@ -63,6 +63,44 @@ export function isPermission(value: string): value is Permission {
 }
 
 /**
+ * The permission each one needs. Without it, it does nothing: turning "Ver
+ * finanzas" off turns off everything that records, closes or prints money
+ * too, so "off" really means hidden and no button leads nowhere (owner, 25
+ * November 2026). Followed all the way: a different fee needs registering,
+ * which needs seeing the census.
+ *
+ * `effectivePermissions` applies it to every request, and `matrixProblem`
+ * refuses to save a set that breaks it. A new permission that is no use
+ * without another one gets its line here.
+ */
+export const REQUIRES: Readonly<Partial<Record<Permission, Permission>>> = {
+  "census:view_sensitive": "census:view",
+  "census:edit": "census:view",
+  "census:deactivate": "census:view",
+  // The only place a different fee is set today is while registering.
+  "household_fee:set": "census:edit",
+  "household_fee:set_at_registration": "census:edit",
+  "export:census": "census:view",
+  "finance:record": "finance:view",
+  "finance:reverse": "finance:view",
+  "month:prepare": "finance:view",
+  "month:approve": "finance:view",
+  "export:finance": "finance:view",
+  "export:log": "log:view",
+  "permissions:edit": "permissions:view",
+};
+
+/** What a role can really do: of the permissions switched on, those whose whole chain of needed ones is on too. */
+export function effectivePermissions(granted: Iterable<Permission>): Set<Permission> {
+  const on = new Set(granted);
+  const works = (code: Permission): boolean => {
+    const needed = REQUIRES[code];
+    return on.has(code) && (needed === undefined || works(needed));
+  };
+  return new Set([...on].filter(works));
+}
+
+/**
  * Pairs no single role may hold together. Empty since 6 November 2026: the
  * board gave every role every permission, because it does not always meet in
  * full and a task only one or two people could do would wait for them. The
@@ -79,6 +117,7 @@ export const INCOMPATIBLE: ReadonlyArray<readonly [Permission, Permission]> = []
  */
 export const LOCKED_FOR_ADMIN: ReadonlySet<Permission> = new Set<Permission>([
   "users:manage",
+  "permissions:view",
   "permissions:edit",
 ]);
 
@@ -125,5 +164,24 @@ export function matrixProblem(role: RoleCode, granted: ReadonlySet<Permission>):
     }
   }
 
+  for (const permission of granted) {
+    const needed = REQUIRES[permission];
+    if (needed && !granted.has(needed)) {
+      return `«${PERMISSIONS[permission]}» necesita «${PERMISSIONS[needed]}».`;
+    }
+  }
+
   return null;
+}
+
+/**
+ * What changed, in words, for the history log: «quitó «Ver el historial»; dio
+ * «Administrar usuarios»». The yearly extract carries only an entry's
+ * sentence, so the sentence has to say it.
+ */
+export function describeChange(before: ReadonlySet<string>, after: ReadonlySet<string>): string {
+  const words = (codes: Permission[]) => codes.map((code) => `«${PERMISSIONS[code]}»`).join(", ");
+  const removed = PERMISSION_CODES.filter((code) => before.has(code) && !after.has(code));
+  const added = PERMISSION_CODES.filter((code) => !before.has(code) && after.has(code));
+  return [removed.length ? `quitó ${words(removed)}` : "", added.length ? `dio ${words(added)}` : ""].filter(Boolean).join("; ");
 }
