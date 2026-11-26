@@ -25,7 +25,13 @@ The rules that must never be broken:
   mistakes are fixed with a reversal entry that points to the original.
 - **The server decides.** Every route checks its permission code. Hiding a
   button is a convenience, not security. ID numbers and phones are masked by
-  the server.
+  the server. Nobody changes the permissions of their own role (owner, 25
+  November 2026). A permission turns off with the one it needs (same day): `REQUIRES` in `backend/src/lib/permissions.ts` is applied
+  to every signed-in request, so a new permission that is no use without
+  another gets a line there. It also gets a switch in
+  `frontend/src/permissions.ts` (a test fails without one). A button shows
+  only if its screen would open: one that needs a second permission lists it
+  in `also` (`frontend/src/home.ts`).
 - **Every change is logged** in `audit_log`, in the same database transaction
   as the change itself.
 - **Money is whole centavos** (integers), shown as lempiras (L).
