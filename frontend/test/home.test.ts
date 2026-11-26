@@ -31,11 +31,11 @@ describe("home buttons", () => {
       assert.ok(expected.has(route as never), route);
     }
     const forAdmin = otherButtons("administrador", everything).map((b) => b.label);
-    for (const label of ["Registrar familia", "Buscar", "Lista", "Cobrar", "Gasto", "Historial", "Resumen del mes"]) {
+    for (const label of ["Registrar familia", "Buscar", "Lista", "Cobrar", "Gasto", "Historial", "Resumen del mes", "Reportes"]) {
       assert.ok(forAdmin.includes(label), label);
     }
     // Already among the administrator's own buttons, so not again; and never a screen not built yet.
-    for (const label of ["Usuarios", "Configuración", "Censo", "Reportes"]) {
+    for (const label of ["Usuarios", "Configuración", "Censo", "Permisos"]) {
       assert.ok(!forAdmin.includes(label), label);
     }
   });

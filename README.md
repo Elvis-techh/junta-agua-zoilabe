@@ -391,6 +391,15 @@ changing how money, permissions or the history log work.
     for the extract. It takes the next document number and writes nothing to
     Historial. It needs "Ver el historial" and "Imprimir y exportar el
     historial". See "Trying el historial del año" below.
+  - **Reportes: built.** One list of every report the app makes, each with a
+    line saying what it is for: Lista del censo, Estado de cuenta de una
+    familia, Estado financiero del mes, Quién debe and Historial del año. A
+    tap opens the screen that makes it, whose way back reads "‹ Reportes".
+    Nothing is made, numbered or logged on Reportes itself. Each report shows
+    only to someone who holds every permission its screen needs, and the
+    server checks them again; the **Reportes** button on Inicio shows when at
+    least one does (owner, 26 November 2026). The frozen yearly census
+    snapshot is not on it until it is built. See "Trying Reportes" below.
   - **Set aside for now** (owner, 25 November 2026): guest invitations and
     the print layout every printout shares. They may be taken up again later.
     Each printout already shows who made it and its document number, and all
@@ -1035,6 +1044,20 @@ same list again, with the same number.
    corrected, with no phone or ID number. **Historial → Ver detalle** still
    shows what changed.
 6. **Historial** gains no entry for either: printing is not logged.
+
+### Trying Reportes
+
+1. On **Inicio**, tap **Reportes** (the fiscal and the two vocales have it
+   among their first buttons; everyone else under "Otras tareas").
+2. It lists five reports, each with a line saying what it is for and, for
+   Estado de cuenta and Estado financiero del mes, the step that makes it.
+3. Tap **Historial del año**: its way back reads **‹ Reportes** and brings
+   you back to the list. Try the others the same way.
+4. A report shows only to someone who holds every permission its screen
+   needs. Every role holds them all today, so the list is the same for
+   everyone until a role loses one (the tests check this, since Permisos has
+   no screen yet).
+5. **Historial** gains no entry: opening Reportes changes nothing.
 
 ### Starting over
 

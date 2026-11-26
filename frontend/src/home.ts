@@ -1,4 +1,5 @@
 import type { IconName } from "./icons.tsx";
+import { reportsFor } from "./reports.ts";
 
 export type Route =
   | "/"
@@ -11,6 +12,7 @@ export type Route =
   | "/censo/lista"
   | "/censo/verificar"
   | "/configuracion"
+  | "/reportes"
   | "/finanzas/cobrar"
   | "/finanzas/ingreso"
   | "/finanzas/gasto"
@@ -37,6 +39,7 @@ export function routeOf(path: string): Route {
     "/censo/lista",
     "/censo/verificar",
     "/configuracion",
+    "/reportes",
     "/finanzas/cobrar",
     "/finanzas/ingreso",
     "/finanzas/gasto",
@@ -77,6 +80,7 @@ export function labelOf(route: Route): string {
     "/censo/lista": "Lista del censo",
     "/censo/verificar": "Verificación",
     "/configuracion": "Configuración",
+    "/reportes": "Reportes",
     "/finanzas/cobrar": "Cobrar",
     "/finanzas/ingreso": "Otro ingreso",
     "/finanzas/gasto": "Gasto",
@@ -138,6 +142,13 @@ export interface HomeButton {
   route?: Route;
   /** The button shows only when the user holds this permission. */
   permission?: string;
+  /** For a screen no single permission opens: the button shows only when this says yes. */
+  shownTo?: (permissions: readonly string[]) => boolean;
+}
+
+/** Whether this user may see the button: its permission, and its own test when it has one. */
+function allowed(button: HomeButton, permissions: readonly string[]): boolean {
+  return (!button.permission || permissions.includes(button.permission)) && (!button.shownTo || button.shownTo(permissions));
 }
 
 const B = {
@@ -156,7 +167,8 @@ const B = {
   cierre: { label: "Cierre del mes", icon: "check", route: "/finanzas/cierre", permission: "finance:view" },
   preparar: { label: "Preparar cierre", icon: "check", route: "/finanzas/cierre", permission: "month:prepare" },
   aprobar: { label: "Aprobar cierre", icon: "check", route: "/finanzas/cierre", permission: "month:approve" },
-  reportes: { label: "Reportes", icon: "print" },
+  // Shown to whoever may make at least one report; each report's own screen checks the rest.
+  reportes: { label: "Reportes", icon: "print", route: "/reportes", shownTo: (permissions) => reportsFor(permissions).length > 0 },
   historial: { label: "Historial", icon: "clock", route: "/historial", permission: "log:view" },
   usuarios: { label: "Usuarios", icon: "people", route: "/usuarios", permission: "users:manage" },
   permisos: { label: "Permisos", icon: "key" },
@@ -177,9 +189,7 @@ export const HOME_BUTTONS: Record<string, HomeButton[]> = {
 
 /** This user's buttons: their role's, less any whose permission the Permisos tab took away. */
 export function homeButtons(roleCode: string, permissions: readonly string[]): HomeButton[] {
-  return (HOME_BUTTONS[roleCode] ?? []).filter(
-    (button) => !button.permission || permissions.includes(button.permission),
-  );
+  return (HOME_BUTTONS[roleCode] ?? []).filter((button) => allowed(button, permissions));
 }
 
 /**
@@ -192,7 +202,7 @@ export function homeButtons(roleCode: string, permissions: readonly string[]): H
 export function otherButtons(roleCode: string, permissions: readonly string[]): HomeButton[] {
   const shown = new Set(homeButtons(roleCode, permissions).map((button) => button.route));
   return (Object.values(B) as HomeButton[]).filter((button) => {
-    if (!button.route || shown.has(button.route) || (button.permission && !permissions.includes(button.permission))) {
+    if (!button.route || shown.has(button.route) || !allowed(button, permissions)) {
       return false;
     }
     shown.add(button.route);
