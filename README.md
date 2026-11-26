@@ -886,8 +886,8 @@ With a base fee and a late fee in Configuración → Cuotas from a past month
 (for example L 70 and L 50 from January 2025), and a family whose history is
 typed in through Cobrar:
 
-1. Open **Quién debe** (on the treasurer's home screen, or at the top of
-   **Cobrar**). It lists the houses that owe months, but no late fees yet:
+1. Open **Quién debe** (at the top of **Cobrar**; it has no button on
+   Inicio). It lists the houses that owe months, but no late fees yet:
    it says the month in Configuración → Mora is missing.
 2. In **Configuración** → **Mora**, pick the month from which the app counts
    late fees by itself (say June 2025) and **Guardar mes**. It is in

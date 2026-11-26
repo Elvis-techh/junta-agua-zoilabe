@@ -304,8 +304,8 @@ On a phone the bottom bar shows at most four items plus "Más".
 
 | Role | First home buttons |
 |---|---|
-| Secretario/a | Registrar familia, Buscar, Lista |
-| Tesorero/a | Cobrar, Gasto, Resumen del mes, Quién debe |
+| Secretario/a | Registrar familia, Censo (the list, with its search box) |
+| Tesorero/a | Cobrar, Gasto, Resumen del mes |
 | Presidente and Vicepresidente/a | Aprobar cierre, Resumen del mes, Historial, Usuarios |
 | Fiscal | Resumen del mes, Historial, Reportes |
 | Primer and Segundo vocal | Censo, Resumen del mes, Reportes |
