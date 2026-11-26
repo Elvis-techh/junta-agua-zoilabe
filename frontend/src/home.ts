@@ -167,15 +167,13 @@ function allowed(button: HomeButton, permissions: readonly string[]): boolean {
 
 const B = {
   registrar: { label: "Registrar familia", icon: "house", route: "/censo/registrar", permission: "census:edit" },
-  buscar: { label: "Buscar", icon: "search", route: "/censo/buscar", permission: "census:view" },
-  lista: { label: "Lista", icon: "list", route: "/censo", permission: "census:view" },
   censo: { label: "Censo", icon: "list", route: "/censo", permission: "census:view" },
   cobrar: { label: "Cobrar", icon: "cash", route: "/finanzas/cobrar", permission: "finance:record", also: ["census:view"] },
   gasto: { label: "Gasto", icon: "receipt", route: "/finanzas/gasto", permission: "finance:record" },
   // Money from someone outside the census, and the latest entries to undo (Anular); for a house, Cobrar asks (19 November 2026).
   ingreso: { label: "Otro ingreso", icon: "plus", route: "/finanzas/ingreso", permission: "finance:record", also: ["census:view"] },
   resumen: { label: "Resumen del mes", icon: "chart", route: "/finanzas/resumen", permission: "finance:view" },
-  quienDebe: { label: "Quién debe", icon: "alert", route: "/finanzas/quien-debe", permission: "finance:view" },
+  // No button for Quién debe: it is one tap inside Cobrar, and in Reportes (owner, 26 November 2026).
   saldo: { label: "Saldo de la junta", icon: "chart", route: "/finanzas/saldo", permission: "finance:view" },
   // One screen, three names: what each role goes there to do (owner, 19 November 2026).
   cierre: { label: "Cierre del mes", icon: "check", route: "/finanzas/cierre", permission: "finance:view" },
@@ -191,8 +189,8 @@ const B = {
 
 /** The home screen's large buttons for each role (App Plan, "Screens and navigation"). */
 export const HOME_BUTTONS: Record<string, HomeButton[]> = {
-  secretario: [B.registrar, B.buscar, B.lista],
-  tesorero: [B.cobrar, B.gasto, B.resumen, B.quienDebe, B.preparar],
+  secretario: [B.registrar, B.censo],
+  tesorero: [B.cobrar, B.gasto, B.resumen, B.preparar],
   presidente: [B.aprobar, B.resumen, B.historial, B.usuarios],
   vicepresidente: [B.aprobar, B.resumen, B.historial, B.usuarios],
   fiscal: [B.resumen, B.historial, B.reportes],

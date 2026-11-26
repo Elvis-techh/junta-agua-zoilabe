@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 
 import type { StatusEntry } from "../src/census.ts";
 import { entryOn, noServiceLine, statusEntryLine } from "../src/census.ts";
-import { homeButtons, routeOf } from "../src/home.ts";
+import { homeButtons, otherButtons, routeOf } from "../src/home.ts";
 import type { HouseLateFees } from "../src/payments.ts";
 import { lateFeesLine } from "../src/payments.ts";
 import type { Arrears } from "../src/screens/Arrears.tsx";
@@ -97,11 +97,11 @@ describe("Quién debe", () => {
     assert.equal(arrearsMark({ status: "inactive", waterConnection: "not_connected" }), "Inactiva, sin conexión");
   });
 
-  it("has its own address, and the treasurer's home button opens it", () => {
+  it("has its own address, opened from Cobrar and Reportes rather than a home button", () => {
     assert.equal(routeOf("/finanzas/quien-debe"), "/finanzas/quien-debe");
-    const button = homeButtons("tesorero", ["finance:view", "finance:record"]).find((b) => b.label === "Quién debe");
-    assert.equal(button?.route, "/finanzas/quien-debe");
-    const withoutFinances = homeButtons("tesorero", ["finance:record"]).find((b) => b.label === "Quién debe");
-    assert.equal(withoutFinances, undefined);
+    for (const role of ["tesorero", "secretario"]) {
+      const all = ["finance:view", "finance:record", "census:view"];
+      assert.ok(![...homeButtons(role, all), ...otherButtons(role, all)].some((b) => b.label === "Quién debe"), role);
+    }
   });
 });

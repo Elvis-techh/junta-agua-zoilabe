@@ -11,7 +11,7 @@ describe("home buttons", () => {
     }
     assert.deepEqual(
       HOME_BUTTONS.tesorero?.map((b) => b.label),
-      ["Cobrar", "Gasto", "Resumen del mes", "Quién debe", "Preparar cierre"],
+      ["Cobrar", "Gasto", "Resumen del mes", "Preparar cierre"],
     );
   });
 
@@ -31,11 +31,11 @@ describe("home buttons", () => {
       assert.ok(expected.has(route as never), route);
     }
     const forAdmin = otherButtons("administrador", everything).map((b) => b.label);
-    for (const label of ["Registrar familia", "Buscar", "Lista", "Cobrar", "Gasto", "Historial", "Resumen del mes", "Reportes"]) {
+    for (const label of ["Registrar familia", "Censo", "Cobrar", "Gasto", "Historial", "Resumen del mes", "Reportes"]) {
       assert.ok(forAdmin.includes(label), label);
     }
     // Already among the administrator's own buttons, so not again; and never a screen not built yet.
-    for (const label of ["Usuarios", "Permisos", "Configuración", "Censo"]) {
+    for (const label of ["Usuarios", "Permisos", "Configuración", "Buscar", "Lista", "Quién debe"]) {
       assert.ok(!forAdmin.includes(label), label);
     }
   });
@@ -53,7 +53,7 @@ describe("home buttons", () => {
 
     // The treasurer's own work stays on top, unchanged.
     const treasurer = homeSections("tesorero", everything);
-    assert.deepEqual(treasurer.own.map((b) => b.label), ["Cobrar", "Gasto", "Resumen del mes", "Quién debe"]);
+    assert.deepEqual(treasurer.own.map((b) => b.label), ["Cobrar", "Gasto", "Resumen del mes"]);
     assert.deepEqual(treasurer.setup.map((b) => b.label), setup);
 
     for (const role of ROLES) {
@@ -118,7 +118,7 @@ describe("home buttons", () => {
   it("opens the census from the secretary's buttons, and only known addresses", () => {
     assert.deepEqual(
       homeButtons("secretario", ["census:view", "census:edit"]).map((b) => b.route),
-      ["/censo/registrar", "/censo/buscar", "/censo"],
+      ["/censo/registrar", "/censo"],
     );
     assert.equal(routeOf("/censo/vivienda/0b7e1a52-4c1e-4f7a-9a43-2f9d7e4c1b20"), "/censo/vivienda/0b7e1a52-4c1e-4f7a-9a43-2f9d7e4c1b20");
     assert.equal(routeOf("/censo/vivienda/../../usuarios"), "/");
