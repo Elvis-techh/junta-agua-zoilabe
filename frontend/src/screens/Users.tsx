@@ -8,6 +8,7 @@ import { PasswordField } from "../components/PasswordField.tsx";
 import { PhoneField } from "../components/PhoneField.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
+import { useLive } from "../live.ts";
 import { passwordProblem, suggestPassword } from "../password.ts";
 import { EMPTY_PHONE, formatPhone, phoneProblem, wholePhone } from "../phone.ts";
 import { ROLES, roleName } from "../roles.ts";
@@ -43,15 +44,17 @@ export function UsersScreen({ me, onOpen }: { me: Me; onOpen: Go }) {
     try {
       const data = await api<{ users: StaffUser[] }>("GET", "/users");
       setUsers(data.users);
+      setError(null);
       setSelected((current) => (current ? data.users.find((u) => u.id === current.id) ?? null : null));
     } catch (err) {
       setError((err as Error).message);
     }
   }, []);
 
+  const live = useLive();
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, live]);
 
   return (
     <main className="screen stack">

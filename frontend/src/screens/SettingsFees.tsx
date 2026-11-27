@@ -6,6 +6,7 @@ import { AmountInput } from "../components/AmountInput.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import { MonthField } from "../components/CalendarField.tsx";
 import { Icon } from "../icons.tsx";
+import { useLive } from "../live.ts";
 import { isTouchScreen } from "../viewport.ts";
 
 type FeeKind = "base_monthly" | "late_fee" | "reconnection" | "connection";
@@ -209,9 +210,10 @@ export function FeesSection() {
     }
   }, []);
 
+  const live = useLive();
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, live]);
 
   return (
     <section className="stack">

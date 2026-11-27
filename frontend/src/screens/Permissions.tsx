@@ -6,6 +6,7 @@ import { BackButton } from "../components/BackButton.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
+import { useLive, useLiveHold } from "../live.ts";
 import type { CargoGrants, Matrix, PermissionInfo, SwitchGroup } from "../permissions.ts";
 import { cannotLine, changes, groupLine, isOn, readOnlyReason, rowNotes, saveWarnings, switchGroups, toggle, working } from "../permissions.ts";
 import { roleName } from "../roles.ts";
@@ -38,9 +39,10 @@ export function PermissionsScreen({
     }
   }, []);
 
+  const live = useLive();
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, live]);
 
   const loading = !matrix && <p className={error ? "message error" : "muted"}>{error ?? "Cargando…"}</p>;
 
@@ -121,6 +123,9 @@ function Cargo({
   const shown = draft ?? saved;
   const diff = changes(groups, saved, shown);
   const count = diff.removed.length + diff.added.length;
+  // `expected` below must stay what was on the screen when the first switch was tapped,
+  // or the server would let this save undo one made by someone else meanwhile.
+  useLiveHold(count > 0);
 
   const save = async () => {
     setBusy(true);
@@ -132,7 +137,7 @@ function Cargo({
       setConfirming(false);
       setDraft(null);
       onSaved(granted);
-      setMessage({ kind: "ok", text: "Guardado. Vale desde ahora. En otro teléfono, los botones cambian al volver a abrir la app." });
+      setMessage({ kind: "ok", text: "Guardado. Vale desde ahora, también en los otros teléfonos." });
     } catch (err) {
       if (err instanceof ApiError && err.code === "stale") {
         await reload();

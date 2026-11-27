@@ -3,14 +3,17 @@ import { useEffect, useLayoutEffect } from "react";
 
 import { MoreBelow } from "./MoreBelow.tsx";
 import { Icon } from "../icons.tsx";
+import { useLiveHold } from "../live.ts";
 import { lockScroll } from "../scrollLock.ts";
 
 /**
  * A panel over the screen, from the bottom on a phone. Escape or "Cerrar"
- * closes it. The screen behind it stays still while it is open.
+ * closes it. The screen behind it stays still while it is open: what others
+ * save meanwhile shows once it closes (src/live.ts).
  */
 export function Dialog({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   useLayoutEffect(() => lockScroll(window), []);
+  useLiveHold(true);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {

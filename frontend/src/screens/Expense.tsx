@@ -11,6 +11,7 @@ import { dayLabel } from "../calendar.ts";
 import type { ExpenseCategory, ExpenseEntry, ExpenseSetup } from "../expenses.ts";
 import { amountProblem, paidProblem, photoAddress, photoProblem } from "../expenses.ts";
 import { Icon } from "../icons.tsx";
+import { useLive } from "../live.ts";
 import type { PaymentMethod } from "../payments.ts";
 import { PAYMENT_METHODS } from "../payments.ts";
 import type { Photo } from "../photo.ts";
@@ -58,6 +59,7 @@ export function ExpenseScreen({ canReverse, onOpen }: { canReverse: boolean; onO
   const camera = useRef<HTMLInputElement>(null);
   const gallery = useRef<HTMLInputElement>(null);
 
+  const live = useLive();
   useEffect(() => {
     api<ExpenseSetup>("GET", "/finance/expenses/setup")
       .then((loaded) => {
@@ -65,7 +67,7 @@ export function ExpenseScreen({ canReverse, onOpen }: { canReverse: boolean; onO
         setOccurredOn((day) => day || loaded.today);
       })
       .catch((err: Error) => setLoadError(err.message));
-  }, []);
+  }, [live]);
 
   const leave = () => onOpen("/");
 
@@ -450,11 +452,15 @@ export function ExpenseEntries({ title, canReverse }: { title: string; canRevers
 
   const load = useCallback(() => {
     api<{ entries: ExpenseEntry[] }>("GET", "/finance/expenses")
-      .then((data) => setEntries(data.entries))
+      .then((data) => {
+        setEntries(data.entries);
+        setError(null);
+      })
       .catch((err: Error) => setError(err.message));
   }, []);
 
-  useEffect(load, [load]);
+  const live = useLive();
+  useEffect(load, [load, live]);
 
   if (!error && !reversed && (!entries || entries.length === 0)) {
     return null;

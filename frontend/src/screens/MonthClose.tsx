@@ -7,8 +7,9 @@ import { Dialog } from "../components/Dialog.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { formatLempiras, parseLempiras } from "../census.ts";
 import { Icon } from "../icons.tsx";
+import { useLive } from "../live.ts";
 import type { MonthDetail, MonthsData } from "../monthClose.ts";
-import { categoryLines, columnAmount, differenceLine, figureRows, monthTitle, readCount, statusWords } from "../monthClose.ts";
+import { categoryLines, columnAmount, differenceLine, figureRows, figuresMoved, monthTitle, readCount, statusWords } from "../monthClose.ts";
 import { monthName } from "../payments.ts";
 import { formatDate } from "../time.ts";
 import { isTouchScreen } from "../viewport.ts";
@@ -37,9 +38,10 @@ export function MonthCloseScreen({ abilities, onOpen }: { abilities: Abilities; 
     }
   }, []);
 
+  const live = useLive();
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, live]);
 
   const done = async (text: string) => {
     setMessage({ kind: "ok", text });
@@ -113,6 +115,8 @@ function NextMonth({
 }) {
   const { row, figures } = detail;
   const [counted, setCounted] = useState("");
+  /** What should have been in the cash box when the count was typed; null while nothing is typed. */
+  const [countedAgainst, setCountedAgainst] = useState<number | null>(null);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -133,7 +137,16 @@ function NextMonth({
     }
   };
 
+  /** The figures can change while someone counts (src/live.ts). */
+  const moved = countedAgainst !== null && countedAgainst !== expected;
+
   const prepare = () => {
+    // Said once; the next tap prepares with the figures now on the screen. The server refuses older ones.
+    if (moved) {
+      setCountedAgainst(expected);
+      setError(figuresMoved(name, expected));
+      return;
+    }
     const read = readCount(counted, reason, expected);
     if ("problem" in read) {
       setError(read.problem);
@@ -158,7 +171,14 @@ function NextMonth({
           <>
             <label>
               Efectivo contado en caja
-              <AmountInput value={counted} onChange={setCounted} placeholder="L" />
+              <AmountInput
+                value={counted}
+                onChange={(text) => {
+                  setCounted(text);
+                  setCountedAgainst((shown) => (text ? (shown ?? expected) : null));
+                }}
+                placeholder="L"
+              />
             </label>
             {countedCentavos !== null && <div>{differenceLine(countedCentavos, expected)}</div>}
             {countedCentavos !== null && countedCentavos !== expected && (
@@ -167,7 +187,8 @@ function NextMonth({
                 <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ejemplo: se pagó un viaje y no se anotó" />
               </label>
             )}
-            {error && <p className="message error">{error}</p>}
+            {/* In one place before and after the tap, so the button does not move under the finger. */}
+            {(moved || error) && <p className="message error">{moved ? figuresMoved(name, expected) : error}</p>}
             <button className="btn go" disabled={busy} onClick={prepare}>
               <Icon name="check" /> Preparar cierre
             </button>
@@ -369,11 +390,12 @@ export function ClosedMonthScreen({ month, onOpen }: { month: string; onOpen: Go
   const [detail, setDetail] = useState<MonthDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const live = useLive();
   useEffect(() => {
     api<MonthDetail>("GET", `/finance/months/${month}`)
       .then(setDetail)
       .catch((err: Error) => setError(err.message));
-  }, [month]);
+  }, [month, live]);
 
   const row = detail?.row;
   return (

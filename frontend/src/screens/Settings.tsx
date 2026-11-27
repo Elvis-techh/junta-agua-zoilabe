@@ -4,6 +4,7 @@ import { api } from "../api.ts";
 import { BackButton } from "../components/BackButton.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
+import { useLive } from "../live.ts";
 import { isTouchScreen } from "../viewport.ts";
 import { DeadlineSection, LateFeesSection } from "./SettingsDeadline.tsx";
 import { FeesSection } from "./SettingsFees.tsx";
@@ -34,9 +35,10 @@ export function SettingsScreen({ onOpen }: { onOpen: Go }) {
     }
   }, []);
 
+  const live = useLive();
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, live]);
 
   const run = async (action: () => Promise<unknown>, done: string) => {
     setMessage(null);

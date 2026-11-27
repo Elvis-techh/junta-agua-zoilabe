@@ -7,6 +7,7 @@ import { WATER_CONNECTIONS } from "../census.ts";
 import { BackButton } from "../components/BackButton.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
+import { useLive } from "../live.ts";
 import { censusQueue, recall, sendRegistration } from "../queue.ts";
 import { isTouchScreen } from "../viewport.ts";
 
@@ -28,14 +29,17 @@ export function CensusScreen({ me, onOpen, autoFocus }: { me: Me; onOpen: Go; au
   const [error, setError] = useState<string | null>(null);
   const [sectors, setSectors] = useState(() => recall<CensusOptions>("options")?.sectors ?? []);
 
+  const live = useLive();
   useEffect(() => {
     api<CensusOptions>("GET", "/census/options")
       .then((options) => setSectors(options.sectors))
       .catch(() => undefined);
-  }, []);
+  }, [live]);
 
   // Typing pauses for a moment before the search goes out, so each letter is not a request.
   useEffect(() => {
+    // An answer that arrives after a newer search went out is dropped.
+    let current = true;
     const timer = window.setTimeout(() => {
       const query = new URLSearchParams();
       if (q.trim()) query.set("q", q.trim());
@@ -43,13 +47,17 @@ export function CensusScreen({ me, onOpen, autoFocus }: { me: Me; onOpen: Go; au
       if (status) query.set("status", status);
       api<{ households: HouseholdRow[] }>("GET", `/census/households?${query}`)
         .then((data) => {
+          if (!current) return;
           setRows(data.households);
           setError(null);
         })
-        .catch((err: Error) => setError(err.message));
+        .catch((err: Error) => current && setError(err.message));
     }, 300);
-    return () => window.clearTimeout(timer);
-  }, [q, sectorId, status]);
+    return () => {
+      current = false;
+      window.clearTimeout(timer);
+    };
+  }, [q, sectorId, status, live]);
 
   return (
     <main className="screen wide stack">

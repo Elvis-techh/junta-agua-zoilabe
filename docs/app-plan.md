@@ -337,6 +337,7 @@ Phones and municipal computers reach one API. Lindero and the weight station sha
 
 - **Front end:** a progressive web app, installed from a WhatsApp link, that updates itself.
 - **API:** one service behind Nginx on its own subdomain, served over HTTPS.
+- **Live changes:** what one person saves shows on every other open app without reloading. The server tells the apps only that something changed, and each reads its screen again with the same permission checks (asked by the owner on 26 November 2026).
 - **Database:** one SQLite file of its own, the same kind Lindero and the weight station use, so the droplet runs no database server. The file itself refuses to delete any row of any table, and to change any entry of the history log or of the money records (decided 29 October 2026).
 - **Separation from the other apps:** each app has its own database file that only its own system user on the droplet can open, its own containers and env file, its own subdomain, its own storage key and bucket (or folder), and its own nightly backup, so one app can be restored without touching the others. Check this list before the first deployment.
 - **Files:** receipt photos and backups in a private Spaces bucket.
@@ -448,6 +449,7 @@ Phases 0 and 1 are merged and the test copy is running. From Phase 3, the month 
 - [x] "Historial del año": a year of the history log, printed or saved for Excel, with a document number and without what "Ver detalle" shows (PR #63, merged on 25 November 2026). The owner tried it on the test copy.
 - [x] The Permisos screen: each cargo's permissions, turned off or on and confirmed before saving, with a permission turning off together with the one it needs. Nobody can change their own cargo's. Built in PR #65 on 25 November 2026.
 - [ ] "Reportes": one list of the reports the app makes (Lista del censo, Estado de cuenta, Estado financiero del mes, Quién debe and Historial del año), each opening the screen that makes it. Each shows only to someone holding every permission its screen needs, and the button to someone who may make at least one (owner, 26 November 2026). It makes no new report.
+- [ ] Live changes: what one person saves shows on the others' open apps, without reloading. A screen with an open window, or unsaved permissions, stays still until that is done; Cobrar and Cierre del mes say when their figures changed under someone. Built on 26 November 2026.
 
 **What comes next**
 
@@ -655,6 +657,7 @@ Phase 3 pieces in suggested build order (proposed on 19 November 2026; the board
 
 - The Reportes screen gathers the reports already built, each opening the screen that makes it, and adds no new report. A printable "Quién debe" is not made for now.
 - Reportes is not added to the bottom bar: it is reached from Inicio. The owner also read the wording of each report's line and found it fine.
+- Several people will sometimes use the app at once, so a change one of them makes shows for the others right away (live changes).
 - Each report on it shows only to someone who holds every permission its screen needs, so ID numbers and money stay with whoever sees them today. The button on Inicio shows to someone who may make at least one.
 
 **Still open**

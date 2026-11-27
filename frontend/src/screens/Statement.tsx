@@ -6,6 +6,7 @@ import { BackButton } from "../components/BackButton.tsx";
 import { MonthField } from "../components/CalendarField.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
+import { useLive } from "../live.ts";
 import type { Statement, StatementDocument, StatementLine } from "../statement.ts";
 import { statementFileName, statementLines, statementText, statementWhatsappLink } from "../statement.ts";
 import { statementImage } from "../statementImage.ts";
@@ -34,11 +35,12 @@ export function StatementScreen({ householdId, canHandOut, onOpen }: { household
   const [error, setError] = useState<string | null>(null);
 
   // The family's number, when this user may see it whole: the text goes to their chat.
+  const live = useLive();
   useEffect(() => {
     api<{ household: HouseholdFile }>("GET", `/census/households/${householdId}`)
       .then(({ household }) => setPhone(household.owner.phone))
-      .catch(() => setPhone(null));
-  }, [householdId]);
+      .catch(() => undefined);
+  }, [householdId, live]);
 
   useEffect(() => {
     let current = true;
@@ -53,7 +55,7 @@ export function StatementScreen({ householdId, canHandOut, onOpen }: { household
     return () => {
       current = false;
     };
-  }, [householdId, from]);
+  }, [householdId, from, live]);
 
   // The picture is let go of when another is made or the screen closes.
   useEffect(() => () => {

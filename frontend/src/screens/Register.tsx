@@ -22,6 +22,7 @@ import type { Go } from "../components/Shell.tsx";
 import { DateField } from "../components/CalendarField.tsx";
 import { PhoneField } from "../components/PhoneField.tsx";
 import { Icon } from "../icons.tsx";
+import { useLive } from "../live.ts";
 import { EMPTY_PHONE, formatPhone, phoneProblem, wholePhone } from "../phone.ts";
 import type { QueuedEntry, SentEntry } from "../queue.ts";
 import { censusQueue, recall, remember, sendRegistration } from "../queue.ts";
@@ -108,6 +109,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
   const [toldApart, setToldApart] = useState<{ name: string; ids: string[] }>({ name: "", ids: [] });
   const [result, setResult] = useState<{ queued?: QueuedEntry; sent?: SentEntry } | null>(null);
 
+  const live = useLive();
   useEffect(() => {
     api<CensusOptions>("GET", "/census/options")
       .then((loaded) => {
@@ -115,7 +117,7 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
         setOptions(loaded);
       })
       .catch((err: Error) => setOptionsError(err.message));
-  }, []);
+  }, [live]);
 
   const order: Step[] = [
     ...(mode === "paper" ? (["paper"] as Step[]) : []),

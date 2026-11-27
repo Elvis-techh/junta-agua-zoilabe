@@ -33,6 +33,8 @@ export type AppConfig = {
   loginAttemptsPerMinute: number;
   /** The ceiling on every other request, per minute, per address. */
   requestsPerMinute: number;
+  /** How often each open live line is checked and kept awake (src/routes/live.ts). */
+  liveHeartbeatMs: number;
   /** The board's calendar: Honduras. */
   timeZone: string;
 };
@@ -84,7 +86,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     receiptsPath: env.RECEIPTS_PATH ? resolve(env.RECEIPTS_PATH) : join(dirname(databasePath), "receipts"),
     trustProxy: parseTrustProxy(env.TRUST_PROXY),
     loginAttemptsPerMinute: positiveInteger("LOGIN_ATTEMPTS_PER_MINUTE", 10),
-    requestsPerMinute: positiveInteger("REQUESTS_PER_MINUTE", 300),
+    // Several phones can share one address (one Wi-Fi, or a phone company's),
+    // and each reads its screen again after every change (src/routes/live.ts).
+    requestsPerMinute: positiveInteger("REQUESTS_PER_MINUTE", 1200),
+    // Under the 60 s of silence after which Nginx closes a line.
+    liveHeartbeatMs: positiveInteger("LIVE_HEARTBEAT_MS", 20_000),
     timeZone: env.TIME_ZONE ?? HONDURAS_TIME_ZONE,
   };
 }

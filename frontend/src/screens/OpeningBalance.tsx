@@ -11,6 +11,7 @@ import { Dialog } from "../components/Dialog.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { formatLempiras } from "../census.ts";
 import { Icon } from "../icons.tsx";
+import { useLive } from "../live.ts";
 import { formatDate } from "../time.ts";
 import { isTouchScreen } from "../viewport.ts";
 
@@ -33,9 +34,10 @@ export function OpeningBalanceScreen({ canRecord, canCorrect, onOpen }: { canRec
     }
   }, []);
 
+  const live = useLive();
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, live]);
 
   const done = async (text: string) => {
     setCorrecting(null);

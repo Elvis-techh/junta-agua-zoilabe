@@ -123,6 +123,11 @@ export function differenceLine(countedCentavos: number, expectedCentavos: number
   return difference < 0 ? `Faltante de caja: ${formatLempiras(-difference)}` : `Sobrante de caja: ${formatLempiras(difference)}`;
 }
 
+/** When the figures changed after the cash was typed, in the words of the server's own refusal. */
+export function figuresMoved(month: string, expectedCashCentavos: number): string {
+  return `Las cifras de ${month} cambiaron mientras tanto: ahora en caja debe haber ${formatLempiras(expectedCashCentavos)}. Revise y vuelva a contar.`;
+}
+
 /** The typed count read as centavos, or why it cannot be sent: the server asks for a reason when it does not match. */
 export function readCount(
   counted: string,

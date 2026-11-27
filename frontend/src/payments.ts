@@ -191,6 +191,14 @@ export function choosable(state: MonthState): boolean {
   return kind === "partial" || kind === "unpaid";
 }
 
+/** The chosen months that can still be paid, after the house's months were read again. One not on the list is kept. */
+export function stillPayable(selected: readonly string[], states: readonly MonthState[]): string[] {
+  return selected.filter((month) => {
+    const state = states.find((candidate) => candidate.month === month);
+    return !state || choosable(state);
+  });
+}
+
 /** What the chosen months still owe together. */
 export function owedFor(states: readonly MonthState[]): number {
   return states.reduce((sum, state) => {

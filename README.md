@@ -48,6 +48,29 @@ changing how money, permissions or the history log work.
   it). Only a screen opened from outside the app, or a page reloaded on its
   first entry, has no previous screen, and keeps the button above ("‹ Inicio",
   "‹ Censo").
+- **Live changes** (asked by the owner, 26 November 2026, since several
+  people use the app at once). What one person saves shows on everyone else's
+  open app without reloading: at once, or within about 2 seconds when saves
+  arrive close together. That covers payments, families, a month close,
+  Historial, Configuración, and accounts and permissions: a permission turned
+  off takes its buttons away there and then, and a suspended account goes back
+  to **Entrar**. It does not get in the way of what someone is doing:
+  - While a finger is on the screen or a window is open over it, the screen
+    stays still. It updates when the finger lifts or the window closes.
+  - What is being typed is never cleared.
+  - **Permisos** with switches not yet saved waits, so the server still
+    refuses a save that would undo someone else's.
+  - **Cobrar** says so if someone else changes the months chosen, and "Sí,
+    guardar" saves only after the new figures have been shown.
+  - **Cierre del mes** says so if the cash expected changes after the count
+    was typed, and prepares only on the next tap.
+
+  It needs signal. After losing it, after the API restarts, or on coming back
+  from another app, the screen catches up by itself. Only a number travels on
+  the live line, never names or money: each phone then reads its screen as
+  usual, with the same permissions. One thing it does not solve: two people
+  correcting the same house or person at once. The second save can still put
+  back what the first changed, as before.
 - **Every amount takes up to L 999,999,999.99** (owner, 19 November 2026),
   since nobody knows how much a payment, an expense or the board's money
   will one day be: Cobrar, Otro ingreso, Gasto, the fees in Configuración, a
@@ -1090,8 +1113,8 @@ private window.
    back.
 3. Tap **Revisar y guardar**: **¿Está correcto?** lists what the Fiscal will
    no longer be able to do. Tap **Sí, guardar**.
-4. On the Fiscal's phone, close the app and open it again: Resumen del mes,
-   Quién debe and the other money buttons are gone.
+4. Look at the Fiscal's phone, on Inicio: Resumen del mes, Quién debe and the
+   other money buttons are gone, without closing the app.
 5. **Historial** says what was taken away, in words.
 6. On any cargo but your own, turn **Registrar y editar el censo** off, then
    tap **Fijar una tarifa diferente al registrar**: the second brings the
@@ -1117,6 +1140,26 @@ private window.
    exportar el historial" away from the Fiscal and sign in as the Fiscal:
    Historial del año is gone from their list. Give it back afterwards.
 5. **Historial** gains no entry: opening Reportes changes nothing.
+
+### Trying live changes
+
+Use two phones, or a phone and a computer, each signed in (the same account
+works, two accounts are closer to real life).
+
+1. On one, open **Censo**. On the other, register a family: it appears on the
+   first by itself.
+2. On one, open a house's file. On the other, record a payment for it
+   (**Cobrar**): **Pagos** and **Lo que debe** change on the first.
+3. On one, open **Usuarios** → **Nueva cuenta** and leave it open. On the
+   other, make an account. Nothing moves behind the window; close it and the
+   new account is there.
+4. On one, go through **Cobrar** up to **¿Está correcto?**. On the other,
+   collect one of the same months. The first says that another person changed
+   the months, and its "Sí, guardar" does not save on that first tap.
+5. Switch to WhatsApp on one phone, save something on the other, and come
+   back: the screen catches up.
+6. Turn airplane mode on, save something on the other, and turn it off: the
+   screen catches up within half a minute.
 
 ### Starting over
 

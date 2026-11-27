@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { LogEntry } from "../api.ts";
 import { api } from "../api.ts";
 import { BackButton } from "../components/BackButton.tsx";
 import { DateField } from "../components/CalendarField.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import type { Go } from "../components/Shell.tsx";
+import type { LogPage } from "../history.ts";
+import { withNewest } from "../history.ts";
 import { Icon } from "../icons.tsx";
+import { useLive } from "../live.ts";
 import { formatDateTime } from "../time.ts";
 
 const AREAS = [
@@ -35,37 +37,65 @@ export function HistoryScreen({ canHandOut, onOpen }: { canHandOut: boolean; onO
   const [area, setArea] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [entries, setEntries] = useState<LogEntry[]>([]);
-  const [nextBefore, setNextBefore] = useState<number | null>(null);
+  const [page, setPage] = useState<LogPage>({ entries: [], nextBefore: null });
+  const { entries, nextBefore } = page;
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<Detail | null>(null);
 
-  const load = useCallback(
-    async (before: number | null) => {
-      setLoading(true);
-      setError(null);
+  /** The entries the filters ask for, a page at a time. */
+  const read = useCallback(
+    (before: number | null) => {
       const query = new URLSearchParams();
       if (area) query.set("area", area);
       if (from) query.set("from", from);
       if (to) query.set("to", to);
       if (before) query.set("before", String(before));
+      return api<LogPage>("GET", `/audit?${query}`);
+    },
+    [area, from, to],
+  );
+
+  const load = useCallback(
+    async (before: number | null) => {
+      setLoading(true);
+      setError(null);
       try {
-        const data = await api<{ entries: LogEntry[]; nextBefore: number | null }>("GET", `/audit?${query}`);
-        setEntries((current) => (before ? [...current, ...data.entries] : data.entries));
-        setNextBefore(data.nextBefore);
+        const data = await read(before);
+        setPage((current) =>
+          before ? { entries: [...current.entries, ...data.entries], nextBefore: data.nextBefore } : data,
+        );
       } catch (err) {
         setError((err as Error).message);
       } finally {
         setLoading(false);
       }
     },
-    [area, from, to],
+    [read],
   );
 
   useEffect(() => {
     void load(null);
   }, [load]);
+
+  // After a live change: only what is new, on top. A failure says nothing; the line coming back reads again.
+  const live = useLive();
+  const seen = useRef(live);
+  useEffect(() => {
+    if (seen.current === live) return;
+    seen.current = live;
+    let current = true;
+    read(null)
+      .then((newest) => {
+        if (!current) return;
+        setPage((shown) => withNewest(shown, newest));
+        setError(null);
+      })
+      .catch(() => undefined);
+    return () => {
+      current = false;
+    };
+  }, [live, read]);
 
   const openDetail = async (id: number) => {
     try {

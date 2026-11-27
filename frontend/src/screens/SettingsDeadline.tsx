@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { api } from "../api.ts";
 import { monthLabel } from "../calendar.ts";
 import { MonthField } from "../components/CalendarField.tsx";
 import { Icon } from "../icons.tsx";
+import { useLive } from "../live.ts";
 import { dueSoonLine } from "../payments.ts";
 import { formatDate } from "../time.ts";
 
@@ -39,6 +40,8 @@ export function DeadlineSection() {
   const [saved, setSaved] = useState<{ savedAt: string; savedBy: string | null } | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  /** What the fields were last filled with: one that still holds it was not typed in. */
+  const filled = useRef({ dueDay: "", graceDays: "" });
 
   const load = useCallback(async () => {
     try {
@@ -47,17 +50,22 @@ export function DeadlineSection() {
         "/settings/deadline",
       );
       setToday(data.today);
-      setDueDay(String(data.deadline.dueDay));
-      setGraceDays(String(data.deadline.graceDays));
+      const before = filled.current;
+      const now = { dueDay: String(data.deadline.dueDay), graceDays: String(data.deadline.graceDays) };
+      filled.current = now;
+      // Read again after a live change, a field being typed in keeps what is in it.
+      setDueDay((typed) => (typed === before.dueDay ? now.dueDay : typed));
+      setGraceDays((typed) => (typed === before.graceDays ? now.graceDays : typed));
       setSaved(data.saved);
     } catch (err) {
       setMessage({ kind: "error", text: (err as Error).message });
     }
   }, []);
 
+  const live = useLive();
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, live]);
 
   const day = Number(dueDay);
   const grace = Number(graceDays);
@@ -127,6 +135,8 @@ export function LateFeesSection() {
   const [saved, setSaved] = useState<{ savedAt: string; savedBy: string | null } | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  /** What the field was last filled with: still holding it, it was not changed. */
+  const filled = useRef("");
 
   const load = useCallback(async () => {
     try {
@@ -136,16 +146,20 @@ export function LateFeesSection() {
       );
       setToday(data.today);
       setFrom(data.from);
-      setMonth(data.from ? data.from.slice(0, 7) : "");
+      const before = filled.current;
+      const now = data.from ? data.from.slice(0, 7) : "";
+      filled.current = now;
+      setMonth((chosen) => (chosen === before ? now : chosen));
       setSaved(data.saved);
     } catch (err) {
       setMessage({ kind: "error", text: (err as Error).message });
     }
   }, []);
 
+  const live = useLive();
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, live]);
 
   const save = async () => {
     if (!month) {

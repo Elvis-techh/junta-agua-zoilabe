@@ -22,6 +22,7 @@ import { Dialog } from "../components/Dialog.tsx";
 import { PhoneField } from "../components/PhoneField.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
+import { useLive } from "../live.ts";
 import type { HouseOwed, Payment } from "../payments.ts";
 import { PAYMENT_METHODS, dueSoonLine, lateFeesLine, monthList, owedSince, owedSummary, shortMonth } from "../payments.ts";
 import { formatPhone, phoneEntry, wholePhone } from "../phone.ts";
@@ -53,9 +54,10 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
     }
   }, [id]);
 
+  const live = useLive();
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, live]);
 
   const changed = async (text: string) => {
     setDialog(null);
@@ -254,11 +256,12 @@ export function HouseholdOwed({ householdId, noService }: { householdId: string;
   const [owed, setOwed] = useState<HouseOwed | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const live = useLive();
   useEffect(() => {
     api<HouseOwed>("GET", `/finance/households/${householdId}/owed`)
       .then(setOwed)
       .catch((err: Error) => setError(err.message));
-  }, [householdId]);
+  }, [householdId, live]);
 
   if (!owed) {
     return error ? <p className="message error">{error}</p> : null;
@@ -345,11 +348,15 @@ export function HouseholdPayments({
 
   const load = useCallback(() => {
     api<{ payments: Payment[] }>("GET", `/finance/households/${householdId}/payments`)
-      .then((data) => setPayments(data.payments))
+      .then((data) => {
+        setPayments(data.payments);
+        setError(null);
+      })
       .catch((err: Error) => setError(err.message));
   }, [householdId]);
 
-  useEffect(load, [load]);
+  const live = useLive();
+  useEffect(load, [load, live]);
 
   return (
     <section className="stack" style={{ gap: 8 }}>
@@ -523,6 +530,7 @@ function ReverseDialog({
 
 function useCensusOptions(): CensusOptions | null {
   const [options, setOptions] = useState(() => recall<CensusOptions>("options"));
+  const live = useLive();
   useEffect(() => {
     api<CensusOptions>("GET", "/census/options")
       .then((loaded) => {
@@ -530,7 +538,7 @@ function useCensusOptions(): CensusOptions | null {
         setOptions(loaded);
       })
       .catch(() => undefined);
-  }, []);
+  }, [live]);
   return options;
 }
 

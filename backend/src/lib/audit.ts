@@ -149,6 +149,15 @@ export function recordAudit(tx: Tx, actor: Actor, entry: AuditEntry): void {
     .run();
 }
 
+/**
+ * The newest entry's number, 0 while the log is empty. Every change adds an
+ * entry, so a higher number means something changed: what the open apps are
+ * told (src/routes/live.ts).
+ */
+export function newestEntryId(db: DbOrTx): number {
+  return db.select({ id: auditLog.id }).from(auditLog).orderBy(desc(auditLog.id)).limit(1).get()?.id ?? 0;
+}
+
 /** Write one entry in a transaction of its own, for events that change nothing else. */
 export function recordAuditAlone(db: DbOrTx, actor: Actor, entry: AuditEntry): void {
   inTransaction(db, (tx) => recordAudit(tx, actor, entry));
