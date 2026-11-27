@@ -4,6 +4,7 @@ import { api } from "../api.ts";
 import { BackButton } from "../components/BackButton.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
+import { useLive } from "../live.ts";
 import type { LogExtract, LogExtractChoices, LogExtractFormat } from "../logExtract.ts";
 import { LOG_EXTRACT_COLUMNS, defaultYear, entryCount, logExtractCsv, logExtractFileName, logExtractHeading } from "../logExtract.ts";
 
@@ -28,6 +29,7 @@ export function LogExtractScreen({ onOpen }: { onOpen: Go }) {
   const [error, setError] = useState<string | null>(null);
 
   // Read again after one is handed out, so the count under the year is current.
+  const live = useLive();
   useEffect(() => {
     if (made) return;
     let current = true;
@@ -41,7 +43,7 @@ export function LogExtractScreen({ onOpen }: { onOpen: Go }) {
     return () => {
       current = false;
     };
-  }, [made]);
+  }, [made, live]);
 
   // The file is let go of when another is made or the screen closes.
   useEffect(() => () => {

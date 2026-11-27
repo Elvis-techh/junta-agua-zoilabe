@@ -11,8 +11,19 @@ import { Dialog } from "../components/Dialog.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { dayLabel } from "../calendar.ts";
 import { Icon } from "../icons.tsx";
+import { useLive } from "../live.ts";
 import type { HouseMonths, MonthState, Payment, PaymentMethod } from "../payments.ts";
-import { PAYMENT_METHODS, choosable, monthName, monthStatus, owedFor, sharePayment, shortMonth, statusLine } from "../payments.ts";
+import {
+  PAYMENT_METHODS,
+  choosable,
+  monthName,
+  monthStatus,
+  owedFor,
+  sharePayment,
+  shortMonth,
+  statusLine,
+  stillPayable,
+} from "../payments.ts";
 import { isTouchScreen } from "../viewport.ts";
 import { HouseholdStatus } from "./Census.tsx";
 
@@ -28,21 +39,28 @@ export function CollectScreen({ onOpen, canSeeOwed }: { onOpen: Go; canSeeOwed: 
   const [picked, setPicked] = useState<HouseholdRow | null>(null);
 
   // The whole list at first; typing pauses for a moment before the search goes out, so each letter is not a request.
+  const live = useLive();
   useEffect(() => {
+    // An answer that arrives after a newer search went out is dropped.
+    let current = true;
     const timer = window.setTimeout(
       () => {
         const query = q.trim() ? `?${new URLSearchParams({ q: q.trim() })}` : "";
         api<{ households: HouseholdRow[] }>("GET", `/census/households${query}`)
           .then((data) => {
+            if (!current) return;
             setRows(byOwnerName(data.households));
             setError(null);
           })
-          .catch((err: Error) => setError(err.message));
+          .catch((err: Error) => current && setError(err.message));
       },
       q.trim() ? 300 : 0,
     );
-    return () => window.clearTimeout(timer);
-  }, [q]);
+    return () => {
+      current = false;
+      window.clearTimeout(timer);
+    };
+  }, [q, live]);
 
   return (
     <main className="screen stack">
@@ -119,6 +137,11 @@ const ORDER: Step[] = ["months", "amount", "receipt", "payer", "review"];
  * signal: the server shares the money among the months and keeps the paper
  * receipt's number. A retry sends the same submission, so it is never saved twice.
  *
+ * What others save shows here at once (src/live.ts), since the server shares
+ * the money among the months as they are when it arrives. If the chosen months
+ * change after they were chosen, the screen says so, and "Sí, guardar" saves
+ * only once the new figures have been shown.
+ *
  * `again` is a payment just reversed ("Anular pago") to record again: every
  * answer starts as it was, and the treasurer changes what was wrong.
  */
@@ -146,18 +169,31 @@ export function PaymentScreen({ id, again, onOpen }: { id: string; again?: Payme
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState<Payment | null>(null);
   const [reload, setReload] = useState(0);
+  /** The chosen months as they were when "¿Qué meses paga?" was answered. */
+  const [seen, setSeen] = useState<string | null>(null);
 
+  // Not while saving, nor once saved: "Guardado" says what the payment did to the months as they were before it.
+  const paused = busy || saved !== null;
+  const live = useLive();
   useEffect(() => {
+    if (paused) return;
+    let current = true;
     const query = from ? `?from=${from}` : "";
     api<HouseMonths>("GET", `/finance/households/${id}/months${query}`)
       .then((loaded) => {
+        if (!current) return;
         setData(loaded);
+        // A month someone else just collected in full cannot stay chosen: its button no longer answers.
+        setSelected((list) => stillPayable(list, [...loaded.owedBefore, ...loaded.months]));
         setOccurredOn((day) => day || loaded.today);
         setPayerName((name) => name || loaded.household.ownerName);
         setLoadError(null);
       })
-      .catch((err: Error) => setLoadError(err.message));
-  }, [id, from, reload]);
+      .catch((err: Error) => current && setLoadError(err.message));
+    return () => {
+      current = false;
+    };
+  }, [id, from, reload, live, paused]);
 
   if (!data) {
     return (
@@ -175,6 +211,7 @@ export function PaymentScreen({ id, again, onOpen }: { id: string; again?: Payme
   const amountCentavos = parseLempiras(amountText);
   const sharing = sharePayment(chosen, amountCentavos);
   const position = ORDER.indexOf(step);
+  const moved = step !== "months" && step !== "saved" && seen !== null && seen !== JSON.stringify(chosen);
 
   const move = (to: Step) => {
     setError(null);
@@ -235,6 +272,9 @@ export function PaymentScreen({ id, again, onOpen }: { id: string; again?: Payme
         Vivienda {household.code} · {household.ownerName}
       </p>
       <h1>{title}</h1>
+      {moved && (
+        <p className="message error">Otra persona cambió los meses de esta vivienda. Revíselos.</p>
+      )}
       {again && (step === "months" || step === "review") && (
         <p className="message">Se registra de nuevo el pago anulado del recibo nº {again.paperReceiptNumber}. Cambie lo que estaba mal.</p>
       )}
@@ -274,6 +314,7 @@ export function PaymentScreen({ id, again, onOpen }: { id: string; again?: Payme
               }
               // Start from the full amount: the usual case, and easy to change.
               if (!amountText) setAmountText(formatLempiras(owedFor(chosen)).replace(/^L /, "").replace(/\.00$/, ""));
+              setSeen(JSON.stringify(chosen));
               move("amount");
             }}
           >
@@ -400,7 +441,19 @@ export function PaymentScreen({ id, again, onOpen }: { id: string; again?: Payme
             {note.trim() && <div>Nota: {note.trim()}</div>}
           </div>
           {errorLine}
-          <button className="btn go block big" disabled={busy} onClick={() => void save()}>
+          <button
+            className="btn go block big"
+            disabled={busy}
+            onClick={() => {
+              // The new figures are on the screen now: the next tap saves them.
+              if (moved) {
+                setSeen(JSON.stringify(chosen));
+                setError("problem" in sharing ? sharing.problem : "Los meses cambiaron. Revise lo de arriba y vuelva a tocar «Sí, guardar».");
+                return;
+              }
+              void save();
+            }}
+          >
             <Icon name="check" /> {busy ? "Guardando…" : "Sí, guardar"}
           </button>
           <button className="btn block" onClick={() => move("months")}>
@@ -461,6 +514,7 @@ export function PaymentScreen({ id, again, onOpen }: { id: string; again?: Payme
               setBankReference("");
               setSubmissionId(newSubmissionId());
               setSaved(null);
+              setSeen(null);
               setData(null);
               setReload((count) => count + 1);
               setStep("months");

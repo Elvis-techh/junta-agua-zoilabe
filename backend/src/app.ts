@@ -17,6 +17,7 @@ import { expenseRoutes } from "./routes/expenses.js";
 import { healthRoutes } from "./routes/health.js";
 import { arrearsRoutes } from "./routes/arrears.js";
 import { incomeRoutes } from "./routes/income.js";
+import { liveRoutes } from "./routes/live.js";
 import { logExtractRoutes } from "./routes/logExtract.js";
 import { monthCloseRoutes } from "./routes/monthClose.js";
 import { monthSummaryRoutes } from "./routes/monthSummary.js";
@@ -76,6 +77,8 @@ export async function buildApp(config: AppConfig, db: Db) {
 
   await app.register(
     async (api) => {
+      // First: it watches every route registered after it for changes.
+      await api.register(liveRoutes, { heartbeatMs: config.liveHeartbeatMs });
       await api.register(healthRoutes);
       await api.register(authRoutes, {
         secureCookies: config.nodeEnv === "production",

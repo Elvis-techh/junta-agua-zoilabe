@@ -337,6 +337,7 @@ Phones and municipal computers reach one API. Lindero and the weight station sha
 
 - **Front end:** a progressive web app, installed from a WhatsApp link, that updates itself.
 - **API:** one service behind Nginx on its own subdomain, served over HTTPS.
+- **Live changes:** what one person saves shows on every other open app without reloading. The server tells the apps only that something changed, and each reads its screen again with the same permission checks (asked by the owner on 26 November 2026).
 - **Database:** one SQLite file of its own, the same kind Lindero and the weight station use, so the droplet runs no database server. The file itself refuses to delete any row of any table, and to change any entry of the history log or of the money records (decided 29 October 2026).
 - **Separation from the other apps:** each app has its own database file that only its own system user on the droplet can open, its own containers and env file, its own subdomain, its own storage key and bucket (or folder), and its own nightly backup, so one app can be restored without touching the others. Check this list before the first deployment.
 - **Files:** receipt photos and backups in a private Spaces bucket.
@@ -448,6 +449,8 @@ Phases 0 and 1 are merged and the test copy is running. From Phase 3, the month 
 - [x] "Historial del año": a year of the history log, printed or saved for Excel, with a document number and without what "Ver detalle" shows (PR #63, merged on 25 November 2026). The owner tried it on the test copy.
 - [x] The Permisos screen: each cargo's permissions, turned off or on and confirmed before saving, with a permission turning off together with the one it needs. Nobody can change their own cargo's. Built in PR #65 on 25 November 2026.
 - [ ] "Reportes": one list of the reports the app makes (Lista del censo, Estado de cuenta, Estado financiero del mes, Quién debe and Historial del año), each opening the screen that makes it. Each shows only to someone holding every permission its screen needs, and the button to someone who may make at least one (owner, 26 November 2026). It makes no new report.
+- [ ] Live changes: what one person saves shows on the others' open apps, without reloading. A screen with an open window, or unsaved permissions, stays still until that is done; Cobrar and Cierre del mes say when their figures changed under someone. An older answer that arrives late, on weak signal, is ignored. Built in PR #68 on 26 November 2026.
+- [ ] Correcting a house or a person saves only what was changed in the form, so two people correcting different things on the same one both keep their changes. Before, the second save put the old values back. Built in PR #68 on 27 November 2026.
 
 **What comes next**
 
@@ -458,7 +461,7 @@ The history log extract (PR #63) and the yearly verification list (PR #62) were 
 **Where to pick up next (25 November 2026)**
 
 - **Next:** a first version ready for real use. It records expenses, so receipt photos must be backed up first (see "Before real use"). Guest invitations, the shared print layout and Phase 4 are set aside for now. The frozen yearly census snapshot waits for the board to answer the questions under Still open. Phase 2's "done when" test follows when the board says how to run it.
-- **To try on the test copy** (steps in the README): every amount up to L 999,999,999.99 (PR #53), Quién debe listing every house that owes (PR #54), the month close (PR #55), Resumen del mes (PR #56), the way back (PR #57), the census list (PR #58), the monthly statement (PR #59), and Estado de cuenta and Recibo leaving nothing in Historial (PR #60). The owner tried Verificación del censo (PR #62) and Historial del año (PR #63) on 25 November. The Permisos screen (PR #65), built on 25 November, is also to be tried.
+- **To try on the test copy** (steps in the README): every amount up to L 999,999,999.99 (PR #53), Quién debe listing every house that owes (PR #54), the month close (PR #55), Resumen del mes (PR #56), the way back (PR #57), the census list (PR #58), the monthly statement (PR #59), and Estado de cuenta and Recibo leaving nothing in Historial (PR #60). The owner tried Verificación del censo (PR #62) and Historial del año (PR #63) on 25 November. The Permisos screen (PR #65), built on 25 November, is also to be tried, and so are live changes with the correction of a house or a person by two people at once (PR #68).
 - **In this plan, but in no phase's list, and not built:** the rest of Configuración (categories, village and board profile, month close rules, system status, and the guest invitation rules, which wait with guest invitations), text size, and a change of a house's owner.
 - **Before real use:** receipt photos stay on the computer, beside the database file, and are not in the nightly backup, so they must go to the bucket or into the backup before real expenses are entered on the droplet. The weekly second backup copy outside DigitalOcean is not built.
 - **Still open for the board:** how to run Phase 2's "done when" test, and the data-separation check on the droplet before the first deployment. For the frozen yearly census snapshot, which is not built: (1) whether a board member freezes it once the December list is done, or the app freezes it by itself on 31 December; (2) whether it can be frozen while houses are still not verified, and if so whether the snapshot marks them; (3) whether the municipality's copy carries full ID numbers and phones (the plan gives the municipality full ID numbers), and who on the board may open it whole; (4) whether a mistake found after freezing is put right by a corrected snapshot for the same year that keeps the first one, or not at all.
@@ -651,10 +654,15 @@ Phase 3 pieces in suggested build order (proposed on 19 November 2026; the board
 - Nobody can change the permissions of their own role, even with "Editar los permisos".
 - For now every role has the same features and permissions, so the role shown for each person changes nothing in what they can do. The administrator can set what each role may or may not do.
 
+**Decisions made on 27 November 2026**
+
+- Correcting a house or a person saves only what was changed in the form. When two people change the same thing, the last save wins.
+
 **Decisions made on 26 November 2026**
 
 - The Reportes screen gathers the reports already built, each opening the screen that makes it, and adds no new report. A printable "Quién debe" is not made for now.
 - Reportes is not added to the bottom bar: it is reached from Inicio. The owner also read the wording of each report's line and found it fine.
+- Several people will sometimes use the app at once, so a change one of them makes shows for the others right away (live changes).
 - Each report on it shows only to someone who holds every permission its screen needs, so ID numbers and money stay with whoever sees them today. The button on Inicio shows to someone who may make at least one.
 
 **Still open**

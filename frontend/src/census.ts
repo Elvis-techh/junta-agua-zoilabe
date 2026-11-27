@@ -4,7 +4,8 @@
  * screen show what will be saved.
  */
 
-import { whatsappNumber } from "./phone.ts";
+import type { PhoneEntry } from "./phone.ts";
+import { phoneEntry, wholePhone, whatsappNumber } from "./phone.ts";
 
 const NAME_PARTICLES = new Set(["de", "del", "la", "las", "los", "y"]);
 
@@ -279,6 +280,92 @@ export function noServiceLine(history: readonly StatusEntry[], today: string): s
   }
   const what = entry.status === "inactive" ? "Está inactiva" : "No tiene conexión";
   return `${what} desde el ${calendarDay(entry.startsOn)}: no se cobran sus meses desde entonces, ni su mora.`;
+}
+
+/*
+ * "Corregir datos de la vivienda" and "de la persona" send only what was
+ * changed, compared with what the form held when it was opened. The server
+ * keeps its own value for a field that is not sent, which may be newer:
+ * someone else corrected it while this form was open. When two people change
+ * the same field, the last save wins.
+ */
+
+/** What the house's form holds. */
+export interface HouseholdForm {
+  sectorId: number;
+  references: string;
+  waterConnection: WaterConnection;
+  relation: Relation;
+  gps: HouseholdFile["gps"];
+  paperDate: string;
+  paperFormNumber: string;
+}
+
+export function householdForm(file: HouseholdFile): HouseholdForm {
+  return {
+    sectorId: file.sector.id,
+    references: file.references ?? "",
+    waterConnection: file.waterConnection,
+    relation: file.owner.relation,
+    gps: file.gps,
+    paperDate: file.paperDate ?? "",
+    paperFormNumber: file.paperFormNumber ?? "",
+  };
+}
+
+/** For PATCH /census/households/:id. `connectionSince` goes only with a new water connection. */
+export function householdChanges(opened: HouseholdForm, now: HouseholdForm, connectionSince: string) {
+  const gpsChanged = now.gps?.lat !== opened.gps?.lat || now.gps?.lng !== opened.gps?.lng;
+  return {
+    ...(now.sectorId !== opened.sectorId ? { sectorId: now.sectorId } : {}),
+    ...(now.references.trim() !== opened.references.trim() ? { references: now.references } : {}),
+    ...(now.waterConnection !== opened.waterConnection ? { waterConnection: now.waterConnection, connectionSince } : {}),
+    ...(now.relation !== opened.relation ? { relation: now.relation } : {}),
+    ...(gpsChanged ? { gps: now.gps } : {}),
+    ...(now.paperDate !== opened.paperDate ? { paperDate: now.paperDate || null } : {}),
+    ...(now.paperFormNumber.trim() !== opened.paperFormNumber.trim() ? { paperFormNumber: now.paperFormNumber.trim() || null } : {}),
+  };
+}
+
+/** What the person's form holds. */
+export interface PersonForm {
+  fullName: string;
+  idNumber: string;
+  /** "number" when there is a phone, otherwise why there is none. */
+  phoneMode: "number" | PhoneMissing;
+  phone: PhoneEntry;
+  gender: string;
+}
+
+export function personForm(owner: HouseholdFile["owner"]): PersonForm {
+  return {
+    fullName: owner.fullName,
+    idNumber: owner.idNumber ?? "",
+    phoneMode: owner.phoneMissing ?? "number",
+    phone: phoneEntry(owner.phone),
+    gender: owner.gender ?? "",
+  };
+}
+
+/**
+ * For PATCH /census/people/:id. The phone, or why there is none, is one answer
+ * and goes whole. ID number and phone go only from someone allowed to see
+ * them. An ID left blank is not sent: it can be added or corrected here, not
+ * taken away.
+ */
+export function personChanges(opened: PersonForm, now: PersonForm, canEditSensitive: boolean) {
+  const phoneChanged =
+    now.phoneMode !== opened.phoneMode || (now.phoneMode === "number" && wholePhone(now.phone) !== wholePhone(opened.phone));
+  return {
+    ...(now.fullName.trim() !== opened.fullName.trim() ? { fullName: now.fullName } : {}),
+    ...(now.gender !== opened.gender ? { gender: now.gender || null } : {}),
+    ...(canEditSensitive && now.idNumber && now.idNumber !== opened.idNumber ? { idNumber: now.idNumber } : {}),
+    ...(canEditSensitive && phoneChanged
+      ? now.phoneMode === "number"
+        ? { phone: wholePhone(now.phone) }
+        : { phoneMissing: now.phoneMode }
+      : {}),
+  };
 }
 
 /** "Inactiva (Se mudó), conectada" — what an entry says. */

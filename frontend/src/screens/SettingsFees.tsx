@@ -6,6 +6,7 @@ import { AmountInput } from "../components/AmountInput.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import { MonthField } from "../components/CalendarField.tsx";
 import { Icon } from "../icons.tsx";
+import { useLive, useNewest } from "../live.ts";
 import { isTouchScreen } from "../viewport.ts";
 
 type FeeKind = "base_monthly" | "late_fee" | "reconnection" | "connection";
@@ -199,19 +200,24 @@ export function FeesSection() {
   const [removing, setRemoving] = useState<{ fee: Fee; rate: Rate } | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const data = await api<{ today: string; fees: Fee[] }>("GET", "/settings/fees");
-      setFees(data.fees);
-      setToday(data.today);
-    } catch (err) {
-      setMessage({ kind: "error", text: (err as Error).message });
-    }
-  }, []);
+  const newest = useNewest();
+  const load = useCallback(
+    () =>
+      newest(
+        api<{ today: string; fees: Fee[] }>("GET", "/settings/fees"),
+        (data) => {
+          setFees(data.fees);
+          setToday(data.today);
+        },
+        (err) => setMessage({ kind: "error", text: err.message }),
+      ),
+    [newest],
+  );
 
+  const live = useLive();
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, live]);
 
   return (
     <section className="stack">

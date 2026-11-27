@@ -8,6 +8,7 @@ import type { Go } from "../components/Shell.tsx";
 import { formatLempiras } from "../census.ts";
 import { photoAddress } from "../expenses.ts";
 import { Icon } from "../icons.tsx";
+import { useLive, useNewest } from "../live.ts";
 import { monthTitle } from "../monthClose.ts";
 import type { FeeHouse, MonthSummary, SummaryEntry, SummaryPart } from "../monthSummary.ts";
 import { MonthStatementPart } from "./MonthStatement.tsx";
@@ -61,11 +62,13 @@ export function MonthSummaryScreen({
   const [data, setData] = useState<MonthSummary | null>(null);
   const [error, setError] = useState<{ text: string; code: string } | null>(null);
 
+  const live = useLive();
+  const newest = useNewest();
   useEffect(() => {
-    api<MonthSummary>("GET", month ? `/finance/summary/${month}` : "/finance/summary")
-      .then(setData)
-      .catch((err: Error) => setError({ text: err.message, code: err instanceof ApiError ? err.code : "" }));
-  }, [month]);
+    void newest(api<MonthSummary>("GET", month ? `/finance/summary/${month}` : "/finance/summary"), setData, (err) =>
+      setError({ text: err.message, code: err instanceof ApiError ? err.code : "" }),
+    );
+  }, [month, live, newest]);
 
   const back = part && month ? <BackButton label="Resumen" onClick={() => onOpen(summaryRoute(month))} /> : <BackButton onClick={() => onOpen("/")} />;
   if (!data) {

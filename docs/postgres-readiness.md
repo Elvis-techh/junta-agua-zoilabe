@@ -124,6 +124,10 @@ history version had:
 **New code that relies on one write at a time adds its row here**, as the
 month close did.
 
+| Also | What could go wrong | What keeps it right |
+|---|---|---|
+| Live changes (`newestEntryId`, `src/routes/live.ts`): "a higher history number means something changed" | a history entry that took the lower number commits last; the newest number does not move, and the other apps are not told of that save | `recordAudit`'s advisory lock `7_311_002`, taken before the number and held to the commit. With a second copy of the API, a save through one reaches the other's apps only at its heartbeat (20 s); `LISTEN`/`NOTIFY` would make it immediate |
+
 While converting, add a lint check for promises nobody waits for
 (typescript-eslint's `no-floating-promises`): on PostgreSQL a query someone
 forgot to `await` runs outside its transaction, or after the response, and

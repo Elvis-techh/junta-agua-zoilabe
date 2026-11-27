@@ -7,6 +7,7 @@ import type { SummaryPart } from "../monthSummary.ts";
 import type { Route } from "../home.ts";
 import { labelOf, markFrom, navigation, previousOf, routeOf, tabOf } from "../home.ts";
 import { Icon } from "../icons.tsx";
+import { browserPage, connectLive, holdWhilePressed, liveChanges } from "../live.ts";
 import { censusQueue, remember, sendRegistration } from "../queue.ts";
 import { ArrearsScreen } from "../screens/Arrears.tsx";
 import { CensusScreen } from "../screens/Census.tsx";
@@ -76,6 +77,17 @@ export function Shell({ me, offline, onSignedOut, onRetry }: { me: Me; offline: 
       window.clearInterval(timer);
     };
   }, [me.id, offline, onRetry]);
+
+  // What others save shows here at once (src/live.ts). Opened with no signal, "Intentar" or the signal coming back reopens the app first.
+  useEffect(() => {
+    if (offline) return;
+    const stopHolding = holdWhilePressed(window, liveChanges);
+    const disconnect = connectLive(browserPage(), () => liveChanges.changed());
+    return () => {
+      disconnect();
+      stopHolding();
+    };
+  }, [offline]);
 
   const go: Go = (next, nextPreset) => {
     setPreset(nextPreset ?? null);

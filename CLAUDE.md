@@ -163,6 +163,38 @@ close the keyboard to look for a button. When a screen is built or changed:
   roughly what a keyboard leaves, and press the buttons by touch. A layout that
   moves while a button is being pressed loses the press.
 
+## Live changes
+
+What one person saves shows on the others' open apps
+(`backend/src/routes/live.ts`, `frontend/src/live.ts`). The server sends only
+the newest history log number, never data: each app reads again through the
+usual routes, which check permissions and mask as always. Keep it that way.
+
+- **A screen that reads data reads it again**: `const live = useLive()` among
+  what the reading depends on. A test fails without it.
+- **A change reaches others because it is in the history log.** A write with
+  no entry (a document handed out, a sign-in) shows to them only when they
+  next open the screen.
+- **Reading again takes nothing away.** It never overwrites what is typed,
+  never puts the screen back to "Cargando…", and drops an answer that arrives
+  after a newer one was asked for: give each reading to `useNewest()` (one
+  per thing read; an effect's own `let current` flag does too, where nothing
+  else calls that reading). A test counts them. What one reading must bring
+  about, such as opening a new account, is left for whichever reading brings
+  it, since that one may be dropped.
+- **What a person is about to save never changes without them knowing.** A
+  `Dialog` holds changes by itself. A screen whose save depends on what was
+  shown when the work began holds them while there is unsaved work
+  (`useLiveHold`, as Permisos), or says what changed before it saves (as
+  Cobrar and Cierre del mes). A finished screen that works out what it shows
+  from loaded data stops reading (Cobrar's "Guardado").
+- **A form that corrects a record sends only what was changed in it**, or it
+  puts back what someone else corrected meanwhile (`householdChanges` and
+  `personChanges` in `frontend/src/census.ts`). It compares with a copy of
+  what it was opened with, never with the props: a reading already on its way
+  can change those under an open `Dialog`. A new field goes into that form's
+  `…Form` and `…Changes`, and its route leaves what is not sent as it is.
+
 ## Checks before pushing
 
 `npm run typecheck` and `npm test` from the repository root. The **Tests** workflow

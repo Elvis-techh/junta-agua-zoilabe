@@ -22,6 +22,7 @@ import type { Go } from "../components/Shell.tsx";
 import { DateField } from "../components/CalendarField.tsx";
 import { PhoneField } from "../components/PhoneField.tsx";
 import { Icon } from "../icons.tsx";
+import { useLive, useNewest } from "../live.ts";
 import { EMPTY_PHONE, formatPhone, phoneProblem, wholePhone } from "../phone.ts";
 import type { QueuedEntry, SentEntry } from "../queue.ts";
 import { censusQueue, recall, remember, sendRegistration } from "../queue.ts";
@@ -108,14 +109,18 @@ export function RegisterScreen({ me, preset, onOpen }: { me: Me; preset: Registe
   const [toldApart, setToldApart] = useState<{ name: string; ids: string[] }>({ name: "", ids: [] });
   const [result, setResult] = useState<{ queued?: QueuedEntry; sent?: SentEntry } | null>(null);
 
+  const live = useLive();
+  const newestOptions = useNewest();
   useEffect(() => {
-    api<CensusOptions>("GET", "/census/options")
-      .then((loaded) => {
+    void newestOptions(
+      api<CensusOptions>("GET", "/census/options"),
+      (loaded) => {
         remember("options", loaded);
         setOptions(loaded);
-      })
-      .catch((err: Error) => setOptionsError(err.message));
-  }, []);
+      },
+      (err) => setOptionsError(err.message),
+    );
+  }, [live, newestOptions]);
 
   const order: Step[] = [
     ...(mode === "paper" ? (["paper"] as Step[]) : []),

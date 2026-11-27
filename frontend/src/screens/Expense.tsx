@@ -11,6 +11,7 @@ import { dayLabel } from "../calendar.ts";
 import type { ExpenseCategory, ExpenseEntry, ExpenseSetup } from "../expenses.ts";
 import { amountProblem, paidProblem, photoAddress, photoProblem } from "../expenses.ts";
 import { Icon } from "../icons.tsx";
+import { useLive, useNewest } from "../live.ts";
 import type { PaymentMethod } from "../payments.ts";
 import { PAYMENT_METHODS } from "../payments.ts";
 import type { Photo } from "../photo.ts";
@@ -58,14 +59,18 @@ export function ExpenseScreen({ canReverse, onOpen }: { canReverse: boolean; onO
   const camera = useRef<HTMLInputElement>(null);
   const gallery = useRef<HTMLInputElement>(null);
 
+  const live = useLive();
+  const newestSetup = useNewest();
   useEffect(() => {
-    api<ExpenseSetup>("GET", "/finance/expenses/setup")
-      .then((loaded) => {
+    void newestSetup(
+      api<ExpenseSetup>("GET", "/finance/expenses/setup"),
+      (loaded) => {
         setSetup(loaded);
         setOccurredOn((day) => day || loaded.today);
-      })
-      .catch((err: Error) => setLoadError(err.message));
-  }, []);
+      },
+      (err) => setLoadError(err.message),
+    );
+  }, [live, newestSetup]);
 
   const leave = () => onOpen("/");
 
@@ -448,13 +453,20 @@ export function ExpenseEntries({ title, canReverse }: { title: string; canRevers
   const [reversing, setReversing] = useState<ExpenseEntry | null>(null);
   const [reversed, setReversed] = useState<ExpenseEntry | null>(null);
 
+  const newest = useNewest();
   const load = useCallback(() => {
-    api<{ entries: ExpenseEntry[] }>("GET", "/finance/expenses")
-      .then((data) => setEntries(data.entries))
-      .catch((err: Error) => setError(err.message));
-  }, []);
+    void newest(
+      api<{ entries: ExpenseEntry[] }>("GET", "/finance/expenses"),
+      (data) => {
+        setEntries(data.entries);
+        setError(null);
+      },
+      (err) => setError(err.message),
+    );
+  }, [newest]);
 
-  useEffect(load, [load]);
+  const live = useLive();
+  useEffect(load, [load, live]);
 
   if (!error && !reversed && (!entries || entries.length === 0)) {
     return null;

@@ -4,6 +4,7 @@ import { api } from "../api.ts";
 import { BackButton } from "../components/BackButton.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
+import { useLive, useNewest } from "../live.ts";
 import { isTouchScreen } from "../viewport.ts";
 import { DeadlineSection, LateFeesSection } from "./SettingsDeadline.tsx";
 import { FeesSection } from "./SettingsFees.tsx";
@@ -26,17 +27,21 @@ export function SettingsScreen({ onOpen }: { onOpen: Go }) {
   const [renaming, setRenaming] = useState<{ id: number; name: string } | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      setSectors((await api<{ sectors: Sector[] }>("GET", "/settings/sectors")).sectors);
-    } catch (err) {
-      setMessage({ kind: "error", text: (err as Error).message });
-    }
-  }, []);
+  const newest = useNewest();
+  const load = useCallback(
+    () =>
+      newest(
+        api<{ sectors: Sector[] }>("GET", "/settings/sectors"),
+        (data) => setSectors(data.sectors),
+        (err) => setMessage({ kind: "error", text: err.message }),
+      ),
+    [newest],
+  );
 
+  const live = useLive();
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, live]);
 
   const run = async (action: () => Promise<unknown>, done: string) => {
     setMessage(null);

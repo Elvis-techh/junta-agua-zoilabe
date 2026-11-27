@@ -118,7 +118,9 @@ with that number and password, and change it in Usuarios if you like.
 
 Install `deploy/zoilabe-api.service`, `deploy/zoilabe-backup.*` and
 `deploy/zoilabe-verify-log.*` into `/etc/systemd/system/`, then enable the
-service and both timers. Nginx: `deploy/nginx-zoilabe.conf.example`. If
+service and both timers. Nginx: `deploy/nginx-zoilabe.conf.example`. Live
+changes need no line of their own there: each open app keeps one request to
+`/api/live` waiting, which tells Nginx itself not to hold its answer back. If
 `nginx -t` refuses the new site, take it out of `sites-enabled` before anything
 else: nginx does not start after the next restart with a refused file there,
 and Lindero and Báscula Central go down with it. Then work through the

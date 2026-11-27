@@ -575,6 +575,37 @@ describe("census", () => {
     assert.equal(again.json().household.owner.fullName, "Juan Pérez López");
   });
 
+  // The correction forms send only what was changed (frontend/src/census.ts), and rely on this.
+  it("keeps what a correction does not send, so two people correcting different things both keep theirs", async () => {
+    const saved = await call(secretary.cookie, "POST", "/api/census/households", registration());
+    const id = saved.json().household.id;
+    const file = async () => (await call(secretary.cookie, "GET", `/api/census/households/${id}`)).json().household;
+    const patch = async (url: string, body: object) =>
+      assert.equal((await call(secretary.cookie, "PATCH", url, body)).statusCode, 200);
+    const personId = (await file()).owner.personId;
+    const newSector = (await call(admin.cookie, "POST", "/api/settings/sectors", { name: "La Quebrada" })).json().sector.id;
+
+    await patch(`/api/census/households/${id}`, { sectorId: newSector, waterConnection: "shared" });
+    await patch(`/api/census/households/${id}`, { references: "Casa azul" });
+    await patch(`/api/census/people/${personId}`, { fullName: "Juan Pérez López" });
+    await patch(`/api/census/people/${personId}`, { phone: "+50498765432" });
+
+    const after = await file();
+    assert.equal(after.sector.id, newSector);
+    assert.equal(after.waterConnection, "shared");
+    assert.equal(after.references, "Casa azul");
+    assert.equal(after.owner.fullName, "Juan Pérez López");
+    assert.equal(after.owner.phone, "+50498765432");
+    assert.equal(after.owner.gender, "Hombre");
+
+    // "Guardar cambios" with nothing changed sends no fields, and writes nothing to Historial.
+    const entries = () => t.db.select().from(auditLog).all().length;
+    const before = entries();
+    await patch(`/api/census/households/${id}`, {});
+    await patch(`/api/census/people/${personId}`, { reason: "Revisión" });
+    assert.equal(entries(), before);
+  });
+
   it("makes a record inactive with a reason, never deletes it, and can make it active again", async () => {
     const saved = await call(secretary.cookie, "POST", "/api/census/households", registration());
     const id = saved.json().household.id;

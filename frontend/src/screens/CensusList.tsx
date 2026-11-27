@@ -15,6 +15,7 @@ import {
 import { BackButton } from "../components/BackButton.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
+import { useLive, useNewest } from "../live.ts";
 import { recall } from "../queue.ts";
 
 /** A list that was handed out, and how: printed, or saved as a file. */
@@ -39,16 +40,18 @@ export function CensusListScreen({ me, onOpen }: { me: Me; onOpen: Go }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const live = useLive();
+  const newestSectors = useNewest();
   useEffect(() => {
-    api<CensusOptions>("GET", "/census/options")
-      .then((options) => setSectors(options.sectors))
-      .catch(() => undefined);
-  }, []);
+    void newestSectors(api<CensusOptions>("GET", "/census/options"), (options) => setSectors(options.sectors));
+  }, [live, newestSectors]);
+
+  // Another choice has no count until its own arrives. A live change keeps the old one meanwhile, so nothing jumps.
+  useEffect(() => setCount(null), [sectorId, status]);
 
   // How many houses the list will have, as Censo counts them.
   useEffect(() => {
     let current = true;
-    setCount(null);
     const query = new URLSearchParams();
     if (sectorId) query.set("sectorId", sectorId);
     if (status !== "all") query.set("status", status);
@@ -58,7 +61,7 @@ export function CensusListScreen({ me, onOpen }: { me: Me; onOpen: Go }) {
     return () => {
       current = false;
     };
-  }, [sectorId, status]);
+  }, [sectorId, status, live]);
 
   // The file is let go of when another is made or the screen closes.
   useEffect(() => () => {

@@ -22,6 +22,7 @@ import {
   needsHouse,
   stepCount,
 } from "../income.ts";
+import { useLive, useNewest } from "../live.ts";
 import type { PaymentMethod } from "../payments.ts";
 import { PAYMENT_METHODS } from "../payments.ts";
 import { formatDate } from "../time.ts";
@@ -90,23 +91,30 @@ export function IncomeScreen({
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState<IncomeEntry | null>(null);
 
+  const live = useLive();
+  const newestSetup = useNewest();
+  const newestHouse = useNewest();
   useEffect(() => {
-    api<IncomeSetup>("GET", "/finance/income/setup")
-      .then((loaded) => {
+    void newestSetup(
+      api<IncomeSetup>("GET", "/finance/income/setup"),
+      (loaded) => {
         setSetup(loaded);
         setOccurredOn((day) => day || loaded.today);
-      })
-      .catch((err: Error) => setLoadError(err.message));
+      },
+      (err) => setLoadError(err.message),
+    );
     if (householdId) {
-      api<{ household: HouseholdFile }>("GET", `/census/households/${householdId}`)
-        .then(({ household }) => {
+      void newestHouse(
+        api<{ household: HouseholdFile }>("GET", `/census/households/${householdId}`),
+        ({ household }) => {
           const found = { id: household.id, code: household.code, ownerName: household.owner.fullName };
           setFixedHouse(found);
           setHouse(found);
-        })
-        .catch((err: Error) => setLoadError(err.message));
+        },
+        (err) => setLoadError(err.message),
+      );
     }
-  }, [householdId]);
+  }, [householdId, live, newestSetup, newestHouse]);
 
   // Each time the amount screen opens, it starts from Configuración's amount, until the treasurer types another.
   useEffect(() => {
@@ -115,8 +123,9 @@ export function IncomeScreen({
     if (amount) {
       setAmountText(formatLempiras(amount).replace(/^L /, "").replace(/\.00$/, ""));
     }
-    // Only on arriving at the screen: a date changed there does not overwrite what is typed.
-  }, [step, setup]);
+    // Only on arriving at the screen: neither a date changed there nor an amount changed in
+    // Configuración meanwhile overwrites what is there. The screen then asks why they differ.
+  }, [step, setup !== null]);
 
   // Back where it was opened from.
   const [leaveTo, leaveLabel] = preset?.fromCollect
@@ -532,21 +541,28 @@ function HouseSearch({ onPick }: { onPick: (house: House) => void }) {
   const [error, setError] = useState<string | null>(null);
 
   // Typing pauses for a moment before the search goes out, so each letter is not a request.
+  const live = useLive();
   useEffect(() => {
     if (!q.trim()) {
       setRows(null);
       return;
     }
+    // An answer that arrives after a newer search went out is dropped.
+    let current = true;
     const timer = window.setTimeout(() => {
       api<{ households: HouseholdRow[] }>("GET", `/census/households?${new URLSearchParams({ q: q.trim() })}`)
         .then((data) => {
+          if (!current) return;
           setRows(data.households);
           setError(null);
         })
-        .catch((err: Error) => setError(err.message));
+        .catch((err: Error) => current && setError(err.message));
     }, 300);
-    return () => window.clearTimeout(timer);
-  }, [q]);
+    return () => {
+      current = false;
+      window.clearTimeout(timer);
+    };
+  }, [q, live]);
 
   return (
     <>
@@ -590,13 +606,20 @@ export function IncomeEntries({ householdId, title, canReverse, canHandOut, phon
   const [reversed, setReversed] = useState<IncomeEntry | null>(null);
   const [receiptFor, setReceiptFor] = useState<IncomeEntry | null>(null);
 
+  const newest = useNewest();
   const load = useCallback(() => {
-    api<{ entries: IncomeEntry[] }>("GET", `/finance/income${householdId ? `?householdId=${householdId}` : ""}`)
-      .then((data) => setEntries(data.entries))
-      .catch((err: Error) => setError(err.message));
-  }, [householdId]);
+    void newest(
+      api<{ entries: IncomeEntry[] }>("GET", `/finance/income${householdId ? `?householdId=${householdId}` : ""}`),
+      (data) => {
+        setEntries(data.entries);
+        setError(null);
+      },
+      (err) => setError(err.message),
+    );
+  }, [householdId, newest]);
 
-  useEffect(load, [load]);
+  const live = useLive();
+  useEffect(load, [load, live]);
 
   if (!error && !reversed && (!entries || entries.length === 0)) {
     return null;

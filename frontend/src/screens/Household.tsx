@@ -12,7 +12,11 @@ import {
   WATER_CONNECTIONS,
   formatIdNumber,
   formatLempiras,
+  householdChanges,
+  householdForm,
   noServiceLine,
+  personChanges,
+  personForm,
   statusEntryLine,
   whatsappLink,
 } from "../census.ts";
@@ -22,9 +26,10 @@ import { Dialog } from "../components/Dialog.tsx";
 import { PhoneField } from "../components/PhoneField.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
+import { useLive, useNewest } from "../live.ts";
 import type { HouseOwed, Payment } from "../payments.ts";
 import { PAYMENT_METHODS, dueSoonLine, lateFeesLine, monthList, owedSince, owedSummary, shortMonth } from "../payments.ts";
-import { formatPhone, phoneEntry, wholePhone } from "../phone.ts";
+import { formatPhone } from "../phone.ts";
 import { recall, remember } from "../queue.ts";
 import { isTouchScreen } from "../viewport.ts";
 import { formatDate, formatDateTime, todayInHonduras } from "../time.ts";
@@ -43,19 +48,24 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
   const [message, setMessage] = useState<string | null>(null);
   const [dialog, setDialog] = useState<"household" | "person" | "deactivate" | "reactivate" | "verify" | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const data = await api<{ household: HouseholdFile; sensitiveVisible: boolean }>("GET", `/census/households/${id}`);
-      setFile(data.household);
-      setSensitiveVisible(data.sensitiveVisible);
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  }, [id]);
+  const newest = useNewest();
+  const load = useCallback(
+    () =>
+      newest(
+        api<{ household: HouseholdFile; sensitiveVisible: boolean }>("GET", `/census/households/${id}`),
+        (data) => {
+          setFile(data.household);
+          setSensitiveVisible(data.sensitiveVisible);
+        },
+        (err) => setError(err.message),
+      ),
+    [id, newest],
+  );
 
+  const live = useLive();
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, live]);
 
   const changed = async (text: string) => {
     setDialog(null);
@@ -254,11 +264,11 @@ export function HouseholdOwed({ householdId, noService }: { householdId: string;
   const [owed, setOwed] = useState<HouseOwed | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const live = useLive();
+  const newest = useNewest();
   useEffect(() => {
-    api<HouseOwed>("GET", `/finance/households/${householdId}/owed`)
-      .then(setOwed)
-      .catch((err: Error) => setError(err.message));
-  }, [householdId]);
+    void newest(api<HouseOwed>("GET", `/finance/households/${householdId}/owed`), setOwed, (err) => setError(err.message));
+  }, [householdId, live, newest]);
 
   if (!owed) {
     return error ? <p className="message error">{error}</p> : null;
@@ -343,13 +353,20 @@ export function HouseholdPayments({
   const [reversed, setReversed] = useState<Payment | null>(null);
   const [receiptFor, setReceiptFor] = useState<Payment | null>(null);
 
+  const newest = useNewest();
   const load = useCallback(() => {
-    api<{ payments: Payment[] }>("GET", `/finance/households/${householdId}/payments`)
-      .then((data) => setPayments(data.payments))
-      .catch((err: Error) => setError(err.message));
-  }, [householdId]);
+    void newest(
+      api<{ payments: Payment[] }>("GET", `/finance/households/${householdId}/payments`),
+      (data) => {
+        setPayments(data.payments);
+        setError(null);
+      },
+      (err) => setError(err.message),
+    );
+  }, [householdId, newest]);
 
-  useEffect(load, [load]);
+  const live = useLive();
+  useEffect(load, [load, live]);
 
   return (
     <section className="stack" style={{ gap: 8 }}>
@@ -523,28 +540,31 @@ function ReverseDialog({
 
 function useCensusOptions(): CensusOptions | null {
   const [options, setOptions] = useState(() => recall<CensusOptions>("options"));
+  const live = useLive();
+  const newest = useNewest();
   useEffect(() => {
-    api<CensusOptions>("GET", "/census/options")
-      .then((loaded) => {
-        remember("options", loaded);
-        setOptions(loaded);
-      })
-      .catch(() => undefined);
-  }, []);
+    void newest(api<CensusOptions>("GET", "/census/options"), (loaded) => {
+      remember("options", loaded);
+      setOptions(loaded);
+    });
+  }, [live, newest]);
   return options;
 }
 
-function EditHousehold({ file, onClose, onSaved }: { file: HouseholdFile; onClose: () => void; onSaved: (text: string) => Promise<void> }) {
+function EditHousehold({ file: latest, onClose, onSaved }: { file: HouseholdFile; onClose: () => void; onSaved: (text: string) => Promise<void> }) {
   const options = useCensusOptions();
-  const [sectorId, setSectorId] = useState(file.sector.id);
-  const [references, setReferences] = useState(file.references ?? "");
-  const [waterConnection, setWaterConnection] = useState<WaterConnection>(file.waterConnection);
+  // The house as it was when the form opened. A reading already on its way can bring a newer one while the form is open.
+  const [file] = useState(latest);
+  const opened = householdForm(file);
+  const [sectorId, setSectorId] = useState(opened.sectorId);
+  const [references, setReferences] = useState(opened.references);
+  const [waterConnection, setWaterConnection] = useState(opened.waterConnection);
   // A new connection goes into the status history from this date (owner, 14 November 2026).
   const [connectionSince, setConnectionSince] = useState(todayInHonduras);
-  const [relation, setRelation] = useState<Relation>(file.owner.relation);
-  const [paperDate, setPaperDate] = useState(file.paperDate ?? "");
-  const [paperFormNumber, setPaperFormNumber] = useState(file.paperFormNumber ?? "");
-  const [gps, setGps] = useState(file.gps);
+  const [relation, setRelation] = useState(opened.relation);
+  const [paperDate, setPaperDate] = useState(opened.paperDate);
+  const [paperFormNumber, setPaperFormNumber] = useState(opened.paperFormNumber);
+  const [gps, setGps] = useState(opened.gps);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -554,7 +574,7 @@ function EditHousehold({ file, onClose, onSaved }: { file: HouseholdFile; onClos
     ? options.sectors
     : [file.sector, ...(options?.sectors ?? [])];
 
-  const connectionChanged = waterConnection !== file.waterConnection;
+  const connectionChanged = waterConnection !== opened.waterConnection;
 
   const save = async () => {
     if (connectionChanged && !connectionSince) {
@@ -564,15 +584,9 @@ function EditHousehold({ file, onClose, onSaved }: { file: HouseholdFile; onClos
     setBusy(true);
     setError(null);
     try {
+      const now = { sectorId, references, waterConnection, relation, gps, paperDate, paperFormNumber };
       await api("PATCH", `/census/households/${file.id}`, {
-        sectorId,
-        references,
-        waterConnection,
-        ...(connectionChanged ? { connectionSince } : {}),
-        relation,
-        gps,
-        paperDate: paperDate || null,
-        paperFormNumber: paperFormNumber.trim() || null,
+        ...householdChanges(opened, now, connectionSince),
         ...(reason.trim() ? { reason: reason.trim() } : {}),
       });
       await onSaved("Cambios guardados.");
@@ -665,7 +679,7 @@ function EditHousehold({ file, onClose, onSaved }: { file: HouseholdFile; onClos
 }
 
 function EditPerson({
-  file,
+  file: latest,
   canEditSensitive,
   onClose,
   onSaved,
@@ -676,12 +690,14 @@ function EditPerson({
   onSaved: (text: string) => Promise<void>;
 }) {
   const options = useCensusOptions();
-  const { owner } = file;
-  const [fullName, setFullName] = useState(owner.fullName);
-  const [idNumber, setIdNumber] = useState(owner.idNumber ?? "");
-  const [phone, setPhone] = useState(() => phoneEntry(owner.phone));
-  const [phoneMode, setPhoneMode] = useState<"number" | PhoneMissing>(owner.phoneMissing ?? "number");
-  const [gender, setGender] = useState(owner.gender ?? "");
+  // As it was when the form opened, as in EditHousehold.
+  const [{ owner }] = useState(latest);
+  const opened = personForm(owner);
+  const [fullName, setFullName] = useState(opened.fullName);
+  const [idNumber, setIdNumber] = useState(opened.idNumber);
+  const [phone, setPhone] = useState(opened.phone);
+  const [phoneMode, setPhoneMode] = useState(opened.phoneMode);
+  const [gender, setGender] = useState(opened.gender);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -690,14 +706,9 @@ function EditPerson({
     setBusy(true);
     setError(null);
     try {
+      const now = { fullName, idNumber, phoneMode, phone, gender };
       await api("PATCH", `/census/people/${owner.personId}`, {
-        fullName,
-        gender: gender || null,
-        // ID number and phone are sent only by someone allowed to see them.
-        // An ID left blank is not sent: it can be added or corrected here, not taken away.
-        ...(canEditSensitive
-          ? { ...(idNumber ? { idNumber } : {}), ...(phoneMode === "number" ? { phone: wholePhone(phone) } : { phoneMissing: phoneMode }) }
-          : {}),
+        ...personChanges(opened, now, canEditSensitive),
         ...(reason.trim() ? { reason: reason.trim() } : {}),
       });
       await onSaved("Datos de la persona guardados.");
