@@ -58,6 +58,10 @@ changing how money, permissions or the history log work.
   - While a finger is on the screen or a window is open over it, the screen
     stays still. It updates when the finger lifts or the window closes.
   - What is being typed is never cleared.
+  - On weak signal an older answer can arrive after a newer one. It is
+    ignored, so a screen does not go back to older information, and **Plazo
+    de pago** or **Mora** cannot fill their boxes with the old rule and save
+    it again.
   - **Permisos** with switches not yet saved waits, so the server still
     refuses a save that would undo someone else's.
   - **Cobrar** says so if someone else changes the months chosen, and "Sí,

@@ -11,7 +11,7 @@ import { Dialog } from "../components/Dialog.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { formatLempiras } from "../census.ts";
 import { Icon } from "../icons.tsx";
-import { useLive } from "../live.ts";
+import { useLive, useNewest } from "../live.ts";
 import { formatDate } from "../time.ts";
 import { isTouchScreen } from "../viewport.ts";
 
@@ -26,13 +26,12 @@ export function OpeningBalanceScreen({ canRecord, canCorrect, onOpen }: { canRec
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [correcting, setCorrecting] = useState<OpeningBalance | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      setData(await api<BalanceData>("GET", "/finance/opening-balance"));
-    } catch (err) {
-      setMessage({ kind: "error", text: (err as Error).message });
-    }
-  }, []);
+  const newest = useNewest();
+  const load = useCallback(
+    () =>
+      newest(api<BalanceData>("GET", "/finance/opening-balance"), setData, (err) => setMessage({ kind: "error", text: err.message })),
+    [newest],
+  );
 
   const live = useLive();
   useEffect(() => {

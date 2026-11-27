@@ -6,7 +6,7 @@ import { BackButton } from "../components/BackButton.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
-import { useLive, useLiveHold } from "../live.ts";
+import { useLive, useLiveHold, useNewest } from "../live.ts";
 import type { CargoGrants, Matrix, PermissionInfo, SwitchGroup } from "../permissions.ts";
 import { cannotLine, changes, groupLine, isOn, readOnlyReason, rowNotes, saveWarnings, switchGroups, toggle, working } from "../permissions.ts";
 import { roleName } from "../roles.ts";
@@ -30,14 +30,19 @@ export function PermissionsScreen({
   const [error, setError] = useState<string | null>(null);
   const canEdit = me.permissions.includes("permissions:edit");
 
-  const load = useCallback(async () => {
-    try {
-      setMatrix(await api<Matrix>("GET", "/permissions"));
-      setError(null);
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  }, []);
+  const newest = useNewest();
+  const load = useCallback(
+    () =>
+      newest(
+        api<Matrix>("GET", "/permissions"),
+        (loaded) => {
+          setMatrix(loaded);
+          setError(null);
+        },
+        (err) => setError(err.message),
+      ),
+    [newest],
+  );
 
   const live = useLive();
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Me, StaffUser } from "../api.ts";
 import { api } from "../api.ts";
@@ -8,7 +8,7 @@ import { PasswordField } from "../components/PasswordField.tsx";
 import { PhoneField } from "../components/PhoneField.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
-import { useLive } from "../live.ts";
+import { useLive, useNewest } from "../live.ts";
 import { passwordProblem, suggestPassword } from "../password.ts";
 import { EMPTY_PHONE, formatPhone, phoneProblem, wholePhone } from "../phone.ts";
 import { ROLES, roleName } from "../roles.ts";
@@ -40,16 +40,24 @@ export function UsersScreen({ me, onOpen }: { me: Me; onOpen: Go }) {
   const [selected, setSelected] = useState<StaffUser | null>(null);
   const [created, setCreated] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const data = await api<{ users: StaffUser[] }>("GET", "/users");
-      setUsers(data.users);
-      setError(null);
-      setSelected((current) => (current ? data.users.find((u) => u.id === current.id) ?? null : null));
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  }, []);
+  /** A new account to open as soon as a reading brings it, whichever reading that is. */
+  const toOpen = useRef<string | null>(null);
+  const newest = useNewest();
+  const load = useCallback(
+    () =>
+      newest(
+        api<{ users: StaffUser[] }>("GET", "/users"),
+        (data) => {
+          setUsers(data.users);
+          setError(null);
+          const created = data.users.find((u) => u.id === toOpen.current);
+          if (created) toOpen.current = null;
+          setSelected((current) => created ?? (current ? data.users.find((u) => u.id === current.id) ?? null : null));
+        },
+        (err) => setError(err.message),
+      ),
+    [newest],
+  );
 
   const live = useLive();
   useEffect(() => {
@@ -95,10 +103,8 @@ export function UsersScreen({ me, onOpen }: { me: Me; onOpen: Go }) {
             setCreating(false);
             // Open the new account straight away, with the number and password to give the person.
             setCreated(message);
-            void api<{ users: StaffUser[] }>("GET", "/users").then((data) => {
-              setUsers(data.users);
-              setSelected(data.users.find((u) => u.id === id) ?? null);
-            });
+            toOpen.current = id;
+            void load();
           }}
         />
       )}

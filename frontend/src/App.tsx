@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Me } from "./api.ts";
 import { ApiError, api } from "./api.ts";
 import { Shell } from "./components/Shell.tsx";
-import { liveChanges } from "./live.ts";
+import { liveChanges, useNewest } from "./live.ts";
 import { recall, remember } from "./queue.ts";
 import { SignInScreen } from "./screens/SignIn.tsx";
 
@@ -44,22 +44,28 @@ export function App() {
    * out. Anything else that goes wrong leaves the screen as it is: a passing
    * failure must not take away what someone is typing.
    */
-  const readMeAgain = useCallback(async () => {
-    try {
-      const { user } = await api<{ user: Me }>("GET", "/auth/me");
-      remember("me", user);
-      setState((current) =>
-        current.kind !== "signedIn" || JSON.stringify(current.me) === JSON.stringify(user)
-          ? current
-          : { kind: "signedIn", me: user, offline: false },
-      );
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
-        remember("me", null);
-        setState({ kind: "signedOut" });
-      }
-    }
-  }, []);
+  const newestMe = useNewest();
+  const readMeAgain = useCallback(
+    () =>
+      newestMe(
+        api<{ user: Me }>("GET", "/auth/me"),
+        ({ user }) => {
+          remember("me", user);
+          setState((current) =>
+            current.kind !== "signedIn" || JSON.stringify(current.me) === JSON.stringify(user)
+              ? current
+              : { kind: "signedIn", me: user, offline: false },
+          );
+        },
+        (error) => {
+          if (error instanceof ApiError && error.status === 401) {
+            remember("me", null);
+            setState({ kind: "signedOut" });
+          }
+        },
+      ),
+    [newestMe],
+  );
 
   useEffect(() => liveChanges.subscribe(() => void readMeAgain()), [readMeAgain]);
 

@@ -7,13 +7,19 @@
  *     const live = useLive();
  *     useEffect(() => { …read from the API… }, [id, live]);
  *
+ * Two readings can be on their way at once, and on weak signal the older one
+ * can arrive last. Each reading goes through `useNewest`, so that it is dropped:
+ *
+ *     const newest = useNewest();
+ *     useEffect(() => void newest(api(…), setRows, (err) => setError(err.message)), [id, live, newest]);
+ *
  * Reading again must not take away what someone is doing: it never clears what
  * they typed, and the screen holds the changes back (`useLiveHold`) while that
  * work depends on what was on the screen when it began. A `Dialog` holds them
  * by itself, and so does a finger on the screen. Held changes are not lost:
  * the screen reads again as soon as nothing holds it.
  */
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 /** The least time between two readings, so many saves at once (a phone sending its waiting entries) are one or two. */
 export const GAP_MS = 2000;
@@ -83,6 +89,33 @@ export const liveChanges = new LiveChanges();
 export function useLive(): number {
   // The third is for the tests, which draw screens with no browser.
   return useSyncExternalStore(liveChanges.subscribe, liveChanges.version, liveChanges.version);
+}
+
+/**
+ * For one thing that is read again and again: gives `take` or `fail` the
+ * outcome of a reading only if nothing newer was asked for in the meantime. The
+ * promise it returns finishes either way. Each thing read needs its own: one
+ * shared by two would drop the first.
+ */
+export function newestOnly() {
+  let asked = 0;
+  return <T>(reading: Promise<T>, take: (answer: T) => void, fail?: (error: Error) => void): Promise<void> => {
+    const mine = ++asked;
+    return reading.then(
+      (answer) => {
+        if (mine === asked) take(answer);
+      },
+      (error: Error) => {
+        if (mine === asked) fail?.(error);
+      },
+    );
+  };
+}
+
+/** `newestOnly` that stays the same for as long as the screen is open. */
+export function useNewest(): ReturnType<typeof newestOnly> {
+  const [newest] = useState(newestOnly);
+  return newest;
 }
 
 /** While `holding`, the screens stay as they are. */

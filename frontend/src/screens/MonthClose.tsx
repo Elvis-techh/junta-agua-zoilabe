@@ -7,7 +7,7 @@ import { Dialog } from "../components/Dialog.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { formatLempiras, parseLempiras } from "../census.ts";
 import { Icon } from "../icons.tsx";
-import { useLive } from "../live.ts";
+import { useLive, useNewest } from "../live.ts";
 import type { MonthDetail, MonthsData } from "../monthClose.ts";
 import { categoryLines, columnAmount, differenceLine, figureRows, figuresMoved, monthTitle, readCount, statusWords } from "../monthClose.ts";
 import { monthName } from "../payments.ts";
@@ -30,13 +30,11 @@ export function MonthCloseScreen({ abilities, onOpen }: { abilities: Abilities; 
   const [data, setData] = useState<MonthsData | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      setData(await api<MonthsData>("GET", "/finance/months"));
-    } catch (err) {
-      setMessage({ kind: "error", text: (err as Error).message });
-    }
-  }, []);
+  const newest = useNewest();
+  const load = useCallback(
+    () => newest(api<MonthsData>("GET", "/finance/months"), setData, (err) => setMessage({ kind: "error", text: err.message })),
+    [newest],
+  );
 
   const live = useLive();
   useEffect(() => {
@@ -391,11 +389,10 @@ export function ClosedMonthScreen({ month, onOpen }: { month: string; onOpen: Go
   const [error, setError] = useState<string | null>(null);
 
   const live = useLive();
+  const newest = useNewest();
   useEffect(() => {
-    api<MonthDetail>("GET", `/finance/months/${month}`)
-      .then(setDetail)
-      .catch((err: Error) => setError(err.message));
-  }, [month, live]);
+    void newest(api<MonthDetail>("GET", `/finance/months/${month}`), setDetail, (err) => setError(err.message));
+  }, [month, live, newest]);
 
   const row = detail?.row;
   return (

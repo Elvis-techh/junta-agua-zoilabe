@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api.ts";
 import { BackButton } from "../components/BackButton.tsx";
 import type { Go } from "../components/Shell.tsx";
-import { useLive } from "../live.ts";
+import { useLive, useNewest } from "../live.ts";
 import type { Verification } from "../verification.ts";
 import { bySector, lastVerifiedLine, verificationSummary } from "../verification.ts";
 
@@ -18,11 +18,10 @@ export function VerificationScreen({ onOpen }: { onOpen: Go }) {
   const [error, setError] = useState<string | null>(null);
 
   const live = useLive();
+  const newest = useNewest();
   useEffect(() => {
-    api<Verification>("GET", "/census/verification")
-      .then(setList)
-      .catch((err: Error) => setError(err.message));
-  }, [live]);
+    void newest(api<Verification>("GET", "/census/verification"), setList, (err) => setError(err.message));
+  }, [live, newest]);
 
   return (
     <main className="screen stack">

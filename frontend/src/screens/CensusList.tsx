@@ -15,7 +15,7 @@ import {
 import { BackButton } from "../components/BackButton.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
-import { useLive } from "../live.ts";
+import { useLive, useNewest } from "../live.ts";
 import { recall } from "../queue.ts";
 
 /** A list that was handed out, and how: printed, or saved as a file. */
@@ -41,11 +41,10 @@ export function CensusListScreen({ me, onOpen }: { me: Me; onOpen: Go }) {
   const [error, setError] = useState<string | null>(null);
 
   const live = useLive();
+  const newestSectors = useNewest();
   useEffect(() => {
-    api<CensusOptions>("GET", "/census/options")
-      .then((options) => setSectors(options.sectors))
-      .catch(() => undefined);
-  }, [live]);
+    void newestSectors(api<CensusOptions>("GET", "/census/options"), (options) => setSectors(options.sectors));
+  }, [live, newestSectors]);
 
   // Another choice has no count until its own arrives. A live change keeps the old one meanwhile, so nothing jumps.
   useEffect(() => setCount(null), [sectorId, status]);

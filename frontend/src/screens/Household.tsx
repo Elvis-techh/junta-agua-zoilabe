@@ -26,7 +26,7 @@ import { Dialog } from "../components/Dialog.tsx";
 import { PhoneField } from "../components/PhoneField.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
-import { useLive } from "../live.ts";
+import { useLive, useNewest } from "../live.ts";
 import type { HouseOwed, Payment } from "../payments.ts";
 import { PAYMENT_METHODS, dueSoonLine, lateFeesLine, monthList, owedSince, owedSummary, shortMonth } from "../payments.ts";
 import { formatPhone } from "../phone.ts";
@@ -48,15 +48,19 @@ export function HouseholdScreen({ me, id, onOpen }: { me: Me; id: string; onOpen
   const [message, setMessage] = useState<string | null>(null);
   const [dialog, setDialog] = useState<"household" | "person" | "deactivate" | "reactivate" | "verify" | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const data = await api<{ household: HouseholdFile; sensitiveVisible: boolean }>("GET", `/census/households/${id}`);
-      setFile(data.household);
-      setSensitiveVisible(data.sensitiveVisible);
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  }, [id]);
+  const newest = useNewest();
+  const load = useCallback(
+    () =>
+      newest(
+        api<{ household: HouseholdFile; sensitiveVisible: boolean }>("GET", `/census/households/${id}`),
+        (data) => {
+          setFile(data.household);
+          setSensitiveVisible(data.sensitiveVisible);
+        },
+        (err) => setError(err.message),
+      ),
+    [id, newest],
+  );
 
   const live = useLive();
   useEffect(() => {
@@ -261,11 +265,10 @@ export function HouseholdOwed({ householdId, noService }: { householdId: string;
   const [error, setError] = useState<string | null>(null);
 
   const live = useLive();
+  const newest = useNewest();
   useEffect(() => {
-    api<HouseOwed>("GET", `/finance/households/${householdId}/owed`)
-      .then(setOwed)
-      .catch((err: Error) => setError(err.message));
-  }, [householdId, live]);
+    void newest(api<HouseOwed>("GET", `/finance/households/${householdId}/owed`), setOwed, (err) => setError(err.message));
+  }, [householdId, live, newest]);
 
   if (!owed) {
     return error ? <p className="message error">{error}</p> : null;
@@ -350,14 +353,17 @@ export function HouseholdPayments({
   const [reversed, setReversed] = useState<Payment | null>(null);
   const [receiptFor, setReceiptFor] = useState<Payment | null>(null);
 
+  const newest = useNewest();
   const load = useCallback(() => {
-    api<{ payments: Payment[] }>("GET", `/finance/households/${householdId}/payments`)
-      .then((data) => {
+    void newest(
+      api<{ payments: Payment[] }>("GET", `/finance/households/${householdId}/payments`),
+      (data) => {
         setPayments(data.payments);
         setError(null);
-      })
-      .catch((err: Error) => setError(err.message));
-  }, [householdId]);
+      },
+      (err) => setError(err.message),
+    );
+  }, [householdId, newest]);
 
   const live = useLive();
   useEffect(load, [load, live]);
@@ -535,14 +541,13 @@ function ReverseDialog({
 function useCensusOptions(): CensusOptions | null {
   const [options, setOptions] = useState(() => recall<CensusOptions>("options"));
   const live = useLive();
+  const newest = useNewest();
   useEffect(() => {
-    api<CensusOptions>("GET", "/census/options")
-      .then((loaded) => {
-        remember("options", loaded);
-        setOptions(loaded);
-      })
-      .catch(() => undefined);
-  }, [live]);
+    void newest(api<CensusOptions>("GET", "/census/options"), (loaded) => {
+      remember("options", loaded);
+      setOptions(loaded);
+    });
+  }, [live, newest]);
   return options;
 }
 

@@ -5,7 +5,7 @@ import { formatLempiras } from "../census.ts";
 import { BackButton } from "../components/BackButton.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
-import { useLive } from "../live.ts";
+import { useLive, useNewest } from "../live.ts";
 import { monthName, shortMonth } from "../payments.ts";
 
 /** Under the summary: a house without service is still listed for what it owes from before. */
@@ -79,11 +79,10 @@ export function ArrearsScreen({ onOpen, canOpenHouse, canCollect }: { onOpen: Go
   const [error, setError] = useState<string | null>(null);
 
   const live = useLive();
+  const newest = useNewest();
   useEffect(() => {
-    api<Arrears>("GET", "/finance/arrears")
-      .then(setList)
-      .catch((err: Error) => setError(err.message));
-  }, [live]);
+    void newest(api<Arrears>("GET", "/finance/arrears"), setList, (err) => setError(err.message));
+  }, [live, newest]);
 
   return (
     <main className="screen stack">

@@ -22,7 +22,7 @@ import {
   needsHouse,
   stepCount,
 } from "../income.ts";
-import { useLive } from "../live.ts";
+import { useLive, useNewest } from "../live.ts";
 import type { PaymentMethod } from "../payments.ts";
 import { PAYMENT_METHODS } from "../payments.ts";
 import { formatDate } from "../time.ts";
@@ -92,23 +92,29 @@ export function IncomeScreen({
   const [saved, setSaved] = useState<IncomeEntry | null>(null);
 
   const live = useLive();
+  const newestSetup = useNewest();
+  const newestHouse = useNewest();
   useEffect(() => {
-    api<IncomeSetup>("GET", "/finance/income/setup")
-      .then((loaded) => {
+    void newestSetup(
+      api<IncomeSetup>("GET", "/finance/income/setup"),
+      (loaded) => {
         setSetup(loaded);
         setOccurredOn((day) => day || loaded.today);
-      })
-      .catch((err: Error) => setLoadError(err.message));
+      },
+      (err) => setLoadError(err.message),
+    );
     if (householdId) {
-      api<{ household: HouseholdFile }>("GET", `/census/households/${householdId}`)
-        .then(({ household }) => {
+      void newestHouse(
+        api<{ household: HouseholdFile }>("GET", `/census/households/${householdId}`),
+        ({ household }) => {
           const found = { id: household.id, code: household.code, ownerName: household.owner.fullName };
           setFixedHouse(found);
           setHouse(found);
-        })
-        .catch((err: Error) => setLoadError(err.message));
+        },
+        (err) => setLoadError(err.message),
+      );
     }
-  }, [householdId, live]);
+  }, [householdId, live, newestSetup, newestHouse]);
 
   // Each time the amount screen opens, it starts from Configuración's amount, until the treasurer types another.
   useEffect(() => {
@@ -600,14 +606,17 @@ export function IncomeEntries({ householdId, title, canReverse, canHandOut, phon
   const [reversed, setReversed] = useState<IncomeEntry | null>(null);
   const [receiptFor, setReceiptFor] = useState<IncomeEntry | null>(null);
 
+  const newest = useNewest();
   const load = useCallback(() => {
-    api<{ entries: IncomeEntry[] }>("GET", `/finance/income${householdId ? `?householdId=${householdId}` : ""}`)
-      .then((data) => {
+    void newest(
+      api<{ entries: IncomeEntry[] }>("GET", `/finance/income${householdId ? `?householdId=${householdId}` : ""}`),
+      (data) => {
         setEntries(data.entries);
         setError(null);
-      })
-      .catch((err: Error) => setError(err.message));
-  }, [householdId]);
+      },
+      (err) => setError(err.message),
+    );
+  }, [householdId, newest]);
 
   const live = useLive();
   useEffect(load, [load, live]);

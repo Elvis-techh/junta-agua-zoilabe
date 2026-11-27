@@ -7,7 +7,7 @@ import { WATER_CONNECTIONS } from "../census.ts";
 import { BackButton } from "../components/BackButton.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
-import { useLive } from "../live.ts";
+import { useLive, useNewest } from "../live.ts";
 import { censusQueue, recall, sendRegistration } from "../queue.ts";
 import { isTouchScreen } from "../viewport.ts";
 
@@ -30,11 +30,10 @@ export function CensusScreen({ me, onOpen, autoFocus }: { me: Me; onOpen: Go; au
   const [sectors, setSectors] = useState(() => recall<CensusOptions>("options")?.sectors ?? []);
 
   const live = useLive();
+  const newestSectors = useNewest();
   useEffect(() => {
-    api<CensusOptions>("GET", "/census/options")
-      .then((options) => setSectors(options.sectors))
-      .catch(() => undefined);
-  }, [live]);
+    void newestSectors(api<CensusOptions>("GET", "/census/options"), (options) => setSectors(options.sectors));
+  }, [live, newestSectors]);
 
   // Typing pauses for a moment before the search goes out, so each letter is not a request.
   useEffect(() => {

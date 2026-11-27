@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { LogEntry } from "../src/api.ts";
 import { withNewest } from "../src/history.ts";
 import type { LiveLine, LivePage, PressTarget } from "../src/live.ts";
-import { AFTER_PRESS_MS, GAP_MS, LiveChanges, SILENCE_MS, connectLive, holdWhilePressed } from "../src/live.ts";
+import { AFTER_PRESS_MS, GAP_MS, LiveChanges, SILENCE_MS, connectLive, holdWhilePressed, newestOnly } from "../src/live.ts";
 import { figuresMoved } from "../src/monthClose.ts";
 import type { MonthState } from "../src/payments.ts";
 import { stillPayable } from "../src/payments.ts";
@@ -273,23 +273,111 @@ describe("what someone else saved while this person was working", () => {
   });
 });
 
+describe("two readings on their way at once", () => {
+  /** A reading the test answers when it likes. */
+  const reading = () => {
+    let answer!: (value: string) => void;
+    let fail!: (error: Error) => void;
+    const promise = new Promise<string>((resolve, reject) => {
+      answer = resolve;
+      fail = reject;
+    });
+    return { promise, answer, fail };
+  };
+  const screen = () => {
+    const newest = newestOnly();
+    const shown: string[] = [];
+    const read = (from: ReturnType<typeof reading>) =>
+      newest(
+        from.promise,
+        (value) => void shown.push(value),
+        (error) => void shown.push(`error: ${error.message}`),
+      );
+    return { shown, read };
+  };
+
+  it("drops the older answer when it arrives last", async () => {
+    const { shown, read } = screen();
+    const [older, newer] = [reading(), reading()];
+    const both = [read(older), read(newer)];
+    newer.answer("nuevo");
+    older.answer("viejo");
+    await Promise.all(both);
+    assert.deepEqual(shown, ["nuevo"]);
+  });
+
+  it("drops it when it arrives first too, since a newer one is already on its way", async () => {
+    const { shown, read } = screen();
+    const [older, newer] = [reading(), reading()];
+    const both = [read(older), read(newer)];
+    older.answer("viejo");
+    await both[0];
+    assert.deepEqual(shown, []);
+    newer.answer("nuevo");
+    await both[1];
+    assert.deepEqual(shown, ["nuevo"]);
+  });
+
+  it("says nothing about an older one that failed, and does say when the newest fails", async () => {
+    const { shown, read } = screen();
+    const [older, newer] = [reading(), reading()];
+    const both = [read(older), read(newer)];
+    older.fail(new Error("vieja"));
+    newer.fail(new Error("sin señal"));
+    await Promise.all(both);
+    assert.deepEqual(shown, ["error: sin señal"]);
+  });
+
+  it("keeps two different things apart", async () => {
+    const [first, second] = [screen(), screen()];
+    const [one, other] = [reading(), reading()];
+    const both = [first.read(one), second.read(other)];
+    one.answer("la lista");
+    other.answer("los sectores");
+    await Promise.all(both);
+    assert.deepEqual([...first.shown, ...second.shown], ["la lista", "los sectores"]);
+  });
+});
+
 describe("every screen shows what others save", () => {
   /** Readings that need no `useLive`, and why. */
   const ONCE = new Map([["ReceiptDialog", "a Dialog holds the changes while it is open, and a receipt's payment does not change"]]);
 
-  it("reads again after a live change wherever it reads", () => {
+  /** Readings a person asks for with a tap, which no live change repeats: how many each screen has. */
+  const TAPS = new Map([
+    ["HistoryScreen", 1], // "Ver detalle"
+    ["RegisterScreen", 2], // the names alike, and the ID already registered
+  ]);
+
+  /** One piece per function written at the left edge: a screen, or a part of one that does its own reading. */
+  const readingPieces = () => {
     const folder = fileURLToPath(new URL("../src/screens/", import.meta.url));
-    const missing: string[] = [];
-    for (const file of readdirSync(folder).filter((name) => name.endsWith(".tsx"))) {
-      const source = readFileSync(`${folder}${file}`, "utf8");
-      // One piece per function written at the left edge: a screen, or a part of one that does its own reading.
-      for (const piece of source.split(/\r?\n(?=(?:export )?(?:async )?function )/)) {
-        const name = /^(?:export )?(?:async )?function (\w+)/.exec(piece)?.[1] ?? file;
-        if (piece.includes('"GET"') && !piece.includes("useLive()") && !ONCE.has(name)) {
-          missing.push(`${file}: ${name}`);
-        }
-      }
-    }
+    return readdirSync(folder)
+      .filter((name) => name.endsWith(".tsx"))
+      .flatMap((file) =>
+        readFileSync(`${folder}${file}`, "utf8")
+          .split(/\r?\n(?=(?:export )?(?:async )?function )/)
+          .map((source) => ({ file, source, name: /^(?:export )?(?:async )?function (\w+)/.exec(source)?.[1] ?? file })),
+      )
+      .filter(({ source, name }) => source.includes('"GET"') && !ONCE.has(name));
+  };
+
+  it("reads again after a live change wherever it reads", () => {
+    const missing = readingPieces()
+      .filter(({ source }) => !source.includes("useLive()"))
+      .map(({ file, name }) => `${file}: ${name}`);
     assert.deepEqual(missing, [], "Add `const live = useLive()` to what the reading depends on (src/live.ts).");
+  });
+
+  // A count, not a proof: as many guards as readings in each piece.
+  it("drops an older answer wherever it reads", () => {
+    const missing = readingPieces()
+      .filter(({ source, name }) => {
+        const readings = source.split('"GET"').length - 1 - (TAPS.get(name) ?? 0);
+        const guards = source.match(/\bnewest\w*\(\s*(?:api\b|read\()|\blet current = true\b/g)?.length ?? 0;
+        return guards < readings;
+      })
+      .map(({ file, name }) => `${file}: ${name}`);
+    assert.deepEqual(missing, [], "Give the reading to `useNewest()` (src/live.ts).");
   });
 });

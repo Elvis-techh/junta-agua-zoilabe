@@ -177,7 +177,11 @@ usual routes, which check permissions and mask as always. Keep it that way.
   next open the screen.
 - **Reading again takes nothing away.** It never overwrites what is typed,
   never puts the screen back to "Cargando…", and drops an answer that arrives
-  after a newer one was asked for.
+  after a newer one was asked for: give each reading to `useNewest()` (one
+  per thing read; an effect's own `let current` flag does too, where nothing
+  else calls that reading). A test counts them. What one reading must bring
+  about, such as opening a new account, is left for whichever reading brings
+  it, since that one may be dropped.
 - **What a person is about to save never changes without them knowing.** A
   `Dialog` holds changes by itself. A screen whose save depends on what was
   shown when the work began holds them while there is unsaved work

@@ -6,7 +6,7 @@ import { BackButton } from "../components/BackButton.tsx";
 import { MonthField } from "../components/CalendarField.tsx";
 import type { Go } from "../components/Shell.tsx";
 import { Icon } from "../icons.tsx";
-import { useLive } from "../live.ts";
+import { useLive, useNewest } from "../live.ts";
 import type { Statement, StatementDocument, StatementLine } from "../statement.ts";
 import { statementFileName, statementLines, statementText, statementWhatsappLink } from "../statement.ts";
 import { statementImage } from "../statementImage.ts";
@@ -36,11 +36,12 @@ export function StatementScreen({ householdId, canHandOut, onOpen }: { household
 
   // The family's number, when this user may see it whole: the text goes to their chat.
   const live = useLive();
+  const newestPhone = useNewest();
   useEffect(() => {
-    api<{ household: HouseholdFile }>("GET", `/census/households/${householdId}`)
-      .then(({ household }) => setPhone(household.owner.phone))
-      .catch(() => undefined);
-  }, [householdId, live]);
+    void newestPhone(api<{ household: HouseholdFile }>("GET", `/census/households/${householdId}`), ({ household }) =>
+      setPhone(household.owner.phone),
+    );
+  }, [householdId, live, newestPhone]);
 
   useEffect(() => {
     let current = true;

@@ -8,7 +8,7 @@ import type { Go } from "../components/Shell.tsx";
 import type { LogPage } from "../history.ts";
 import { withNewest } from "../history.ts";
 import { Icon } from "../icons.tsx";
-import { useLive } from "../live.ts";
+import { useLive, useNewest } from "../live.ts";
 import { formatDateTime } from "../time.ts";
 
 const AREAS = [
@@ -56,22 +56,33 @@ export function HistoryScreen({ canHandOut, onOpen }: { canHandOut: boolean; onO
     [area, from, to],
   );
 
+  const newest = useNewest();
+  /** A first page is on its way, so what is on the screen may still be another filter's. */
+  const startingOver = useRef(false);
   const load = useCallback(
-    async (before: number | null) => {
+    (before: number | null) => {
       setLoading(true);
       setError(null);
-      try {
-        const data = await read(before);
-        setPage((current) =>
-          before ? { entries: [...current.entries, ...data.entries], nextBefore: data.nextBefore } : data,
-        );
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
+      if (!before) startingOver.current = true;
+      const settle = () => {
+        startingOver.current = false;
         setLoading(false);
-      }
+      };
+      return newest(
+        read(before),
+        (data) => {
+          settle();
+          setPage((current) =>
+            before ? { entries: [...current.entries, ...data.entries], nextBefore: data.nextBefore } : data,
+          );
+        },
+        (err) => {
+          settle();
+          setError(err.message);
+        },
+      );
     },
-    [read],
+    [read, newest],
   );
 
   useEffect(() => {
@@ -84,18 +95,23 @@ export function HistoryScreen({ canHandOut, onOpen }: { canHandOut: boolean; onO
   useEffect(() => {
     if (seen.current === live) return;
     seen.current = live;
+    // Nothing to add on top of yet: ask for the first page again, so the older one on its way is dropped.
+    if (startingOver.current) {
+      void load(null);
+      return;
+    }
     let current = true;
     read(null)
-      .then((newest) => {
+      .then((latest) => {
         if (!current) return;
-        setPage((shown) => withNewest(shown, newest));
+        setPage((shown) => withNewest(shown, latest));
         setError(null);
       })
       .catch(() => undefined);
     return () => {
       current = false;
     };
-  }, [live, read]);
+  }, [live, read, load]);
 
   const openDetail = async (id: number) => {
     try {
