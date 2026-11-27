@@ -1,0 +1,115 @@
+/**
+ * What every money entry needs, whether a monthly fee payment (Cobrar) or
+ * other income: the household it is for, the month row it belongs to, and
+ * whether its paper receipt number was already used.
+ */
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { categories, householdOwners, households, months, people, transactions } from "../db/schema.js";
+import { firstOfMonth, monthName } from "./fees.js";
+import { HttpError } from "./http.js";
+export const NO_HOUSEHOLD = new HttpError(404, "not_found", "No se encontró esa vivienda.");
+/** The household and the name of the person it is registered to now. */
+export function householdOf(tx, id) {
+    const row = tx
+        .select({
+        id: households.id,
+        code: households.code,
+        status: households.status,
+        waterConnection: households.waterConnection,
+        ownerName: people.fullName,
+    })
+        .from(households)
+        .innerJoin(householdOwners, and(eq(householdOwners.householdId, households.id), isNull(householdOwners.endsOn)))
+        .innerJoin(people, eq(people.id, householdOwners.personId))
+        .where(eq(households.id, id))
+        .get();
+    if (!row) {
+        throw NO_HOUSEHOLD;
+    }
+    return row;
+}
+/**
+ * The month row an entry dated `occurredOn` belongs to, made when its month
+ * has none yet. A month whose close is prepared or done takes no entries
+ * (App Plan, Module 2: "a late item goes into the next month with a note").
+ */
+export function openMonthFor(tx, occurredOn, closed = (first, status) => `El mes de ${monthName(first)} ${status === "prepared" ? "está esperando que aprueben su cierre" : "ya está cerrado"}. ` +
+    "Registre el pago con la fecha de hoy y escriba en la nota de qué fecha es.") {
+    const first = firstOfMonth(occurredOn);
+    const existing = tx.select().from(months).where(eq(months.month, first)).get();
+    if (existing) {
+        if (existing.status !== "open") {
+            throw new HttpError(409, "month_closed", closed(first, existing.status));
+        }
+        return existing.id;
+    }
+    return tx.insert(months).values({ month: first, status: "open" }).returning({ id: months.id }).get().id;
+}
+/** The id of an income category (src/db/seeding.ts); a missing one is a broken seed, not the user's mistake. */
+export function incomeCategoryId(tx, name) {
+    const category = tx
+        .select({ id: categories.id })
+        .from(categories)
+        .where(and(eq(categories.kind, "income"), eq(categories.name, name)))
+        .get();
+    if (!category) {
+        throw new Error(`The income category "${name}" is missing`);
+    }
+    return category.id;
+}
+/**
+ * When an entry `o` counts as using the same paper receipt as the entry the
+ * columns describe: the same number, `o` money in (an expense's number is
+ * its supplier's invoice, from another book), not a reversal and not reversed,
+ * and not the other line of one receipt. A house's monthly fee and its late
+ * fee are often written on one receipt, the same day: entries of a
+ * different category for the same house on the same day are not repeats.
+ * Two entries of the same category still are, so a payment typed in twice
+ * is still flagged.
+ */
+function usesSameReceipt(entry) {
+    return sql `o.paper_receipt_number = ${entry.number}
+    AND o.kind = 'income'
+    AND o.reverses_id IS NULL
+    AND NOT EXISTS (SELECT 1 FROM transactions r WHERE r.reverses_id = o.id)
+    AND NOT (
+      coalesce(o.household_id, '') = coalesce(${entry.householdId}, '')
+      AND o.occurred_on = ${entry.occurredOn}
+      AND o.category_id <> ${entry.categoryId}
+    )`;
+}
+/** For a list of entries: whether another entry uses the same paper receipt (1 or 0). */
+export const repeatedReceiptColumn = sql `EXISTS (
+  SELECT 1 FROM transactions o
+  WHERE o.id <> ${transactions.id}
+    AND ${usesSameReceipt({
+    number: sql `${transactions.paperReceiptNumber}`,
+    householdId: sql `${transactions.householdId}`,
+    occurredOn: sql `${transactions.occurredOn}`,
+    categoryId: sql `${transactions.categoryId}`,
+})}
+)`;
+/**
+ * Before saving: the latest entry that already uses this paper receipt, or
+ * null. Flagged, not blocked (App Plan, Data model): receipt books can start
+ * their numbering again.
+ */
+export function earlierReceipt(tx, entry) {
+    const row = tx.get(sql `
+    SELECT o.id AS id FROM transactions o
+    WHERE ${usesSameReceipt(entry)}
+    ORDER BY o.created_at DESC
+    LIMIT 1
+  `);
+    if (!row) {
+        return null;
+    }
+    return (tx
+        .select({ code: households.code, occurredOn: transactions.occurredOn, amountCentavos: transactions.amountCentavos })
+        .from(transactions)
+        .leftJoin(households, eq(households.id, transactions.householdId))
+        .where(eq(transactions.id, row.id))
+        .orderBy(desc(transactions.createdAt))
+        .get() ?? null);
+}
+//# sourceMappingURL=entries.js.map
