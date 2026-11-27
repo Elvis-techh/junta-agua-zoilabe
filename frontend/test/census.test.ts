@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { Registration } from "../src/census.ts";
+import type { HouseholdFile, HouseholdForm, PersonForm, Registration } from "../src/census.ts";
 import {
   AMOUNT_WHOLE_DIGITS,
   amountCaret,
@@ -9,8 +9,12 @@ import {
   formatAmountTyping,
   formatIdNumber,
   formatLempiras,
+  householdChanges,
+  householdForm,
   newSubmissionId,
   parseLempiras,
+  personChanges,
+  personForm,
   significantChars,
   whatsappLink,
 } from "../src/census.ts";
@@ -225,5 +229,98 @@ describe("census queue", () => {
 
     store.set("zoilabe.censusQueue.v1", "{not json");
     assert.deepEqual(new CensusQueue(store).entries(), []);
+  });
+});
+
+describe("correcting a house or a person", () => {
+  const file: HouseholdFile = {
+    id: "casa",
+    code: "Z-0001",
+    status: "active",
+    inactiveReason: null,
+    sector: { id: 1, name: "El Centro" },
+    references: "Portón verde",
+    gps: { lat: 14.1, lng: -87.2 },
+    waterConnection: "connected",
+    paperDate: "2026-08-01",
+    paperFormNumber: "100",
+    lastVerifiedOn: null,
+    registeredBy: "Sara",
+    createdAt: "2026-08-01T12:00:00.000Z",
+    owner: {
+      personId: "persona",
+      fullName: "Juan Pérez",
+      idNumber: "0801199000001",
+      phone: "+50499887766",
+      phoneMissing: null,
+      gender: "Hombre",
+      relation: "owner",
+      startsOn: "2026-08-01",
+    },
+    fee: { kind: "base", baseFeeCentavos: 7000 },
+    otherHouseholds: [],
+    statusHistory: [],
+  };
+  const house = (typed: Partial<HouseholdForm> = {}) =>
+    householdChanges(householdForm(file), { ...householdForm(file), ...typed }, "2026-11-27");
+  const person = (typed: Partial<PersonForm> = {}, canEditSensitive = true, owner = file.owner) =>
+    personChanges(personForm(owner), { ...personForm(owner), ...typed }, canEditSensitive);
+
+  // Anything sent that was not changed would put back what someone else corrected meanwhile.
+  it("sends nothing from a form saved as it was opened", () => {
+    assert.deepEqual(house(), {});
+    assert.deepEqual(person(), {});
+  });
+
+  it("sends only the field that was changed", () => {
+    assert.deepEqual(house({ sectorId: 2 }), { sectorId: 2 });
+    assert.deepEqual(house({ references: "Casa azul" }), { references: "Casa azul" });
+    assert.deepEqual(house({ relation: "renter" }), { relation: "renter" });
+    assert.deepEqual(house({ paperDate: "2026-08-02" }), { paperDate: "2026-08-02" });
+    assert.deepEqual(house({ paperFormNumber: " 101 " }), { paperFormNumber: "101" });
+    assert.deepEqual(house({ gps: { lat: 14.2, lng: -87.2 } }), { gps: { lat: 14.2, lng: -87.2 } });
+    assert.deepEqual(person({ fullName: "Juan Pérez López" }), { fullName: "Juan Pérez López" });
+    assert.deepEqual(person({ gender: "Mujer" }), { gender: "Mujer" });
+    assert.deepEqual(person({ idNumber: "0801199000002" }), { idNumber: "0801199000002" });
+  });
+
+  it("does not count spaces around the text, or the same place taken again, as a change", () => {
+    assert.deepEqual(house({ references: "Portón verde ", paperFormNumber: " 100", gps: { lat: 14.1, lng: -87.2 } }), {});
+    assert.deepEqual(person({ fullName: " Juan Pérez " }), {});
+  });
+
+  it("sends the date with a new water connection, and only then", () => {
+    assert.deepEqual(house({ waterConnection: "shared" }), { waterConnection: "shared", connectionSince: "2026-11-27" });
+  });
+
+  it("sends an empty value when something was taken away", () => {
+    assert.deepEqual(house({ references: "", gps: null, paperDate: "", paperFormNumber: "" }), {
+      references: "",
+      gps: null,
+      paperDate: null,
+      paperFormNumber: null,
+    });
+    assert.deepEqual(person({ gender: "" }), { gender: null });
+    // Except the ID: it can be added or corrected here, not taken away.
+    assert.deepEqual(person({ idNumber: "" }), {});
+  });
+
+  it("sends the phone, or why there is none, as one answer", () => {
+    assert.deepEqual(person({ phone: { code: "504", number: "88776655" } }), { phone: "+50488776655" });
+    assert.deepEqual(person({ phone: { code: "502", number: "99887766" } }), { phone: "+50299887766" });
+    assert.deepEqual(person({ phoneMode: "declined" }), { phoneMissing: "declined" });
+
+    const without = { ...file.owner, phone: null, phoneMissing: "no_phone" as const };
+    assert.deepEqual(person({}, true, without), {});
+    assert.deepEqual(person({ phoneMode: "number", phone: { code: "504", number: "88776655" } }, true, without), { phone: "+50488776655" });
+  });
+
+  it("never sends the ID or phone of someone who may not see them", () => {
+    const masked = { ...file.owner, idNumber: "•••••••••0001", phone: "••••••66" };
+    assert.deepEqual(person({}, false, masked), {});
+    assert.deepEqual(
+      person({ fullName: "Juana Pérez", idNumber: "0801199000002", phoneMode: "declined" }, false, masked),
+      { fullName: "Juana Pérez" },
+    );
   });
 });

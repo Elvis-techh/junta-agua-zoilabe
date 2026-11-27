@@ -68,9 +68,16 @@ changing how money, permissions or the history log work.
   It needs signal. After losing it, after the API restarts, or on coming back
   from another app, the screen catches up by itself. Only a number travels on
   the live line, never names or money: each phone then reads its screen as
-  usual, with the same permissions. One thing it does not solve: two people
-  correcting the same house or person at once. The second save can still put
-  back what the first changed, as before.
+  usual, with the same permissions.
+- **Correcting a house or a person saves only what was changed** (asked by the
+  owner, 27 November 2026). Two people can have the same form open: one
+  changes the sector and the other the references, or one the name and the
+  other the phone, and both changes stay. Until now each save sent the whole
+  form, so the second one put the old sector or name back. If both change
+  **the same thing**, the last save wins. The phone, or why there is none,
+  counts as one thing, and so do the water connection and its date. A form
+  still shows what it held when it was opened; the file shows both changes
+  once it closes.
 - **Every amount takes up to L 999,999,999.99** (owner, 19 November 2026),
   since nobody knows how much a payment, an expense or the board's money
   will one day be: Cobrar, Otro ingreso, Gasto, the fees in Configuración, a
@@ -1160,6 +1167,12 @@ works, two accounts are closer to real life).
    back: the screen catches up.
 6. Turn airplane mode on, save something on the other, and turn it off: the
    screen catches up within half a minute.
+7. On **both**, open the same house, tap **Corregir datos de la vivienda** and
+   leave the windows open. On one, change the **Sector** and save. On the
+   other, change only the **Referencias** and save. The house has the new
+   sector and the new references.
+8. Do the same with **Corregir datos de la persona**: the name on one, the
+   phone on the other. Both stay.
 
 ### Starting over
 

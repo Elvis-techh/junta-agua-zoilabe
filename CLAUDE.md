@@ -184,6 +184,12 @@ usual routes, which check permissions and mask as always. Keep it that way.
   (`useLiveHold`, as Permisos), or says what changed before it saves (as
   Cobrar and Cierre del mes). A finished screen that works out what it shows
   from loaded data stops reading (Cobrar's "Guardado").
+- **A form that corrects a record sends only what was changed in it**, or it
+  puts back what someone else corrected meanwhile (`householdChanges` and
+  `personChanges` in `frontend/src/census.ts`). It compares with a copy of
+  what it was opened with, never with the props: a reading already on its way
+  can change those under an open `Dialog`. A new field goes into that form's
+  `…Form` and `…Changes`, and its route leaves what is not sent as it is.
 
 ## Checks before pushing
 

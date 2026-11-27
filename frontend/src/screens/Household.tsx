@@ -12,7 +12,11 @@ import {
   WATER_CONNECTIONS,
   formatIdNumber,
   formatLempiras,
+  householdChanges,
+  householdForm,
   noServiceLine,
+  personChanges,
+  personForm,
   statusEntryLine,
   whatsappLink,
 } from "../census.ts";
@@ -25,7 +29,7 @@ import { Icon } from "../icons.tsx";
 import { useLive } from "../live.ts";
 import type { HouseOwed, Payment } from "../payments.ts";
 import { PAYMENT_METHODS, dueSoonLine, lateFeesLine, monthList, owedSince, owedSummary, shortMonth } from "../payments.ts";
-import { formatPhone, phoneEntry, wholePhone } from "../phone.ts";
+import { formatPhone } from "../phone.ts";
 import { recall, remember } from "../queue.ts";
 import { isTouchScreen } from "../viewport.ts";
 import { formatDate, formatDateTime, todayInHonduras } from "../time.ts";
@@ -542,17 +546,20 @@ function useCensusOptions(): CensusOptions | null {
   return options;
 }
 
-function EditHousehold({ file, onClose, onSaved }: { file: HouseholdFile; onClose: () => void; onSaved: (text: string) => Promise<void> }) {
+function EditHousehold({ file: latest, onClose, onSaved }: { file: HouseholdFile; onClose: () => void; onSaved: (text: string) => Promise<void> }) {
   const options = useCensusOptions();
-  const [sectorId, setSectorId] = useState(file.sector.id);
-  const [references, setReferences] = useState(file.references ?? "");
-  const [waterConnection, setWaterConnection] = useState<WaterConnection>(file.waterConnection);
+  // The house as it was when the form opened. A reading already on its way can bring a newer one while the form is open.
+  const [file] = useState(latest);
+  const opened = householdForm(file);
+  const [sectorId, setSectorId] = useState(opened.sectorId);
+  const [references, setReferences] = useState(opened.references);
+  const [waterConnection, setWaterConnection] = useState(opened.waterConnection);
   // A new connection goes into the status history from this date (owner, 14 November 2026).
   const [connectionSince, setConnectionSince] = useState(todayInHonduras);
-  const [relation, setRelation] = useState<Relation>(file.owner.relation);
-  const [paperDate, setPaperDate] = useState(file.paperDate ?? "");
-  const [paperFormNumber, setPaperFormNumber] = useState(file.paperFormNumber ?? "");
-  const [gps, setGps] = useState(file.gps);
+  const [relation, setRelation] = useState(opened.relation);
+  const [paperDate, setPaperDate] = useState(opened.paperDate);
+  const [paperFormNumber, setPaperFormNumber] = useState(opened.paperFormNumber);
+  const [gps, setGps] = useState(opened.gps);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -562,7 +569,7 @@ function EditHousehold({ file, onClose, onSaved }: { file: HouseholdFile; onClos
     ? options.sectors
     : [file.sector, ...(options?.sectors ?? [])];
 
-  const connectionChanged = waterConnection !== file.waterConnection;
+  const connectionChanged = waterConnection !== opened.waterConnection;
 
   const save = async () => {
     if (connectionChanged && !connectionSince) {
@@ -572,15 +579,9 @@ function EditHousehold({ file, onClose, onSaved }: { file: HouseholdFile; onClos
     setBusy(true);
     setError(null);
     try {
+      const now = { sectorId, references, waterConnection, relation, gps, paperDate, paperFormNumber };
       await api("PATCH", `/census/households/${file.id}`, {
-        sectorId,
-        references,
-        waterConnection,
-        ...(connectionChanged ? { connectionSince } : {}),
-        relation,
-        gps,
-        paperDate: paperDate || null,
-        paperFormNumber: paperFormNumber.trim() || null,
+        ...householdChanges(opened, now, connectionSince),
         ...(reason.trim() ? { reason: reason.trim() } : {}),
       });
       await onSaved("Cambios guardados.");
@@ -673,7 +674,7 @@ function EditHousehold({ file, onClose, onSaved }: { file: HouseholdFile; onClos
 }
 
 function EditPerson({
-  file,
+  file: latest,
   canEditSensitive,
   onClose,
   onSaved,
@@ -684,12 +685,14 @@ function EditPerson({
   onSaved: (text: string) => Promise<void>;
 }) {
   const options = useCensusOptions();
-  const { owner } = file;
-  const [fullName, setFullName] = useState(owner.fullName);
-  const [idNumber, setIdNumber] = useState(owner.idNumber ?? "");
-  const [phone, setPhone] = useState(() => phoneEntry(owner.phone));
-  const [phoneMode, setPhoneMode] = useState<"number" | PhoneMissing>(owner.phoneMissing ?? "number");
-  const [gender, setGender] = useState(owner.gender ?? "");
+  // As it was when the form opened, as in EditHousehold.
+  const [{ owner }] = useState(latest);
+  const opened = personForm(owner);
+  const [fullName, setFullName] = useState(opened.fullName);
+  const [idNumber, setIdNumber] = useState(opened.idNumber);
+  const [phone, setPhone] = useState(opened.phone);
+  const [phoneMode, setPhoneMode] = useState(opened.phoneMode);
+  const [gender, setGender] = useState(opened.gender);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -698,14 +701,9 @@ function EditPerson({
     setBusy(true);
     setError(null);
     try {
+      const now = { fullName, idNumber, phoneMode, phone, gender };
       await api("PATCH", `/census/people/${owner.personId}`, {
-        fullName,
-        gender: gender || null,
-        // ID number and phone are sent only by someone allowed to see them.
-        // An ID left blank is not sent: it can be added or corrected here, not taken away.
-        ...(canEditSensitive
-          ? { ...(idNumber ? { idNumber } : {}), ...(phoneMode === "number" ? { phone: wholePhone(phone) } : { phoneMissing: phoneMode }) }
-          : {}),
+        ...personChanges(opened, now, canEditSensitive),
         ...(reason.trim() ? { reason: reason.trim() } : {}),
       });
       await onSaved("Datos de la persona guardados.");
